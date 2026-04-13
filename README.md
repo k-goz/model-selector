@@ -2,7 +2,7 @@
 
 > 实时拉取 OpenRouter 价格，按场景推荐 AI 模型，一键复制 `/model` 切换命令。
 
-**👉 访问在线版本：** https://model-selector.vercel.app
+**👉 **访问在线版本：** https://model-selector-sigma.vercel.app
 
 ---
 
@@ -20,7 +20,7 @@
 ## 使用方法
 
 ### 在线使用（推荐）
-直接访问 👉 **https://model-selector.vercel.app**
+直接访问 👉 **https://model-selector-sigma.vercel.app**
 
 ### 本地使用
 ```bash
