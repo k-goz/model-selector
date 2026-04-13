@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>模型选择器 - 实时价格对比</title>
+<style>
+:root{--bg:#0b0f1a;--s:#131929;--bd:#1e2d45;--tx:#e2e8f0;--mt:#64748b;--bl:#38bdf8;--gr:#22c55e;--yl:#f59e0b;--rd:#ef4444}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh}
+a{color:var(--bl);text-decoration:none}
+h1{font-size:26px;font-weight:700;color:#f8fafc;margin-bottom:4px}
+header{text-align:center;padding:32px 24px 20px;background:linear-gradient(180deg,#0f1a2e,transparent)}
+.tag{color:var(--mt);font-size:14px;margin-bottom:12px}
+.lb{display:inline-flex;align-items:center;gap:6px;background:#0f2a1e;border:1px solid #1a4a32;border-radius:20px;padding:4px 12px;font-size:12px;color:var(--gr)}
+.lb .p{width:6px;height:6px;background:var(--gr);border-radius:50%;animation:pl 2s infinite}
+@keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
+.hm{color:var(--mt);font-size:12px;margin-top:8px}
+.ha{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.bt{padding:8px 18px;border-radius:8px;border:1px solid var(--bd);background:var(--s);color:var(--mt);font-size:13px;cursor:pointer;transition:all .2s}
+.bt:hover{border-color:var(--bl);color:var(--bl)}
+.bt.p{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
+.bt.p:hover{background:#0284c7}
+.sw{max-width:500px;margin:0 auto 20px;padding:0 24px}
+.sw input{width:100%;background:var(--s);border:1px solid var(--bd);border-radius:10px;padding:11px 16px;color:var(--tx);font-size:14px;outline:none}
+.sw input:focus{border-color:var(--bl)}
+.sw input::placeholder{color:var(--mt)}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;padding:0 24px;margin-bottom:20px}
+.tab{padding:7px 14px;border-radius:8px;border:1px solid var(--bd);background:var(--s);color:var(--mt);font-size:13px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.tab:hover{border-color:var(--bl);color:var(--bl)}
+.tab.on{background:#0ea5e9;border-color:#0ea5e9;color:#fff}
+.lg{display:flex;gap:16px;justify-content:center;margin-bottom:24px;font-size:12px;color:var(--mt);padding:0 24px}
+.lg span{display:flex;align-items:center;gap:5px}
+.d{width:8px;height:8px;border-radius:50%}
+.d.f{background:var(--gr)}.d.c{background:var(--bl)}.d.m{background:var(--yl)}.d.e{background:var(--rd)}
+.stats{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;padding:0 24px}
+.st2{background:var(--s);border:1px solid var(--bd);border-radius:10px;padding:10px 20px;text-align:center;min-width:90px}
+.st2 .n{font-size:22px;font-weight:700;color:var(--bl);display:block}
+.st2 .l{font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px}
+main{padding:0 24px 60px;max-width:1200px;margin:0 auto}
+section{margin-bottom:32px}
+.st2a{font-size:13px;color:var(--bl);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+.mg{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.mc{background:var(--s);border:1px solid var(--bd);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:8px;position:relative}
+.mc:hover{border-color:var(--bl);transform:translateY(-2px);box-shadow:0 8px 24px rgba(14,165,233,.12)}
+.mc.sel{border-color:var(--gr);box-shadow:0 0 0 1px var(--gr)}
+.mc.hid{display:none}
+.mc.rec::before{content:'推荐';position:absolute;top:-1px;right:14px;background:linear-gradient(135deg,var(--yl),var(--rd));color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:0 0 8px 8px}
+.ch{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.pr{font-size:10px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px;flex-shrink:0}
+.nm{font-size:14px;font-weight:600;color:#f8fafc}
+.ds{font-size:12px;color:var(--mt);line-height:1.5;flex:1}
+.mt{display:flex;gap:8px;flex-wrap:wrap}
+.cp{background:#0f172a;border-radius:6px;padding:4px 8px;display:flex;flex-direction:column;gap:1px;min-width:60px}
+.cl{font-size:9px;color:var(--mt);text-transform:uppercase;letter-spacing:.3px}
+.cv{font-size:12px;font-weight:600}
+.cv.f{color:var(--gr)}.cv.c{color:var(--bl)}.cv.m{color:var(--yl)}.cv.e{color:var(--rd)}
+.bg{display:flex;gap:4px;flex-wrap:wrap}
+.badge{font-size:10px;padding:2px 6px;border-radius:4px;background:#0f172a;color:var(--mt);border:1px solid var(--bd)}
+.badge.vision{background:#0f2240;color:var(--bl);border-color:#0f2240}
+.badge.reasoning{background:#2a1a0f;color:#f97316;border-color:#2a1a0f}
+.badge.code{background:#0f2a1a;color:var(--gr);border-color:#0f2a1a}
+.badge.free{background:#0f2a1a;color:var(--gr);border-color:#0f2a1a}
+.nr{text-align:center;padding:60px;color:var(--mt);font-size:14px;display:none}
+.nr.on{display:block}
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--gr);color:#fff;padding:12px 24px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;white-space:nowrap;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+footer{text-align:center;padding:32px 24px;border-top:1px solid var(--bd);font-size:12px;color:var(--mt);line-height:1.8}
+footer code{background:var(--s);padding:2px 6px;border-radius:4px;color:var(--bl)}
+</style>
+</head>
+<body>
+<header>
+  <h1>模型选择器</h1>
+  <p class="tag">按场景选模型 · 实时价格 · 一键复制切换命令</p>
+  <div class="hm"><span class="lb"><span class="p"></span>实时数据</span> · 来源 <a href="https://openrouter.ai/models" target="_blank">OpenRouter</a> · 更新于 2026-04-13 15:56</div>
+  <div class="ha">
+    <button class="bt p" onclick="refreshData()">刷新价格</button>
+    <button class="bt" onclick="document.getElementById('q').focus()">搜索</button>
+  </div>
+</header>
+
+<div class="sw">
+  <input id="q" placeholder="搜索模型名称、厂商或能力标签... (按 / 聚焦)" oninput="filterAll()">
+</div>
+
+<div class="tabs">
+  <button class="tab on" onclick="showScene('all',this)">全部</button>
+  <button class="tab" onclick="showScene('日常对话',this)">日常对话</button>
+  <button class="tab" onclick="showScene('写作文案',this)">写作文案</button>
+  <button class="tab" onclick="showScene('编程代码',this)">编程代码</button>
+  <button class="tab" onclick="showScene('深度推理',this)">深度推理</button>
+  <button class="tab" onclick="showScene('视觉图片',this)">视觉图片</button>
+  <button class="tab" onclick="showScene('深度研究',this)">深度研究</button>
+  <button class="tab" onclick="showScene('免费模型',this)">免费模型</button>
+</div>
+
+<div class="stats">
+  <div class="st2"><span class="n" id="statTotal">32</span><span class="l">精选模型</span></div>
+  <div class="st2"><span class="n">349</span><span class="l">OpenRouter 总数</span></div>
+</div>
+
+<div class="lg">
+  <span><span class="d f"></span> 免费</span>
+  <span><span class="d c"></span> &lt;$0.5/M</span>
+  <span><span class="d m"></span> $0.5-3/M</span>
+  <span><span class="d e"></span> &gt;$3/M</span>
+</div>
+
+<main><section><div class="st">日常对话</div><div class="mg"><div class="mc" onclick="copyCmd('google/gemini-2.5-flash',event)"><div class="ch"><span class="pr">google</span><span class="nm">gemini 2.5 flash</span></div><p class="ds">Google 高性价比模型，免费额度大</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('openai/gpt-4.1-mini',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt 4.1 mini</span></div><p class="ds">GPT-4 级别能力，mini 价格</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('x-ai/grok-3-mini',event)"><div class="ch"><span class="pr">x-ai</span><span class="nm">grok 3 mini</span></div><p class="ds">xAI 轻量模型，带实时信息</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"></div></div></div></section><section><div class="st">写作文案</div><div class="mg"><div class="mc recommended" onclick="copyCmd('anthropic/claude-3.7-sonnet',event)"><div class="ch"><span class="pr">anthropic</span><span class="nm">claude 3.7 sonnet</span></div><p class="ds">写作最强，代码能力也是顶级</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('openai/gpt-4.1',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt 4.1</span></div><p class="ds">OpenAI 全面旗舰，100 万 token 上下文</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('qwen/qwen3-235b-a22b',event)"><div class="ch"><span class="pr">qwen</span><span class="nm">qwen3 235b a22b</span></div><p class="ds">阿里千亿参数旗舰，中文极强</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"></div></div></div></section><section><div class="st">编程代码</div><div class="mg"><div class="mc recommended" onclick="copyCmd('qwen/qwen3-coder-plus',event)"><div class="ch"><span class="pr">qwen</span><span class="nm">qwen3 coder plus</span></div><p class="ds">国产代码最强，超长上下文</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"><span class="badge code">code</span></div></div><div class="mc" onclick="copyCmd('qwen/qwen3-coder-next',event)"><div class="ch"><span class="pr">qwen</span><span class="nm">qwen3 coder next</span></div><p class="ds">最新代码模型，代码补全极强</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">262k</span></span></div><div class="bg"><span class="badge code">code</span></div></div><div class="mc" onclick="copyCmd('openai/o3-mini',event)"><div class="ch"><span class="pr">openai</span><span class="nm">o3 mini</span></div><p class="ds">推理型编程，复杂 bug 分析超强</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge reasoning">reasoning</span></div></div><div class="mc" onclick="copyCmd('openai/gpt-5.2-codex',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt 5.2 codex</span></div><p class="ds">OpenAI 代码旗舰，全能</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">400k</span></span></div><div class="bg"><span class="badge code">code</span></div></div><div class="mc" onclick="copyCmd('mistralai/devstral-medium',event)"><div class="ch"><span class="pr">mistralai</span><span class="nm">devstral medium</span></div><p class="ds">高性价比代码模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge code">code</span></div></div><div class="mc" onclick="copyCmd('mistralai/codestral-2508',event)"><div class="ch"><span class="pr">mistralai</span><span class="nm">codestral 2508</span></div><p class="ds">Mistral 最新代码模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">256k</span></span></div><div class="bg"><span class="badge code">code</span></div></div><div class="mc" onclick="copyCmd('nvidia/nemotron-nano-9b-v2',event)"><div class="ch"><span class="pr">nvidia</span><span class="nm">nemotron nano 9b v2</span></div><p class="ds">英伟达小参数代码模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge code">code</span></div></div></div></section><section><div class="st">深度推理</div><div class="mg"><div class="mc recommended" onclick="copyCmd('openai/o4-mini',event)"><div class="ch"><span class="pr">openai</span><span class="nm">o4 mini</span></div><p class="ds">性价比最高推理，复杂分析首选</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge reasoning">reasoning</span></div></div><div class="mc" onclick="copyCmd('openai/o3',event)"><div class="ch"><span class="pr">openai</span><span class="nm">o3</span></div><p class="ds">OpenAI 最强推理</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge reasoning">reasoning</span></div></div><div class="mc" onclick="copyCmd('openai/o3-mini',event)"><div class="ch"><span class="pr">openai</span><span class="nm">o3 mini</span></div><p class="ds">推理型编程，复杂 bug 分析超强</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge reasoning">reasoning</span></div></div><div class="mc" onclick="copyCmd('x-ai/grok-4',event)"><div class="ch"><span class="pr">x-ai</span><span class="nm">grok 4</span></div><p class="ds">xAI 最强，多模态+实时信息</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">256k</span></span></div><div class="bg"></div></div></div></section><section><div class="st">视觉图片</div><div class="mg"><div class="mc" onclick="copyCmd('openai/gpt-4o',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt 4o</span></div><p class="ds">图文全能旗舰</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">128k</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('openai/gpt-4.1',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt 4.1</span></div><p class="ds">OpenAI 全面旗舰，100 万 token 上下文</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('qwen/qwen-vl-max',event)"><div class="ch"><span class="pr">qwen</span><span class="nm">qwen vl max</span></div><p class="ds">阿里视觉旗舰，中文场景精准</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge vision">vision</span></div></div><div class="mc" onclick="copyCmd('x-ai/grok-4',event)"><div class="ch"><span class="pr">x-ai</span><span class="nm">grok 4</span></div><p class="ds">xAI 最强，多模态+实时信息</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">256k</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('mistralai/pixtral-large-2411',event)"><div class="ch"><span class="pr">mistralai</span><span class="nm">pixtral large 2411</span></div><p class="ds">Mistral 视觉旗舰</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge vision">vision</span></div></div></div></section><section><div class="st">深度研究</div><div class="mg"><div class="mc recommended" onclick="copyCmd('openai/o3-deep-research',event)"><div class="ch"><span class="pr">openai</span><span class="nm">o3 deep research</span></div><p class="ds">深度研究专用，自动搜集海量信息</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge reasoning">reasoning</span></div></div><div class="mc" onclick="copyCmd('openai/o3',event)"><div class="ch"><span class="pr">openai</span><span class="nm">o3</span></div><p class="ds">OpenAI 最强推理</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge reasoning">reasoning</span></div></div><div class="mc" onclick="copyCmd('google/gemini-2.5-pro',event)"><div class="ch"><span class="pr">google</span><span class="nm">gemini 2.5 pro</span></div><p class="ds">Google 最强，1M 超大上下文</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('openai/gpt-4.1',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt 4.1</span></div><p class="ds">OpenAI 全面旗舰，100 万 token 上下文</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">输出</span><span class="cv cheap">$0.000</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">1M</span></span></div><div class="bg"></div></div><div class="mc" onclick="copyCmd('openrouter/free',event)"><div class="ch"><span class="pr">openrouter</span><span class="nm">free</span></div><p class="ds">自动选最优免费模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">输出</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge free">free</span></div></div></div></section><section><div class="st">免费模型</div><div class="mg"><div class="mc recommended" onclick="copyCmd('openrouter/free',event)"><div class="ch"><span class="pr">openrouter</span><span class="nm">free</span></div><p class="ds">自动选最优免费模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">输出</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">200k</span></span></div><div class="bg"><span class="badge free">free</span></div></div><div class="mc" onclick="copyCmd('google/gemma-3-27b-it:free',event)"><div class="ch"><span class="pr">google</span><span class="nm">gemma 3 27b it:free</span></div><p class="ds">Google 开源 27B，免费</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">输出</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge free">free</span></div></div><div class="mc" onclick="copyCmd('qwen/qwen3-coder:free',event)"><div class="ch"><span class="pr">qwen</span><span class="nm">qwen3 coder:free</span></div><p class="ds">完全免费代码模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">输出</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">262k</span></span></div><div class="bg"><span class="badge code">code</span><span class="badge free">free</span></div></div><div class="mc" onclick="copyCmd('z-ai/glm-4.5-air:free',event)"><div class="ch"><span class="pr">z-ai</span><span class="nm">glm 4.5 air:free</span></div><p class="ds">智谱清言免费模型</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">输出</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge free">free</span></div></div><div class="mc" onclick="copyCmd('openai/gpt-oss-20b:free',event)"><div class="ch"><span class="pr">openai</span><span class="nm">gpt oss 20b:free</span></div><p class="ds">OpenAI 开源 20B</p><div class="mt"><span class="cp"><span class="cl">输入</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">输出</span><span class="cv free">免费</span></span><span class="cp"><span class="cl">上下文</span><span class="cv">131k</span></span></div><div class="bg"><span class="badge free">free</span></div></div></div></section></main>
+<div class="nr" id="noResults">没有找到匹配的模型，试试其他关键词</div>
+
+<footer>
+  点击任意卡片自动复制切换命令 · 格式：<code>/model provider/model-id</code><br>
+  数据实时来自 <a href="https://openrouter.ai/models" target="_blank">OpenRouter API</a> · 无需注册 · 完全免费使用
+</footer>
+
+<script>
+var cur='all';
+function copyCmd(id,e){
+  var cmd='/model '+id;
+  navigator.clipboard.writeText(cmd).then(function(){
+    document.querySelectorAll('.mc').forEach(function(c){c.classList.remove('sel')});
+    e.currentTarget.closest('.mc').classList.add('sel');
+    var t=document.createElement('div');t.className='toast';
+    t.textContent='已复制：'+cmd+' （发给 OpenClaw 即可切换）';
+    document.body.appendChild(t);
+    setTimeout(function(){t.remove()},3000);
+  }).catch(function(){prompt('复制以下命令：',cmd)});
+}
+function showScene(s,btn){
+  cur=s;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on')});
+  btn.classList.add('on');
+  filterAll();
+}
+function filterAll(){
+  var q=document.getElementById('q').value.toLowerCase().trim();
+  var secs=document.querySelectorAll('section');
+  var total=0;
+  secs.forEach(function(sec){
+    var sceneOk=cur==='all'||sec.querySelector('.st2a').textContent.indexOf(cur)!==-1;
+    var cards=sec.querySelectorAll('.mc');
+    var secVis=0;
+    cards.forEach(function(c){
+      var show=sceneOk&&(!q||c.textContent.toLowerCase().indexOf(q)!==-1);
+      c.classList.toggle('hid',!show);
+      if(show)secVis++,total++;
+    });
+    sec.style.display=secVis===0?'none':'block';
+  });
+  document.getElementById('noResults').classList.toggle('on',total===0);
+  document.getElementById('statTotal').textContent=total;
+}
+document.addEventListener('keydown',function(e){
+  if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();document.getElementById('q').focus()}
+  if(e.key==='Escape'){document.getElementById('q').value='';filterAll()}
+});
+async function refreshData(){
+  var btn=document.querySelector('.bt.p');
+  btn.textContent='刷新中...';btn.disabled=true;
+  try{
+    var r=await fetch('https://openrouter.ai/api/v1/models');
+    var d=await r.json();
+    console.log('刷新成功，获取'+d.data.length+'个模型');
+    location.reload();
+  }catch(e){
+    btn.textContent='刷新失败';btn.disabled=false;
+    alert('刷新失败：'+e.message);
+  }
+}
+</script>
+</body>
+</html>
