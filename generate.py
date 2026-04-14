@@ -66,7 +66,7 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out)
     return (
         '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" ' +
-        'onclick="copyCmd(\'' + cmd_base + '\',\'' + mname + '\')">' +
+        'onclick="copyCmd(&apos;' + cmd_base + '&apos;,&apos;' + mname + '&apos;)">' +
         '<div class="dot"></div><div class="prov">' + pname + '</div>' +
         '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>' +
         '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + ctx + '</div>' +
@@ -348,7 +348,7 @@ for m in OR[:350]:
     cmd = "/model " + mid2
     cards.append(
         '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" ' +
-        'onclick="copyCmd(\'/model ' + mid2 + '\', \'' + nn + '\')">' +
+        'onclick="copyCmd(&apos;/model ' + mid2 + '&apos;, &apos;' + nn + '&apos;)">' +
         '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>' +
         '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>' +
         '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + cc + '</div>' +
