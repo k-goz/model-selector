@@ -312,7 +312,8 @@ for m in ali:
 
 for mid in sf_ids:
     ii, oo, tt, ss = sp(mid)
-    cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid.split("/")[-1]),ii,oo,"32k",tt,ss,
+    # 显示完整模型ID（含供应商前缀），便于用户识别不同厂商同名模型
+    cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
                  "https://api.siliconflow.cn/v1/chat/completions","CNY"))
 
 for m in ms_list:
@@ -421,7 +422,7 @@ sort_bar = (
 
 calc_panel = (
     '<div class="calc-panel" id="calcPanel">'
-    '<div class="calc-title">&#128202; 价格计算器</div>'
+    '<div class="calc-title">&#128202; 月费计算器 <span style="font-weight:400;font-size:12px;color:#64748b">(使用上方已勾选模型，无模型时请先勾选)</span></div>'
     '<div class="calc-row">'
     '<label>每月对话次数:</label><input type="number" id="calcChats" value="1000" min="0">'
     '</div>'
@@ -565,27 +566,24 @@ var tokens=parseInt(document.getElementById('calcTokens').value)||0;
 var ratio=parseFloat(document.getElementById('calcRatio').value)||1;
 var inTok=chats*tokens;
 var outTok=inTok*ratio;
-var cs=document.querySelectorAll('.mc');
-var results=[];
-cs.forEach(function(c){
-var inp=parseFloat(c.dataset.inp)||0;
-var out=parseFloat(c.dataset.out)||0;
-var cur=c.dataset.cur||'CNY';
-var mName=(c.querySelector('.mname')||{}).textContent||'';
+var results=selModels.map(function(m){
 var cost;
-if(cur==='USD'){
-cost=(inp*inTok+out*outTok)*1e6;
+if(m.cur==='USD'){
+cost=(m.inp*inTok+m.out*outTok)*1e6;
 }else{
-cost=inp*inTok/1e6+out*outTok/1e6;
+cost=m.inp*inTok/1e6+m.out*outTok/1e6;
 }
-if(cost>0||inp===0)results.push({name:mName,cost:cost,cur:cur,inp:inp,out:out});
+return {name:m.name,cost:cost,cur:m.cur,inp:m.inp,out:m.out};
 });
 results.sort(function(a,b){return a.cost-b.cost});
-var top20=results.slice(0,20);
-var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费用</th></tr></thead><tbody>';
-top20.forEach(function(r,i){
+if(results.length===0){
+document.getElementById('calcResult').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">请先在上方勾选要计算的模型（最多3个）</div>';
+return;
+}
+var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费用(¥'+chats+'次×'+tokens+'T)</th></tr></thead><tbody>';
+results.forEach(function(r,i){
 var costStr=r.cur==='USD'?'$'+r.cost.toFixed(2):'¥'+r.cost.toFixed(2);
-html+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td>'+costStr+'</td></tr>';
+html+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td><b>'+costStr+'</b></td></tr>';
 });
 html+='</tbody></table></div>';
 document.getElementById('calcResult').innerHTML=html;
