@@ -64,16 +64,37 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     pt = PT(inp, out, cur)
     ts = th(tags)
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out)
+    inp_s = str(inp) if inp else "0"
+    out_s = str(out) if out else "0"
     return (
-        '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" ' +
-        'onclick="copyCmd(&apos;' + cmd_base + '&apos;,&apos;' + mname + '&apos;)">' +
-        '<div class="dot"></div><div class="prov">' + pname + '</div>' +
-        '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>' +
-        '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + ctx + '</div>' +
-        '<div class="hint">点击复制 API 接入方式</div></div>'
+        '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
+        'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="' + cur + '" '
+        'onclick="copyCmd(\'' + cmd_base + '\',\'' + mname + '\')">'
+        '<div class="dot"></div><div class="prov">' + pname + '</div>'
+        '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>'
+        '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + ctx + '</div>'
+        '<div class="hint">点击复制 API 接入方式</div>'
+        '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div></div>'
     )
 
-# SF price rules
+def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2):
+    pp = PT(inp, out, "USD")
+    tts = th(tt)
+    bg = bo(inp, out)
+    inp_s = str(inp) if inp else "0"
+    out_s = str(out) if out else "0"
+    cmd = "/model " + mid2
+    return (
+        '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" '
+        'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="USD" '
+        'onclick="copyCmd(\'' + cmd + '\',\'' + nn + '\')">'
+        '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>'
+        '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>'
+        '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + cc + '</div>'
+        '<div class="hint">点击复制 /model ' + mid2 + '</div>'
+        '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div></div>'
+    )
+
 def sp(mid):
     t = ["免费额度"]; s = "日常对话"; i = o = 0.0
     n = mid.lower()
@@ -155,7 +176,7 @@ def sp(mid):
     elif "BAAI/bge" in mid or "netease-youdao" in mid: i, o = 0.1, 0; t = ["向量"]; s = "其他"
     elif "Kwai-Kolors/Kolors" in mid:       i, o = 0.5, 0; t = ["图片生成","开源"]; s = "图片生成"
     elif "Wan-AI/Wan" in mid:               i, o = 0.5, 0; t = ["视频生成","开源"]; s = "视频生成"
-    elif "ByteDance-Seed" in mid:           i, o = 1.0, 4.0; t = ["开源","旗舰"]
+    elif "ByteDance-Seed" in mid:            i, o = 1.0, 4.0; t = ["开源","旗舰"]
     elif "internlm" in mid:                 i, o = 0, 0; t = ["开源","免费额度"]
     else:                                     i, o = 0, 0
     if not t: t = ["免费额度"]
@@ -212,10 +233,7 @@ def vp(mid):
         "doubao-seed-1.6-flash":  (0.8,0.8,"32k",["快速","极便宜"],"日常对话"),
         "doubao-seed-1.6-vision": (3,3,"64k",["视觉","旗舰"],"视觉图片"),
         "doubao-seed-1.6-thinking":(4,16,"262k",["推理","旗舰"],"深度推理"),
-        "doubao-seedream-4":       (3,0,"-",["图片生成","旗舰"],"图片生成"),
-        "doubao-seedream-5":       (3,0,"-",["图片生成","最新版"],"图片生成"),
-        "doubao-seedance-1":       (0.5,0,"-",["视频生成","旗舰"],"视频生成"),
-        "doubao-seedance-2":       (0.5,0,"-",["视频生成"],"视频生成"),
+        "doubao-seed-1.6-flash":  (0.8,0.8,"32k",["快速","极便宜"],"日常对话"),
         "doubao-seed-2.0-pro":     (1,4,"32k",["旗舰","最新版"],"日常对话"),
         "doubao-seed-2.0-mini":    (0.8,2,"32k",["轻量","性价比"],"日常对话"),
         "doubao-smart-router":      (0.8,2,"32k",["智能路由"],"日常对话"),
@@ -233,7 +251,6 @@ BD = [
     {"n":"文心Bot 8K","c":"8k","i":20,"o":20,"t":["主力"],"s":"日常对话"},
 ]
 
-# ── Fetch ──────────────────────────────────
 print("Fetching data...")
 t0 = time.time()
 
@@ -287,7 +304,6 @@ if os.path.exists(ORC):
     except: pass
 print("  OpenRouter:", len(OR), file=sys.stderr)
 
-# ── Cards ──────────────────────────────────
 cards = []
 
 for m in ali:
@@ -341,34 +357,22 @@ for m in OR[:350]:
     if m.get("reasoning"):   ss = "深度推理"
     elif m.get("vision"):     ss = "视觉图片"
     pv = Te(m.get("id","").split("/")[0].upper())
-    pp = PT(ii, oo, "USD")
-    tts = th(tt)
-    bg = bo(ii, oo)
     mid2 = Te(m["id"])
-    cmd = "/model " + mid2
-    cards.append(
-        '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" ' +
-        'onclick="copyCmd(&apos;/model ' + mid2 + '&apos;, &apos;' + nn + '&apos;)">' +
-        '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>' +
-        '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>' +
-        '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + cc + '</div>' +
-        '<div class="hint">点击复制 /model ' + mid2 + '</div></div>'
-    )
+    cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2))
 
 total = len(cards)
 print("Generated:", total, file=sys.stderr)
 
-def cn(p): return sum(1 for c in cards if '" data-p="' + p + '"' in c)
+def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
 ac = cn("aliyun"); sc2 = cn("siliconflow"); mc2 = cn("moonshot")
 zc = cn("zhipu"); vc2 = cn("volcengine"); bc2 = cn("baidu"); oc = cn("openrouter")
 
-def tc(p): return sum(1 for c in cards if '" data-pt="' + p + '"' in c)
+def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
 print("  Tier free:%d cheap:%d mid:%d high:%d ultra:%d" % (
     tc("free"),tc("cheap"),tc("mid"),tc("high"),tc("ultra")), file=sys.stderr)
 
 now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# ── UI bars ──────────────────────────────────
 pt_bar = (
     '<button class="pt-filter active" data-pt="all">全部价格</button>'
     '<button class="pt-filter" data-pt="free">&#128998; 免费</button>'
@@ -405,56 +409,248 @@ snote = (
     "标注「价格待确认」的模型请至平台控制台核实。"
 )
 
-JS = (
-    "var curP='all',curS='all',curPT='all';"
-    "document.addEventListener('DOMContentLoaded',function(){"
-    "var ld=document.getElementById('ld');ld.classList.add('show');"
-    "setTimeout(function(){ld.classList.remove('show')},600);"
-    "document.querySelectorAll('.pt').forEach(function(b){b.addEventListener('click',function(){"
-    "document.querySelectorAll('.pt').forEach(function(x){x.classList.remove('active')});"
-    "b.classList.add('active');curP=b.dataset.p;filter()});});"
-    "document.querySelectorAll('.pt-filter').forEach(function(b){b.addEventListener('click',function(){"
-    "document.querySelectorAll('.pt-filter').forEach(function(x){x.classList.remove('active')});"
-    "b.classList.add('active');curPT=b.dataset.pt;filter()});});"
-    "document.querySelectorAll('.sc').forEach(function(b){b.addEventListener('click',function(){"
-    "document.querySelectorAll('.sc').forEach(function(x){x.classList.remove('active')});"
-    "b.classList.add('active');curS=b.dataset.sc;filter()});});"
-    "var st;"
-    "document.getElementById('si').addEventListener('input',function(){clearTimeout(st);st=setTimeout(filter,200)});"
-    "document.addEventListener('keydown',function(e){"
-    "if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();document.getElementById('si').focus()}"
-    "if(e.key==='Escape'){document.getElementById('si').blur()}});"
-    "});"
-    "function filter(){"
-    "var cs=document.querySelectorAll('.mc');"
-    "var q=(document.getElementById('si').value||'').toLowerCase().trim();"
-    "var n=0;"
-    "cs.forEach(function(c){"
-    "var sh=true;"
-    "var pn=(c.querySelector('.prov')||{}).textContent||'';"
-    "var mn=(c.querySelector('.mname')||{}).textContent||'';"
-    "if(curP!='all'&&curP!==(c.dataset.p||'')){sh=false}"
-    "if(curPT!='all'&&curPT!==(c.dataset.pt||'')){sh=false}"
-    "if(q&&mn.toLowerCase().indexOf(q)===-1&&pn.toLowerCase().indexOf(q)===-1){sh=false}"
-    "c.style.display=sh?'block':'none';if(sh)n++});"
-    "document.getElementById('empty').style.display=n===0?'block':'none'}"
-    "function copyCmd(cmd,name){"
-    "navigator.clipboard.writeText(cmd).then(function(){"
-    "var t=document.getElementById('toast');t.textContent='OK '+cmd.substring(0,80);t.classList.add('show');"
-    "setTimeout(function(){t.classList.remove('show')},2500)"
-    "}).catch(function(){"
-    "var t=document.getElementById('toast');t.textContent=cmd.substring(0,60);t.classList.add('show');"
-    "setTimeout(function(){t.classList.remove('show')},2500)});}"
+sort_bar = (
+    '<span class="sort-lbl">排序:</span>'
+    '<button class="sort-btn active" data-sort="default">默认</button>'
+    '<button class="sort-btn" data-sort="inp-asc">输入价↑</button>'
+    '<button class="sort-btn" data-sort="inp-desc">输入价↓</button>'
+    '<button class="sort-btn" data-sort="out-asc">输出价↑</button>'
+    '<button class="sort-btn" data-sort="out-desc">输出价↓</button>'
+    '<button class="sort-btn" data-sort="name">名称</button>'
 )
+
+calc_panel = (
+    '<div class="calc-panel" id="calcPanel">'
+    '<div class="calc-title">&#128202; 价格计算器</div>'
+    '<div class="calc-row">'
+    '<label>每月对话次数:</label><input type="number" id="calcChats" value="1000" min="0">'
+    '</div>'
+    '<div class="calc-row">'
+    '<label>每对话Token数:</label><input type="number" id="calcTokens" value="2000" min="0">'
+    '</div>'
+    '<div class="calc-row">'
+    '<label>输出/输入比:</label><input type="number" id="calcRatio" value="1" min="0" step="0.1">'
+    '</div>'
+    '<button class="calc-btn" onclick="runCalc()">计算月费用</button>'
+    '<div class="calc-result" id="calcResult"></div>'
+    '</div>'
+)
+
+cmp_panel = (
+    '<div class="cmp-panel" id="cmpPanel" style="display:none">'
+    '<div class="cmp-title">&#128202; 模型对比 (<span id="cmpCount">0</span>/3)</div>'
+    '<div class="cmp-list" id="cmpList"></div>'
+    '<div class="cmp-actions">'
+    '<button class="cmp-btn" onclick="showCmp()">并排对比</button>'
+    '<button class="cmp-btn cmp-btn-clear" onclick="clearCmp()">清空</button>'
+    '</div>'
+    '</div>'
+    '<div class="cmp-modal" id="cmpModal" style="display:none">'
+    '<div class="cmp-modal-content">'
+    '<div class="cmp-modal-header"><span>模型对比详情</span><button class="cmp-close" onclick="closeCmpModal()">&times;</button></div>'
+    '<div class="cmp-modal-body" id="cmpModalBody"></div>'
+    '</div></div>'
+)
+
+JS = '''
+var curP='all',curS='all',curPT='all',curSort='default',selModels=[];
+document.addEventListener('DOMContentLoaded',function(){
+var ld=document.getElementById('ld');ld.classList.add('show');
+setTimeout(function(){ld.classList.remove('show')},600);
+document.querySelectorAll('.pt').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.pt').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');curP=b.dataset.p;filter()});});
+document.querySelectorAll('.pt-filter').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.pt-filter').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');curPT=b.dataset.pt;filter()});});
+document.querySelectorAll('.sc').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.sc').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');curS=b.dataset.sc;filter()});});
+document.querySelectorAll('.sort-btn').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.sort-btn').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');curSort=b.dataset.sort;sortCards()});});
+var st;
+document.getElementById('si').addEventListener('input',function(){clearTimeout(st);st=setTimeout(filter,200)});
+document.addEventListener('keydown',function(e){
+if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();document.getElementById('si').focus()}
+if(e.key==='Escape'){document.getElementById('si').blur()}});
+});
+function filter(){
+var cs=document.querySelectorAll('.mc');
+var q=(document.getElementById('si').value||'').toLowerCase().trim();
+var n=0;
+cs.forEach(function(c){
+var sh=true;
+var pn=(c.querySelector('.prov')||{}).textContent||'';
+var mn=(c.querySelector('.mname')||{}).textContent||'';
+if(curP!='all'&&curP!==(c.dataset.p||'')){sh=false}
+if(curPT!='all'&&curPT!==(c.dataset.pt||'')){sh=false}
+if(curS!='all'&&curS!==(c.dataset.s||'')){sh=false}
+if(q&&mn.toLowerCase().indexOf(q)===-1&&pn.toLowerCase().indexOf(q)===-1){sh=false}
+c.style.display=sh?'block':'none';if(sh)n++});
+document.getElementById('empty').style.display=n===0?'block':'none'}
+function sortCards(){
+var grid=document.getElementById('grid');
+var cs=Array.from(grid.querySelectorAll('.mc'));
+var sortFn={
+'default':function(){return 0},
+'inp-asc':function(a,b){return (parseFloat(a.dataset.inp)||0)-(parseFloat(b.dataset.inp)||0)},
+'inp-desc':function(a,b){return (parseFloat(b.dataset.inp)||0)-(parseFloat(a.dataset.inp)||0)},
+'out-asc':function(a,b){return (parseFloat(a.dataset.out)||0)-(parseFloat(b.dataset.out)||0)},
+'out-desc':function(a,b){return (parseFloat(b.dataset.out)||0)-(parseFloat(a.dataset.out)||0)},
+'name':function(a,b){return (a.querySelector('.mname')||{}).textContent.localeCompare((b.querySelector('.mname')||{}).textContent)}
+};
+cs.sort(sortFn[curSort]||sortFn['default']);
+cs.forEach(function(c){grid.appendChild(c)});
+filter()}
+function toggleSel(cb){
+var c=cb.closest('.mc');
+var mName=(c.querySelector('.mname')||{}).textContent||'';
+var prov=(c.querySelector('.prov')||{}).textContent||'';
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var cmd=c.getAttribute('onclick')||'';
+var mIdx=selModels.findIndex(function(m){return m.name===mName});
+if(cb.checked){
+if(selModels.length>=3){cb.checked=false;alert('最多选择3个模型对比');return}
+if(mIdx===-1)selModels.push({name:mName,prov:prov,inp:inp,out:out,cur:cur,cmd:cmd});
+}else{
+if(mIdx!==-1)selModels.splice(mIdx,1);
+}
+updateCmpPanel()}
+function updateCmpPanel(){
+var panel=document.getElementById('cmpPanel');
+var list=document.getElementById('cmpList');
+var count=document.getElementById('cmpCount');
+count.textContent=selModels.length;
+if(selModels.length===0){panel.style.display='none';return}
+panel.style.display='block';
+list.innerHTML=selModels.map(function(m,i){
+var price=m.cur==='USD'?'$'+(m.inp*1e6).toFixed(2)+'/M':'¥'+m.inp.toFixed(2)+'/M';
+return '<div class="cmp-item"><span class="cmp-item-name">'+m.name+'</span>'
++'<span class="cmp-item-price">'+price+'</span>'
++'<button class="cmp-item-del" onclick="delSel('+i+')">&times;</button></div>';
+}).join('')}
+function delSel(i){selModels.splice(i,1);updateCmpPanel();
+var cbs=document.querySelectorAll('.mc-cb');cbs.forEach(function(cb,i2){
+var c=cb.closest('.mc');var n=(c.querySelector('.mname')||{}).textContent||'';
+if(!selModels.find(function(m){return m.name===n}))cb.checked=false;
+});}
+function clearCmp(){selModels=[];updateCmpPanel();
+document.querySelectorAll('.mc-cb').forEach(function(cb){cb.checked=false});}
+function showCmp(){
+if(selModels.length<2){alert('请至少选择2个模型');return}
+var body=document.getElementById('cmpModalBody');
+body.innerHTML='<table class="cmp-table"><thead><tr><th>项目</th>'
++selModels.map(function(m){return '<th>'+m.name+'</th>'}).join('')
++'</tr></thead><tbody>'
++'<tr><td>平台</td>'+selModels.map(function(m){return '<td>'+m.prov+'</td>'}).join('')+'</tr>'
++'<tr><td>输入价格</td>'+selModels.map(function(m){
+var p=m.cur==='USD'?'$'+(m.inp*1e6).toFixed(4):'¥'+m.inp.toFixed(4);
+return '<td>'+p+'/M</td>';
+}).join('')+'</tr>'
++'<tr><td>输出价格</td>'+selModels.map(function(m){
+var p=m.cur==='USD'?'$'+(m.out*1e6).toFixed(4):'¥'+m.out.toFixed(4);
+return '<td>'+p+'/M</td>';
+}).join('')+'</tr>'
++'<tr><td>货币</td>'+selModels.map(function(m){return '<td>'+m.cur+'</td>'}).join('')+'</tr>'
++'</tbody></table>';
+document.getElementById('cmpModal').style.display='flex';
+}
+function closeCmpModal(){document.getElementById('cmpModal').style.display='none'}
+function runCalc(){
+var chats=parseInt(document.getElementById('calcChats').value)||0;
+var tokens=parseInt(document.getElementById('calcTokens').value)||0;
+var ratio=parseFloat(document.getElementById('calcRatio').value)||1;
+var inTok=chats*tokens;
+var outTok=inTok*ratio;
+var cs=document.querySelectorAll('.mc');
+var results=[];
+cs.forEach(function(c){
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var mName=(c.querySelector('.mname')||{}).textContent||'';
+var cost;
+if(cur==='USD'){
+cost=(inp*inTok+out*outTok)*1e6;
+}else{
+cost=inp*inTok/1e6+out*outTok/1e6;
+}
+if(cost>0||inp===0)results.push({name:mName,cost:cost,cur:cur,inp:inp,out:out});
+});
+results.sort(function(a,b){return a.cost-b.cost});
+var top20=results.slice(0,20);
+var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费用</th></tr></thead><tbody>';
+top20.forEach(function(r,i){
+var costStr=r.cur==='USD'?'$'+r.cost.toFixed(2):'¥'+r.cost.toFixed(2);
+html+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td>'+costStr+'</td></tr>';
+});
+html+='</tbody></table></div>';
+document.getElementById('calcResult').innerHTML=html;
+}
+function copyCmd(cmd,name){
+navigator.clipboard.writeText(cmd).then(function(){
+var t=document.getElementById('toast');t.textContent='OK '+cmd.substring(0,80);t.classList.add('show');
+setTimeout(function(){t.classList.remove('show')},2500)
+}).catch(function(){
+var t=document.getElementById('toast');t.textContent=cmd.substring(0,60);t.classList.add('show');
+setTimeout(function(){t.classList.remove('show')},2500)});}
+'''
 
 CSS = open("/tmp/css.txt").read()
 
-# ── HTML ──────────────────────────────────
+extra_css = '''
+.sort-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.sort-lbl{font-size:12px;color:#64748b;font-weight:600}
+.sort-btn{padding:5px 12px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;cursor:pointer;transition:all .1s}
+.sort-btn:hover{border-color:#6366f1;color:#6366f1}
+.sort-btn.active{background:#6366f1;color:#fff;border-color:#6366f1}
+.calc-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px}
+.calc-title{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:10px}
+.calc-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.calc-row label{font-size:12px;color:#64748b;width:100px}
+.calc-row input{flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;max-width:120px}
+.calc-btn{background:#6366f1;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px}
+.calc-btn:hover{background:#4f46e5}
+.calc-result{margin-top:12px;max-height:300px;overflow-y:auto}
+.calc-table-wrap{overflow-x:auto}
+.calc-table{width:100%;border-collapse:collapse;font-size:12px}
+.calc-table th,.calc-table td{padding:6px 10px;border:1px solid #e2e8f0;text-align:left}
+.calc-table th{background:#f1f5f9;font-weight:600}
+.calc-table tr:nth-child(even){background:#fafafa}
+.cmp-panel{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:12px;margin-bottom:12px}
+.cmp-title{font-size:14px;font-weight:700;color:#4f46e5;margin-bottom:8px}
+.cmp-list{margin-bottom:10px}
+.cmp-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-radius:8px;margin-bottom:4px}
+.cmp-item-name{flex:1;font-size:13px;font-weight:600}
+.cmp-item-price{font-size:12px;color:#6366f1}
+.cmp-item-del{background:#fee2e2;color:#dc2626;border:none;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1}
+.cmp-actions{display:flex;gap:8px}
+.cmp-btn{padding:6px 14px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#6366f1;color:#fff}
+.cmp-btn:hover{background:#4f46e5}
+.cmp-btn-clear{background:#f1f5f9;color:#64748b}
+.cmp-btn-clear:hover{background:#e2e8f0}
+.cmp-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+.cmp-modal-content{background:#fff;border-radius:16px;max-width:800px;width:90%;max-height:80vh;overflow:auto}
+.cmp-modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;font-size:16px;font-weight:700}
+.cmp-close{background:none;border:none;font-size:24px;cursor:pointer;color:#64748b}
+.cmp-close:hover{color:#1e293b}
+.cmp-modal-body{padding:20px}
+.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-table th,.cmp-table td{padding:10px 12px;border:1px solid #e2e8f0;text-align:left}
+.cmp-table th{background:#f1f5f9;font-weight:600}
+.cb-wrap{position:absolute;bottom:8px;right:8px;display:flex;align-items:center;gap:4px}
+.cb-lbl{font-size:10px;color:#6366f1;cursor:pointer}
+.mc-cb{width:14px;height:14px;cursor:pointer}
+'''
+
 HDR = (
     '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n'
     '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
     '<title>AI 模型选择器 - 全网价格对比 2026</title>\n'
-    '<style>\n' + CSS + '\n</style>\n'
+    '<style>\n' + CSS + '\n' + extra_css + '\n</style>\n'
     '</head>\n<body>\n<div class="wrap">\n'
     '<div class="hdr"><h1>AI 模型选择器</h1>'
     '<p>一键对比全网价格 &middot; 点击卡片复制切换命令 &middot; 按 / 快速搜索</p>'
@@ -470,7 +666,10 @@ HDR = (
     '<div class="pbar">' + tabs_bar + '</div>\n'
     '<div class="ptbar">' + pt_bar + '</div>\n'
     '<div class="sbar">' + scen_bar + '</div>\n'
+    '<div class="sort-bar">' + sort_bar + '</div>\n'
     '<div class="srow"><input id="si" type="text" placeholder="搜索模型...  (按 / 快速聚焦)"></div>\n'
+    + calc_panel + '\n'
+    + cmp_panel + '\n'
     '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
