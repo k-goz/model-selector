@@ -1,25 +1,63 @@
 #!/usr/bin/env python3
-import os, time, json, sys, urllib.request
+"""AI 模型选择器 - 数据抓取与页面生成脚本
+支持平台: 阿里百炼, 硅基流动, 月之暗面, 智谱AI, 火山引擎, 百度文心, OpenRouter,
+           腾讯混元, 讯飞星火, MiniMax, 零一万物, 百川智能, 阶跃星辰
+"""
+import os, time, json, sys, urllib.request, hashlib, re
 from datetime import datetime
 
-SF  = os.environ.get("SF_KEY","sk-lvhjyumsmqidzpmwtmkcyxrhetbmaodfjklenoomnlsjbqha")
-ALI = os.environ.get("ALIYUN_KEY","sk-5521c543f8f74954a027ddd41edafa08")
-MS  = os.environ.get("MS_KEY","sk-ok4u4zjqFLYquLDmBwc1QOxE6PPNG0KSDOj3EnDfmR7QVxXw")
-ZH  = os.environ.get("ZH_KEY","ff71a2ef7fbb431fb519d10df953b674.gMVnjHX5SgqgZy4Q")
-VC  = os.environ.get("VOLC_KEY","e5786517-18a1-439d-98b3-b065e3d720e7")
+# ─── API Keys (仅从环境变量读取，无硬编码默认值) ───
+SF  = os.environ.get("SF_KEY", "")
+ALI = os.environ.get("ALIYUN_KEY", "")
+MS  = os.environ.get("MS_KEY", "")
+ZH  = os.environ.get("ZH_KEY", "")
+VC  = os.environ.get("VOLC_KEY", "")
+TX  = os.environ.get("TENCENT_KEY", "")
+XH  = os.environ.get("SPARK_KEY", "")
+MM  = os.environ.get("MINIMAX_KEY", "")
+YW  = os.environ.get("YI_KEY", "")
+BC  = os.environ.get("BAICHUAN_KEY", "")
+JC  = os.environ.get("JIEYUE_KEY", "")
+
 OUT = os.path.expanduser("~/.qclaw/model-selector-v2.html")
-ORC = "/tmp/openrouter_full.json"
+CACHE_DIR = os.path.expanduser("~/.qclaw/cache")
+PREV_DATA = os.path.expanduser("~/.qclaw/prev_models.json")
+os.makedirs(CACHE_DIR, exist_ok=True)
 
-def fj(url, tok="", to=20):
-    h = {"User-Agent": "Mozilla/5.0"}
+# ─── 汇率 ───
+USD_TO_CNY = 7.25
+
+# ─── 通用请求函数 (带重试和缓存) ───
+def fj(url, tok="", to=20, retries=3):
+    h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
     if tok: h["Authorization"] = "Bearer " + tok
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=to) as r:
-            return json.loads(r.read())
-    except Exception as e:
-        print("  WARN:", e, file=sys.stderr)
-        return None
+    for attempt in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=h)
+            with urllib.request.urlopen(req, timeout=to) as r:
+                data = r.read()
+                # 缓存到本地
+                ch = hashlib.md5(url.encode()).hexdigest()
+                with open(os.path.join(CACHE_DIR, ch + ".json"), "wb") as cf:
+                    cf.write(data)
+                return json.loads(data)
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(1 * (attempt + 1))
+            else:
+                print("  WARN: %s (after %d retries)" % (e, retries), file=sys.stderr)
+                # 尝试从缓存读取
+                ch = hashlib.md5(url.encode()).hexdigest()
+                cp = os.path.join(CACHE_DIR, ch + ".json")
+                if os.path.exists(cp):
+                    try:
+                        print("  Using cache for: %s" % url, file=sys.stderr)
+                        return json.load(open(cp))
+                    except:
+                        pass
+                return None
 
+# ─── 价格分级 ───
 def PT(inp, out, cur="CNY"):
     inp = float(inp or 0); out = float(out or 0)
     if inp == 0 and out == 0: return "free"
@@ -29,18 +67,25 @@ def PT(inp, out, cur="CNY"):
     elif p < 100:  return "high"
     else:           return "ultra"
 
+# ─── HTML 转义 ───
 def Te(s):
     return str(s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
 
+# ─── 标签 HTML ───
 def th(tags):
     m = {"免费":"free","免费额度":"free","便宜":"cheap","极便宜":"cheap","性价比":"cheap",
          "旗舰":"hot","主力":"hot","最新版":"hot","2025新":"hot","2026新":"hot",
          "视觉":"vision","推理":"reason","长上下文":"long","超长上下文":"long",
          "开源":"other","代码":"other","图片生成":"other","视频生成":"other",
          "快速":"other","高性能":"hot","Pro订阅":"other","蒸馏":"other",
-         "轻量":"other","已下线":"other","即将下线":"other","价格待确认":"other"}
+         "轻量":"other","已下线":"other","即将下线":"other","价格待确认":"other",
+         "语音":"other","TTS":"other","ASR":"other","向量":"other","排序":"other",
+         "OCR":"other","多模态":"vision","Turbo":"hot","降价后":"cheap","降价90%":"cheap",
+         "超低价":"cheap","编程":"other","智能路由":"other","免费":"free",
+         "满血版":"hot","价格变动":"other","涨价":"hot","降价":"cheap"}
     return "".join('<span class="tg tg-' + m.get(x,"other") + '">' + x + '</span>' for x in (tags or []))
 
+# ─── 价格徽章 (CNY) ───
 def bc(inp, out):
     inp = float(inp or 0); out = float(out or 0)
     if inp == 0 and out == 0:
@@ -50,6 +95,7 @@ def bc(inp, out):
         return '<span class="price-badge ' + c + '">¥' + ("%.2f" % inp) + '/M</span>'
     return '<span class="price-badge price-mid">IN:¥' + ("%.2f" % inp) + ' OUT:¥' + ("%.2f" % out) + '/M</span>'
 
+# ─── 价格徽章 (USD) ───
 def bo(inp, out):
     inp = float(inp or 0); out = float(out or 0)
     if inp == 0 and out == 0:
@@ -60,21 +106,31 @@ def bo(inp, out):
         return '<span class="price-badge ' + c + '">$' + ("%.2f" % p) + '/1M</span>'
     return '<span class="price-badge price-mid">IN:$' + ("%.1f" % (inp*1e6)) + ' OUT:$' + ("%.1f" % (out*1e6)) + '/1M</span>'
 
-def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="CNY"):
+# ─── 模型卡片生成 ───
+def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="CNY", extra_attrs=""):
     pt = PT(inp, out, cur)
     ts = th(tags)
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out)
     inp_s = str(inp) if inp else "0"
     out_s = str(out) if out else "0"
+    # 上下文数值用于筛选
+    ctx_num = re.sub(r'[^\d]', '', ctx) if ctx else "0"
     return (
         '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="' + cur + '" '
+        'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" ' + extra_attrs + ' '
         'onclick="copyCmd(\'' + cmd_base + '\',\'' + mname + '\')">'
         '<div class="dot"></div><div class="prov">' + pname + '</div>'
         '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>'
-        '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + ctx + '</div>'
+        '<div class="prow">' + bg + '</div>'
+        '<div class="ctx-row"><span class="ctx">上下文: ' + ctx + '</span>'
+        '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + str(min(100, int(ctx_num or 0) / 1000)) + '%"></div></div></div>'
+        '<div class="base-url">' + cmd_base + '</div>'
         '<div class="hint">点击复制 API 接入方式</div>'
-        '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div></div>'
+        '<div class="card-actions">'
+        '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
+        '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
+        '</div></div>'
     )
 
 def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2):
@@ -83,19 +139,33 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2):
     bg = bo(inp, out)
     inp_s = str(inp) if inp else "0"
     out_s = str(out) if out else "0"
-    cmd = "/model " + mid2
+    or_base = "https://openrouter.ai/api/v1/chat/completions"
+    cmd = or_base
+    ctx_num = re.sub(r'[^\d]', '', cc) if cc else "0"
     return (
         '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="USD" '
+        'data-ctx="' + ctx_num + '" data-ctx-display="' + cc + '" '
         'onclick="copyCmd(\'' + cmd + '\',\'' + nn + '\')">'
         '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>'
         '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>'
-        '<div class="prow">' + bg + '</div><div class="ctx">上下文: ' + cc + '</div>'
-        '<div class="hint">点击复制 /model ' + mid2 + '</div>'
-        '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div></div>'
+        '<div class="prow">' + bg + '</div>'
+        '<div class="ctx-row"><span class="ctx">上下文: ' + cc + '</span>'
+        '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + str(min(100, int(ctx_num or 0) / 1000)) + '%"></div></div></div>'
+        '<div class="base-url">' + or_base + '</div>'
+        '<div class="hint">点击复制 API 接入方式</div>'
+        '<div class="card-actions">'
+        '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
+        '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
+        '</div></div>'
     )
 
+# ═══════════════════════════════════════════════════════════
+# 各平台价格映射函数
+# ═══════════════════════════════════════════════════════════
+
 def sp(mid):
+    """硅基流动价格映射"""
     t = ["免费额度"]; s = "日常对话"; i = o = 0.0
     n = mid.lower()
     if "deepseek-ai/" in mid:
@@ -183,6 +253,7 @@ def sp(mid):
     return i, o, t, s
 
 def mp(mid):
+    """月之暗面价格映射"""
     m = {
         "moonshot-v1-8k":         (2,10,"8k",["主力","降价后"],"日常对话"),
         "moonshot-v1-32k":        (12,24,"32k",["长上下文"],"日常对话"),
@@ -201,6 +272,7 @@ def mp(mid):
     return 4, 16, "262k", ["旗舰","价格待确认"], "深度推理"
 
 def zp(mid):
+    """智谱AI价格映射"""
     m = {
         "glm-5":         (6,22,"1M",["旗舰","2026新"],"深度推理"),
         "glm-5-turbo":   (5,22,"1M",["高性能"],"深度推理"),
@@ -221,6 +293,7 @@ def zp(mid):
     return 2, 8, "128k", ["主力"], "日常对话"
 
 def vp(mid):
+    """火山引擎价格映射"""
     m = {
         "doubao-1.6-pro-32k":    (0.8,8,"32k",["旗舰","2025新"],"日常对话"),
         "doubao-1.5-pro-32k":   (0.8,2,"32k",["主力","性价比"],"日常对话"),
@@ -233,7 +306,6 @@ def vp(mid):
         "doubao-seed-1.6-flash":  (0.8,0.8,"32k",["快速","极便宜"],"日常对话"),
         "doubao-seed-1.6-vision": (3,3,"64k",["视觉","旗舰"],"视觉图片"),
         "doubao-seed-1.6-thinking":(4,16,"262k",["推理","旗舰"],"深度推理"),
-        "doubao-seed-1.6-flash":  (0.8,0.8,"32k",["快速","极便宜"],"日常对话"),
         "doubao-seed-2.0-pro":     (1,4,"32k",["旗舰","最新版"],"日常对话"),
         "doubao-seed-2.0-mini":    (0.8,2,"32k",["轻量","性价比"],"日常对话"),
         "doubao-smart-router":      (0.8,2,"32k",["智能路由"],"日常对话"),
@@ -242,6 +314,7 @@ def vp(mid):
         if k in mid: return ii, oo, cc, tt, ss
     return 0.8, 2, "32k", ["价格待确认"], "日常对话"
 
+# ─── 百度文心 (硬编码) ───
 BD = [
     {"n":"文心一言 4.0","c":"8k","i":120,"o":120,"t":["旗舰"],"s":"深度推理"},
     {"n":"文心一言 4.0-32K","c":"32k","i":120,"o":120,"t":["旗舰","长上下文"],"s":"深度推理"},
@@ -251,82 +324,288 @@ BD = [
     {"n":"文心Bot 8K","c":"8k","i":20,"o":20,"t":["主力"],"s":"日常对话"},
 ]
 
+# ─── 腾讯混元价格映射 ───
+def tp(mid):
+    m = {
+        "hunyuan-turbos":      (0.5,1.5,"32k",["快速","便宜"],"日常对话"),
+        "hunyuan-turbo":       (1,4,"32k",["主力"],"日常对话"),
+        "hunyuan-pro":         (4,16,"32k",["旗舰"],"深度推理"),
+        "hunyuan-large":       (4,16,"256k",["旗舰","长上下文"],"深度推理"),
+        "hunyuan-lite":        (0,0,"32k",["免费额度"],"日常对话"),
+        "hunyuan-standard":    (0.8,2,"32k",["性价比"],"日常对话"),
+        "hunyuan-standard-vision": (2,2,"32k",["视觉"],"视觉图片"),
+        "hunyuan-vision":      (4,4,"32k",["视觉","旗舰"],"视觉图片"),
+        "hunyuan-coder":       (2,8,"32k",["代码"],"编程代码"),
+        "hunyuan-t1":          (4,16,"256k",["推理","旗舰"],"深度推理"),
+        "hunyuan-turbos-vision": (1,1,"32k",["视觉","便宜"],"视觉图片"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 1, 4, "32k", ["价格待确认"], "日常对话"
+
+# ─── 讯飞星火价格映射 ───
+def xp(mid):
+    m = {
+        "generalv3.5":        (2,8,"8k",["主力"],"日常对话"),
+        "generalv3":          (1.5,5,"8k",["性价比"],"日常对话"),
+        "4.0Ultra":           (5,20,"32k",["旗舰"],"深度推理"),
+        "generalv2":          (0.5,1.5,"8k",["便宜"],"日常对话"),
+        "spark-lite":         (0,0,"8k",["免费额度"],"日常对话"),
+        "generalv3.5-vision": (2,8,"8k",["视觉"],"视觉图片"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 2, 8, "8k", ["价格待确认"], "日常对话"
+
+# ─── MiniMax价格映射 ───
+def mm_p(mid):
+    m = {
+        "abab6.5s":           (0.5,1.5,"32k",["快速","便宜"],"日常对话"),
+        "abab6.5":            (2,8,"128k",["主力","长上下文"],"日常对话"),
+        "abab6.5g":           (4,16,"128k",["旗舰","长上下文"],"深度推理"),
+        "abab5.5":            (0.5,1.5,"32k",["便宜"],"日常对话"),
+        "abab5.5s":           (0.1,0.3,"32k",["极便宜"],"日常对话"),
+        "abab6.5s-vision":    (0.5,1.5,"32k",["视觉","便宜"],"视觉图片"),
+        "abab6.5-vision":     (2,8,"32k",["视觉"],"视觉图片"),
+        "minimax-m1":         (4,16,"1M",["推理","旗舰","长上下文"],"深度推理"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 1, 4, "32k", ["价格待确认"], "日常对话"
+
+# ─── 零一万物价格映射 ───
+def yp(mid):
+    m = {
+        "yi-light":           (0,0,"16k",["免费额度"],"日常对话"),
+        "yi-medium":          (0.5,1.5,"16k",["便宜"],"日常对话"),
+        "yi-large":           (4,16,"32k",["旗舰"],"深度推理"),
+        "yi-vision":          (2,6,"16k",["视觉"],"视觉图片"),
+        "yi-large-turbo":     (2,8,"32k",["主力","Turbo"],"日常对话"),
+        "yi-spark":           (0.5,1.5,"16k",["便宜"],"日常对话"),
+        "yi-lightning":       (0.1,0.3,"16k",["极便宜"],"日常对话"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 1, 4, "16k", ["价格待确认"], "日常对话"
+
+# ─── 百川智能价格映射 ───
+def bp(mid):
+    m = {
+        "baichuan2-turbo":    (0.5,1.5,"32k",["便宜"],"日常对话"),
+        "baichuan2-53b":      (2,8,"32k",["主力"],"日常对话"),
+        "baichuan-14b":       (0.5,1.5,"8k",["便宜"],"日常对话"),
+        "baichuan4":          (4,16,"128k",["旗舰","长上下文"],"深度推理"),
+        "baichuan4-vision":   (4,16,"32k",["视觉","旗舰"],"视觉图片"),
+        "baichuan-m1":        (4,16,"128k",["推理","旗舰"],"深度推理"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 1, 4, "32k", ["价格待确认"], "日常对话"
+
+# ─── 阶跃星辰价格映射 ───
+def jp(mid):
+    m = {
+        "step-1-8k":          (2,8,"8k",["主力"],"日常对话"),
+        "step-1-32k":         (4,16,"32k",["旗舰"],"深度推理"),
+        "step-1-128k":        (5,20,"128k",["旗舰","长上下文"],"深度推理"),
+        "step-1-flash":       (0.5,1.5,"8k",["快速","便宜"],"日常对话"),
+        "step-1v-8k":         (2,8,"8k",["视觉"],"视觉图片"),
+        "step-1v-32k":        (4,16,"32k",["视觉","旗舰"],"视觉图片"),
+        "step-2-16k":         (4,16,"16k",["旗舰","2025新"],"深度推理"),
+        "step-2-mini":        (1,4,"32k",["性价比"],"日常对话"),
+        "step-r1":            (4,16,"32k",["推理","旗舰"],"深度推理"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 2, 8, "8k", ["价格待确认"], "日常对话"
+
+# ═══════════════════════════════════════════════════════════
+# 数据抓取
+# ═══════════════════════════════════════════════════════════
+
 print("Fetching data...")
 t0 = time.time()
 
+# ─── 阿里百炼 ───
 ali = []
-for pg in range(1, 10):
-    d = fj("https://dashscope.aliyuncs.com/api/v1/models?page_no=%d&page_size=100" % pg, ALI)
-    if not d: break
-    ms2 = d.get("output",{}).get("models",[]); tot = d.get("output",{}).get("total",0)
-    if not ms2: break
-    for m in ms2:
-        p0 = (m.get("prices") or [{}])[0].get("prices", [])
-        ii = oo = 0.0
-        for px in p0:
-            if px.get("type") == "input_token":   ii = float(px.get("price","0") or 0)
-            if px.get("type") == "output_token": oo = float(px.get("price","0") or 0)
-        cc = str(int(((m.get("model_info") or {}).get("context_window") or 0) // 1000)) + "k"
-        ca = m.get("capabilities",[]); tt = []
-        if "Reasoning" in ca: tt.append("推理")
-        if "VU" in ca: tt.append("视觉")
-        if "IG" in ca: tt.append("图片生成"); ss = "图片生成"
-        if "VG" in ca: tt.append("视频生成"); ss = "视频生成"
-        elif "VU" in ca: ss = "视觉图片"
-        elif "Reasoning" in ca: ss = "深度推理"
-        else: ss = "日常对话"
-        nn = (m.get("name") or m.get("model") or "")
-        ali.append({"n":nn,"i":ii,"o":oo,"c":cc,"t":tt,"s":ss})
-    print("  Aliyun: %d/%d" % (len(ali), tot), file=sys.stderr)
-    if len(ali) >= tot: break
-    time.sleep(0.2)
+if ALI:
+    for pg in range(1, 10):
+        d = fj("https://dashscope.aliyuncs.com/api/v1/models?page_no=%d&page_size=100" % pg, ALI)
+        if not d: break
+        ms2 = d.get("output",{}).get("models",[]); tot = d.get("output",{}).get("total",0)
+        if not ms2: break
+        for m in ms2:
+            p0 = (m.get("prices") or [{}])[0].get("prices", [])
+            ii = oo = 0.0
+            for px in p0:
+                if px.get("type") == "input_token":   ii = float(px.get("price","0") or 0)
+                if px.get("type") == "output_token": oo = float(px.get("price","0") or 0)
+            cc = str(int(((m.get("model_info") or {}).get("context_window") or 0) // 1000)) + "k"
+            ca = m.get("capabilities",[]); tt = []
+            if "Reasoning" in ca: tt.append("推理")
+            if "VU" in ca: tt.append("视觉")
+            if "IG" in ca: tt.append("图片生成"); ss = "图片生成"
+            if "VG" in ca: tt.append("视频生成"); ss = "视频生成"
+            elif "VU" in ca: ss = "视觉图片"
+            elif "Reasoning" in ca: ss = "深度推理"
+            else: ss = "日常对话"
+            nn = (m.get("name") or m.get("model") or "")
+            ali.append({"n":nn,"i":ii,"o":oo,"c":cc,"t":tt,"s":ss})
+        print("  Aliyun: %d/%d" % (len(ali), tot), file=sys.stderr)
+        if len(ali) >= tot: break
+        time.sleep(0.2)
 print("  Aliyun:", len(ali), file=sys.stderr)
 
-d = fj("https://api.siliconflow.cn/v1/models", SF)
-sf_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
+# ─── 硅基流动 ───
+sf_ids = []
+if SF:
+    d = fj("https://api.siliconflow.cn/v1/models", SF)
+    sf_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
 print("  SF:", len(sf_ids), file=sys.stderr)
 
-d = fj("https://api.moonshot.cn/v1/models", MS)
-ms_list = [{"id":m["id"],"c":str(int(m.get("context_length",0)//1000))+"k"} for m in (d.get("data",[]) if d else [])]
+# ─── 月之暗面 ───
+ms_list = []
+if MS:
+    d = fj("https://api.moonshot.cn/v1/models", MS)
+    ms_list = [{"id":m["id"],"c":str(int(m.get("context_length",0)//1000))+"k"} for m in (d.get("data",[]) if d else [])]
 print("  Moonshot:", len(ms_list), file=sys.stderr)
 
-d = fj("https://open.bigmodel.cn/api/paas/v4/models", ZH)
-zh_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
+# ─── 智谱AI ───
+zh_ids = []
+if ZH:
+    d = fj("https://open.bigmodel.cn/api/paas/v4/models", ZH)
+    zh_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
 print("  Zhipu:", len(zh_ids), file=sys.stderr)
 
-d = fj("https://ark.cn-beijing.volces.com/api/v3/models", VC)
-vc_list = [{"id":m["id"],"st":m.get("status","")} for m in (d.get("data",[]) if d else [])]
+# ─── 火山引擎 ───
+vc_list = []
+if VC:
+    d = fj("https://ark.cn-beijing.volces.com/api/v3/models", VC)
+    vc_list = [{"id":m["id"],"st":m.get("status","")} for m in (d.get("data",[]) if d else [])]
 print("  Volcengine:", len(vc_list), file=sys.stderr)
 
+# ─── OpenRouter (实时拉取) ───
 OR = []
-if os.path.exists(ORC):
-    try: OR = json.load(open(ORC)).get("data",[])
-    except: pass
+d = fj("https://openrouter.ai/api/v1/models", retries=3)
+if d:
+    OR = d.get("data", [])
+    # 缓存到本地
+    try:
+        with open(os.path.join(CACHE_DIR, "openrouter_full.json"), "w") as cf:
+            json.dump(d, cf)
+    except:
+        pass
+else:
+    # 回退到缓存
+    cp = os.path.join(CACHE_DIR, "openrouter_full.json")
+    if os.path.exists(cp):
+        try: OR = json.load(open(cp)).get("data",[])
+        except: pass
 print("  OpenRouter:", len(OR), file=sys.stderr)
 
-cards = []
+# ─── 腾讯混元 ───
+tx_ids = []
+if TX:
+    d = fj("https://hunyuan.tencentcloudapi.com/v1/models", TX)
+    if d:
+        tx_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+if not tx_ids:
+    # 使用硬编码列表
+    tx_ids = ["hunyuan-turbos","hunyuan-turbo","hunyuan-pro","hunyuan-large","hunyuan-lite",
+              "hunyuan-standard","hunyuan-standard-vision","hunyuan-vision","hunyuan-coder",
+              "hunyuan-t1","hunyuan-turbos-vision"]
+print("  Tencent:", len(tx_ids), file=sys.stderr)
 
+# ─── 讯飞星火 ───
+xh_ids = []
+if XH:
+    # 讯飞没有标准模型列表API，使用硬编码
+    pass
+xh_ids = ["generalv3.5","generalv3","4.0Ultra","generalv2","spark-lite","generalv3.5-vision"]
+print("  Spark:", len(xh_ids), file=sys.stderr)
+
+# ─── MiniMax ───
+mm_ids = []
+if MM:
+    d = fj("https://api.minimax.chat/v1/models", MM)
+    if d:
+        mm_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+if not mm_ids:
+    mm_ids = ["abab6.5s","abab6.5","abab6.5g","abab5.5","abab5.5s","abab6.5s-vision","abab6.5-vision","minimax-m1"]
+print("  MiniMax:", len(mm_ids), file=sys.stderr)
+
+# ─── 零一万物 ───
+yw_ids = []
+if YW:
+    d = fj("https://api.lingyiwanwu.com/v1/models", YW)
+    if d:
+        yw_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+if not yw_ids:
+    yw_ids = ["yi-light","yi-medium","yi-large","yi-vision","yi-large-turbo","yi-spark","yi-lightning"]
+print("  Yi:", len(yw_ids), file=sys.stderr)
+
+# ─── 百川智能 ───
+bc_ids = []
+if BC:
+    d = fj("https://api.baichuan-ai.com/v1/models", BC)
+    if d:
+        bc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+if not bc_ids:
+    bc_ids = ["baichuan2-turbo","baichuan2-53b","baichuan-14b","baichuan4","baichuan4-vision","baichuan-m1"]
+print("  Baichuan:", len(bc_ids), file=sys.stderr)
+
+# ─── 阶跃星辰 ───
+jc_ids = []
+if JC:
+    d = fj("https://api.stepfun.com/v1/models", JC)
+    if d:
+        jc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+if not jc_ids:
+    jc_ids = ["step-1-8k","step-1-32k","step-1-128k","step-1-flash","step-1v-8k","step-1v-32k","step-2-16k","step-2-mini","step-r1"]
+print("  Jieyue:", len(jc_ids), file=sys.stderr)
+
+# ═══════════════════════════════════════════════════════════
+# 生成模型卡片
+# ═══════════════════════════════════════════════════════════
+
+cards = []
+all_models = []  # 用于价格变动检测
+
+# 阿里百炼
 for m in ali:
     cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
                  "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY"))
+    all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"]})
 
+# 硅基流动
 for mid in sf_ids:
     ii, oo, tt, ss = sp(mid)
-    # 显示完整模型ID（含供应商前缀），便于用户识别不同厂商同名模型
     cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
                  "https://api.siliconflow.cn/v1/chat/completions","CNY"))
+    all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo})
 
+# 月之暗面
 for m in ms_list:
     mid = m["id"]
     ii, oo, cc, tt, ss = mp(mid)
     cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
                  "https://api.moonshot.cn/v1/chat/completions","CNY"))
+    all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo})
 
+# 智谱AI
 for mid in zh_ids:
     ii, oo, cc, tt, ss = zp(mid)
     cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
                  "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY"))
+    all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo})
 
+# 火山引擎
 for m in vc_list:
     mid = m["id"]; st = m.get("st","")
     ii, oo, cc, tt, ss = vp(mid)
@@ -335,11 +614,15 @@ for m in vc_list:
     elif st == "Retiring": tt = ["即将下线"] + tt
     cards.append(make_card("volcengine","火山引擎","#dc2626",Te(mid),ii,oo,cc,tt,ss,
                  "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY"))
+    all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo})
 
+# 百度文心
 for m in BD:
     cards.append(make_card("baidu","百度文心","#2932e1",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
                  "https://qianfan.baidubce.com/v2/chat/completions","CNY"))
+    all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"]})
 
+# OpenRouter
 for m in OR[:350]:
     ii = float(m.get("pricing",{}).get("prompt",0) or 0)
     oo = float(m.get("pricing",{}).get("completion",0) or 0)
@@ -360,19 +643,91 @@ for m in OR[:350]:
     pv = Te(m.get("id","").split("/")[0].upper())
     mid2 = Te(m["id"])
     cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2))
+    all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD"})
+
+# 腾讯混元
+for mid in tx_ids:
+    ii, oo, cc, tt, ss = tp(mid)
+    cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
+                 "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY"))
+    all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo})
+
+# 讯飞星火
+for mid in xh_ids:
+    ii, oo, cc, tt, ss = xp(mid)
+    cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
+                 "https://spark-api.xf-yun.com/v1/chat/completions","CNY"))
+    all_models.append({"p":"spark","n":mid,"i":ii,"o":oo})
+
+# MiniMax
+for mid in mm_ids:
+    ii, oo, cc, tt, ss = mm_p(mid)
+    cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.minimax.chat/v1/chat/completions","CNY"))
+    all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo})
+
+# 零一万物
+for mid in yw_ids:
+    ii, oo, cc, tt, ss = yp(mid)
+    cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.lingyiwanwu.com/v1/chat/completions","CNY"))
+    all_models.append({"p":"yi","n":mid,"i":ii,"o":oo})
+
+# 百川智能
+for mid in bc_ids:
+    ii, oo, cc, tt, ss = bp(mid)
+    cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.baichuan-ai.com/v1/chat/completions","CNY"))
+    all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo})
+
+# 阶跃星辰
+for mid in jc_ids:
+    ii, oo, cc, tt, ss = jp(mid)
+    cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.stepfun.com/v1/chat/completions","CNY"))
+    all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo})
+
+# ─── 价格变动检测 ───
+price_changes = []
+if os.path.exists(PREV_DATA):
+    try:
+        prev = json.load(open(PREV_DATA))
+        prev_map = {(m["p"],m["n"]): m for m in prev}
+        for m in all_models:
+            key = (m["p"], m["n"])
+            if key in prev_map:
+                pm = prev_map[key]
+                pi_old = pm.get("i",0); po_old = pm.get("o",0)
+                pi_new = m["i"]; po_new = m["o"]
+                if pi_new != pi_old or po_new != po_old:
+                    price_changes.append({"p":m["p"],"n":m["n"],
+                        "old_i":pi_old,"old_o":po_old,"new_i":pi_new,"new_o":po_new})
+    except:
+        pass
+# 保存当前数据供下次对比
+with open(PREV_DATA, "w") as f:
+    json.dump(all_models, f)
 
 total = len(cards)
 print("Generated:", total, file=sys.stderr)
+if price_changes:
+    print("  Price changes detected:", len(price_changes), file=sys.stderr)
 
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
 ac = cn("aliyun"); sc2 = cn("siliconflow"); mc2 = cn("moonshot")
 zc = cn("zhipu"); vc2 = cn("volcengine"); bc2 = cn("baidu"); oc = cn("openrouter")
+tc2 = cn("tencent"); xc = cn("spark"); mmc = cn("minimax")
+yc = cn("yi"); bcc = cn("baichuan"); jcc = cn("jieyue")
 
 def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
 print("  Tier free:%d cheap:%d mid:%d high:%d ultra:%d" % (
     tc("free"),tc("cheap"),tc("mid"),tc("high"),tc("ultra")), file=sys.stderr)
 
 now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+# ═══════════════════════════════════════════════════════════
+# HTML 组件
+# ═══════════════════════════════════════════════════════════
 
 pt_bar = (
     '<button class="pt-filter active" data-pt="all">全部价格</button>'
@@ -400,14 +755,21 @@ tabs_bar = (
     '<button class="pt" data-p="zhipu" style="--c:#00c4b4;--bg:#f0fffe">智谱 AI <span class="pc">' + str(zc) + '</span></button>'
     '<button class="pt" data-p="volcengine" style="--c:#dc2626;--bg:#fff0f0">火山引擎 <span class="pc">' + str(vc2) + '</span></button>'
     '<button class="pt" data-p="baidu" style="--c:#2932e1;--bg:#f0f2ff">百度文心 <span class="pc">' + str(bc2) + '</span></button>'
+    '<button class="pt" data-p="tencent" style="--c:#07c160;--bg:#f0fff4">腾讯混元 <span class="pc">' + str(tc2) + '</span></button>'
+    '<button class="pt" data-p="spark" style="--c:#ff6a00;--bg:#fff5ee">讯飞星火 <span class="pc">' + str(xc) + '</span></button>'
+    '<button class="pt" data-p="minimax" style="--c:#6366f1;--bg:#eef2ff">MiniMax <span class="pc">' + str(mmc) + '</span></button>'
+    '<button class="pt" data-p="yi" style="--c:#3b82f6;--bg:#eff6ff">零一万物 <span class="pc">' + str(yc) + '</span></button>'
+    '<button class="pt" data-p="baichuan" style="--c:#ef4444;--bg:#fef2f2">百川智能 <span class="pc">' + str(bcc) + '</span></button>'
+    '<button class="pt" data-p="jieyue" style="--c:#8b5cf6;--bg:#f5f3ff">阶跃星辰 <span class="pc">' + str(jcc) + '</span></button>'
 )
 
 snote = (
     "&#9888; <strong>数据说明：</strong>"
     "阿里百炼 <strong>" + str(ac) + "个模型</strong>从 API 实时拉取，含真实价格；"
-    "硅基流动/" + str(sc2) + "个月之暗面/" + str(mc2) + "个从 API 拉取列表，价格来自各平台官网公告（2026年4月）；"
+    "硅基流动/" + str(sc2) + "个、月之暗面/" + str(mc2) + "个、智谱/" + str(zc) + "个等从 API 拉取列表，价格来自各平台官网公告（2026年4月）；"
     "OpenRouter 显示原始美元价格，国内平台显示人民币价格；"
     "标注「价格待确认」的模型请至平台控制台核实。"
+    "数据更新时间：" + now
 )
 
 sort_bar = (
@@ -418,11 +780,79 @@ sort_bar = (
     '<button class="sort-btn" data-sort="out-asc">输出价↑</button>'
     '<button class="sort-btn" data-sort="out-desc">输出价↓</button>'
     '<button class="sort-btn" data-sort="name">名称</button>'
+    '<button class="sort-btn" data-sort="combined">综合价</button>'
+    '<button class="sort-btn" data-sort="ctx">上下文↓</button>'
+    '<button class="sort-btn" data-sort="costperf">性价比</button>'
 )
 
+# ─── 标签筛选栏 ───
+tag_list = ["免费额度","便宜","极便宜","旗舰","主力","推理","视觉","长上下文","开源","代码","图片生成","视频生成","蒸馏","轻量","最新版"]
+tag_bar = '<div class="tag-bar"><span class="tag-lbl">标签:</span>' + "".join(
+    '<button class="tag-btn" data-tag="' + t + '">' + t + '</button>' for t in tag_list
+) + '</div>'
+
+# ─── 上下文长度筛选 ───
+ctx_bar = (
+    '<div class="ctx-filter-bar"><span class="ctx-lbl">上下文:</span>'
+    '<button class="ctx-btn active" data-ctx="all">全部</button>'
+    '<button class="ctx-btn" data-ctx="8">≥8K</button>'
+    '<button class="ctx-btn" data-ctx="32">≥32K</button>'
+    '<button class="ctx-btn" data-ctx="128">≥128K</button>'
+    '<button class="ctx-btn" data-ctx="256">≥256K</button>'
+    '<button class="ctx-btn" data-ctx="512">≥512K</button>'
+    '</div>'
+)
+
+# ─── 价格区间筛选 ───
+price_range_bar = (
+    '<div class="price-range-bar"><span class="pr-lbl">价格区间:</span>'
+    '<input type="number" id="priceMin" placeholder="最低" min="0" step="0.1">'
+    '<span class="pr-sep">-</span>'
+    '<input type="number" id="priceMax" placeholder="最高" min="0" step="0.1">'
+    '<span class="pr-unit">元/M</span>'
+    '<button class="pr-btn" onclick="applyPriceRange()">应用</button>'
+    '<button class="pr-btn pr-btn-clear" onclick="clearPriceRange()">清除</button>'
+    '</div>'
+)
+
+# ─── 智能推荐面板 ───
+recommend_panel = (
+    '<div class="rec-panel" id="recPanel">'
+    '<div class="rec-title">&#127775; 智能推荐</div>'
+    '<div class="rec-desc">选择你的使用场景，自动推荐最合适的模型</div>'
+    '<div class="rec-options">'
+    '<button class="rec-btn" data-rec="chat">💬 日常聊天</button>'
+    '<button class="rec-btn" data-rec="code">💻 写代码</button>'
+    '<button class="rec-btn" data-rec="translate">🌐 翻译</button>'
+    '<button class="rec-btn" data-rec="write">✍️ 写文章</button>'
+    '<button class="rec-btn" data-rec="reason">🧠 深度推理</button>'
+    '<button class="rec-btn" data-rec="vision">📷 图片理解</button>'
+    '<button class="rec-btn" data-rec="image">🎨 图片生成</button>'
+    '<button class="rec-btn" data-rec="video">🎬 视频生成</button>'
+    '</div>'
+    '<div class="rec-result" id="recResult"></div>'
+    '</div>'
+)
+
+# ─── 跨平台比价面板 ───
+crossprice_panel = (
+    '<div class="cross-panel" id="crossPanel" style="display:none">'
+    '<div class="cross-title">&#128269; 跨平台比价 <span style="font-weight:400;font-size:12px;color:#64748b">(同一模型在不同平台的价格)</span></div>'
+    '<div class="cross-list" id="crossList"></div>'
+    '</div>'
+)
+
+# ─── 月费计算器 (增强版) ───
 calc_panel = (
     '<div class="calc-panel" id="calcPanel">'
-    '<div class="calc-title">&#128202; 月费计算器 <span style="font-weight:400;font-size:12px;color:#64748b">(使用上方已勾选模型，无模型时请先勾选)</span></div>'
+    '<div class="calc-title">&#128202; 月费计算器</div>'
+    '<div class="calc-presets">'
+    '<span class="calc-preset-lbl">预设:</span>'
+    '<button class="preset-btn" data-chats="100" data-tokens="1000" data-ratio="0.5">轻度用户</button>'
+    '<button class="preset-btn" data-chats="1000" data-tokens="2000" data-ratio="1">中度用户</button>'
+    '<button class="preset-btn" data-chats="5000" data-tokens="4000" data-ratio="1.5">重度用户</button>'
+    '<button class="preset-btn" data-chats="2000" data-tokens="3000" data-ratio="2">开发者</button>'
+    '</div>'
     '<div class="calc-row">'
     '<label>每月对话次数:</label><input type="number" id="calcChats" value="1000" min="0">'
     '</div>'
@@ -432,11 +862,19 @@ calc_panel = (
     '<div class="calc-row">'
     '<label>输出/输入比:</label><input type="number" id="calcRatio" value="1" min="0" step="0.1">'
     '</div>'
+    '<div class="calc-row">'
+    '<label>月预算(元):</label><input type="number" id="calcBudget" value="" min="0" placeholder="可选">'
+    '</div>'
+    '<div class="calc-btns">'
     '<button class="calc-btn" onclick="runCalc()">计算月费用</button>'
+    '<button class="calc-btn calc-btn-all" onclick="runCalcAll()">计算全部模型</button>'
+    '<button class="calc-btn calc-btn-rev" onclick="runCalcReverse()">预算反推</button>'
+    '</div>'
     '<div class="calc-result" id="calcResult"></div>'
     '</div>'
 )
 
+# ─── 模型对比面板 ───
 cmp_panel = (
     '<div class="cmp-panel" id="cmpPanel" style="display:none">'
     '<div class="cmp-title">&#128202; 模型对比 (<span id="cmpCount">0</span>/3)</div>'
@@ -453,29 +891,498 @@ cmp_panel = (
     '</div></div>'
 )
 
-JS = '''
+# ─── 价格变动提示 ───
+price_change_html = ""
+if price_changes:
+    price_change_html = '<div class="price-change-note">&#128260; 检测到 <strong>' + str(len(price_changes)) + '</strong> 个模型价格变动</div>'
+
+# ═══════════════════════════════════════════════════════════
+# CSS (完全内联)
+# ═══════════════════════════════════════════════════════════
+
+CSS = '''
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#050506;--surface:#0a0a0b;--surface2:#111113;--border:rgba(255,255,255,.08);--border-hi:rgba(255,255,255,.15);--text:#ededf0;--text2:#8a8f98;--text3:#55585e;--accent:#6366f1;--accent2:#a855f7;--accent-glow:rgba(99,102,241,.15);--radius:10px;--radius-lg:14px}
+body{font-family:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;background:var(--bg);color:var(--text);transition:background .4s,color .4s;letter-spacing:-.01em;-webkit-font-smoothing:antialiased}
+body.light{--bg:#f8f9fb;--surface:#fff;--surface2:#f4f5f7;--border:rgba(0,0,0,.08);--border-hi:rgba(0,0,0,.14);--text:#1a1c20;--text2:#5f6368;--text3:#93979c;--accent:#4f46e5;--accent2:#7c3aed;--accent-glow:rgba(79,70,229,.1)}
+a{color:var(--accent);text-decoration:none}
+.wrap{max-width:1200px;margin:0 auto;padding:0 16px 40px}
+.hdr{text-align:center;padding:32px 12px 20px}
+.hdr h1{font-size:clamp(22px,5vw,32px);font-weight:700;background:linear-gradient(135deg,#6366f1,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;letter-spacing:-.03em}
+.hdr p{font-size:12px;color:var(--text2);letter-spacing:.01em}
+.brow{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+.bd{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--text2);font-weight:500}
+.bd-free{background:rgba(34,197,94,.08);color:#4ade80;border-color:rgba(34,197,94,.2)}
+.bd-cheap{background:rgba(59,130,246,.08);color:#60a5fa;border-color:rgba(59,130,246,.2)}
+.bd-mid{background:rgba(245,158,11,.08);color:#fbbf24;border-color:rgba(245,158,11,.2)}
+.bd-high{background:rgba(239,68,68,.08);color:#f87171;border-color:rgba(239,68,68,.2)}
+.bd-ultra{background:rgba(168,85,247,.08);color:#c084fc;border-color:rgba(168,85,247,.2)}
+.snote{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--radius);padding:10px 14px;margin:10px 0 16px;font-size:11px;color:#fbbf24;line-height:1.7;text-align:center;backdrop-filter:blur(8px)}
+.snote strong{color:#f59e0b}
+/* 平台筛选栏 */
+.pbar{display:flex;gap:6px;overflow-x:auto;padding:8px 0;scrollbar-width:none;flex-wrap:wrap;margin-bottom:2px}
+.pbar::-webkit-scrollbar{display:none}
+.pt{flex-shrink:0;display:flex;align-items:center;gap:5px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-weight:500;font-size:11px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);white-space:nowrap;letter-spacing:.01em}
+.pt:hover{border-color:var(--border-hi);color:var(--text);background:var(--surface2)}
+.pt.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 20px var(--accent-glow)}
+.pc{background:rgba(255,255,255,.15);border-radius:8px;padding:1px 5px;font-size:9px;font-weight:600}
+.pt:not(.active) .pc{background:rgba(255,255,255,.06)}
+/* 价格分级栏 */
+.ptbar{display:flex;gap:5px;overflow-x:auto;padding:6px 0;scrollbar-width:none;flex-wrap:wrap;margin-bottom:6px}
+.ptbar::-webkit-scrollbar{display:none}
+.pt-filter{flex-shrink:0;display:flex;align-items:center;gap:4px;padding:5px 11px;border-radius:16px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;font-weight:500;cursor:pointer;transition:all .2s;white-space:nowrap}
+.pt-filter:hover{border-color:var(--border-hi);color:var(--text)}
+.pt-filter.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 16px var(--accent-glow)}
+.pt-filter[data-pt=free].active{background:#16a34a;border-color:#16a34a;box-shadow:0 0 16px rgba(22,163,74,.2)}
+.pt-filter[data-pt=cheap].active{background:#2563eb;border-color:#2563eb;box-shadow:0 0 16px rgba(37,99,235,.2)}
+.pt-filter[data-pt=mid].active{background:#d97706;border-color:#d97706;box-shadow:0 0 16px rgba(217,119,6,.2)}
+.pt-filter[data-pt=high].active{background:#dc2626;border-color:#dc2626;box-shadow:0 0 16px rgba(220,38,38,.2)}
+.pt-filter[data-pt=ultra].active{background:#7c3aed;border-color:#7c3aed;box-shadow:0 0 16px rgba(124,58,237,.2)}
+/* 场景筛选栏 */
+.sbar{display:flex;gap:5px;padding:6px 0;overflow-x:auto;scrollbar-width:none;margin-bottom:10px;flex-wrap:wrap}
+.sbar::-webkit-scrollbar{display:none}
+.sc{flex-shrink:0;padding:4px 10px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s;font-weight:500}
+.sc:hover{border-color:var(--border-hi);color:var(--text)}
+.sc.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 16px var(--accent-glow)}
+/* 搜索框 */
+.srow{position:relative;margin-bottom:12px}
+.srow input{width:100%;padding:10px 14px 10px 36px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--surface);outline:none;color:var(--text);transition:all .2s;letter-spacing:-.01em}
+.srow input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-glow)}
+.srow::before{content:"\\2315";position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:16px;color:var(--text3);pointer-events:none;font-weight:300}
+/* 加载动画 */
+.loading{text-align:center;padding:30px;color:var(--text2);font-size:13px;display:none}
+.loading.show{display:block}
+.sp{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* 模型卡片网格 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px}
+.grid.list-view{grid-template-columns:1fr}
+.grid.list-view .mc{display:flex;align-items:center;gap:12px;padding:8px 14px}
+.grid.list-view .mc .dot{position:static;flex-shrink:0}
+.grid.list-view .mc .prov{margin:0;padding:0;min-width:80px}
+.grid.list-view .mc .mname{margin:0;min-width:150px}
+.grid.list-view .mc .tags{margin:0;flex:1}
+.grid.list-view .mc .prow{margin:0;min-width:120px}
+.grid.list-view .mc .ctx-row{margin:0;min-width:80px}
+.grid.list-view .mc .hint{display:none}
+.grid.list-view .mc .card-actions{position:static;margin:0}
+/* 模型卡片 - 核心设计 */
+.mc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.mc::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(99,102,241,.03) 50%,transparent 60%);opacity:0;transition:opacity .4s;pointer-events:none}
+.mc:hover{border-color:var(--border-hi);transform:translateY(-1px);box-shadow:0 4px 24px rgba(0,0,0,.3),0 0 40px var(--accent-glow)}
+.mc:hover::before{opacity:1}
+.mc.fav-card{border-color:rgba(245,158,11,.3);box-shadow:0 0 20px rgba(245,158,11,.08)}
+/* Shimmer effect on hover */
+.mc::after{content:"";position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);transition:none;pointer-events:none}
+.mc:hover::after{animation:shimmer 1.2s ease-out}
+@keyframes shimmer{0%{left:-100%}100%{left:200%}}
+.dot{position:absolute;top:12px;right:12px;width:6px;height:6px;border-radius:50%;background:var(--c,var(--accent));box-shadow:0 0 8px var(--c,var(--accent))}
+.prov{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px;padding-right:16px;font-weight:500}
+.mname{font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
+.tags{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px}
+.tg{font-size:9px;padding:2px 6px;border-radius:6px;font-weight:500;letter-spacing:.02em}
+.tg-free{background:rgba(34,197,94,.1);color:#4ade80}
+.tg-cheap{background:rgba(59,130,246,.1);color:#60a5fa}
+.tg-hot{background:rgba(239,68,68,.1);color:#f87171}
+.tg-vision{background:rgba(168,85,247,.1);color:#c084fc}
+.tg-reason{background:rgba(14,165,233,.1);color:#38bdf8}
+.tg-long{background:rgba(34,197,94,.1);color:#4ade80}
+.tg-other{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.prow{display:flex;align-items:center;gap:5px;margin-bottom:3px;min-height:20px}
+.price-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap;letter-spacing:.01em}
+.price-free{background:rgba(34,197,94,.1);color:#4ade80}
+.price-cheap{background:rgba(59,130,246,.1);color:#60a5fa}
+.price-mid{background:rgba(245,158,11,.1);color:#fbbf24}
+.price-high{background:rgba(239,68,68,.1);color:#f87171}
+.price-ultra{background:rgba(168,85,247,.1);color:#c084fc}
+.ctx-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.ctx{font-size:10px;color:var(--text3)}
+.ctx-bar-wrap{flex:1;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.ctx-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width .3s}
+.hint{font-size:10px;color:var(--accent);margin-top:4px;display:none;letter-spacing:.02em}
+.mc:hover .hint{display:block}
+.card-actions{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
+.fav-btn{cursor:pointer;font-size:14px;color:var(--text3);transition:color .15s;user-select:none}
+.fav-btn.active{color:#f59e0b;text-shadow:0 0 8px rgba(245,158,11,.4)}
+.fav-btn:hover{color:#fbbf24}
+.empty{text-align:center;padding:50px 20px;color:var(--text2);font-size:13px}
+.ftr{text-align:center;padding:24px 12px;border-top:1px solid var(--border);margin-top:28px}
+.ftr p{font-size:11px;color:var(--text3);line-height:2}
+
+
+/* 排序栏 */
+.sort-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.sort-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.sort-btn{padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s;font-weight:500}
+.sort-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.sort-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+
+/* 标签筛选 */
+.tag-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.tag-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.tag-btn{padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
+.tag-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.tag-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+
+/* 上下文筛选 */
+.ctx-filter-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.ctx-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.ctx-btn{padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
+.ctx-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.ctx-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+
+/* 价格区间筛选 */
+.price-range-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.pr-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.pr-sep{color:var(--text3)}
+.pr-unit{font-size:10px;color:var(--text3)}
+.price-range-bar input{width:65px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text)}
+.pr-btn{padding:4px 8px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:10px;cursor:pointer;font-weight:500}
+.pr-btn:hover{box-shadow:0 0 12px var(--accent-glow)}
+.pr-btn-clear{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.pr-btn-clear:hover{border-color:var(--border-hi)}
+
+/* 月费计算器 */
+.calc-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
+.calc-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;letter-spacing:-.01em}
+.calc-presets{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.calc-preset-lbl{font-size:11px;color:var(--text3);font-weight:500}
+.preset-btn{padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
+.preset-btn:hover{border-color:var(--accent);color:var(--accent)}
+.calc-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.calc-row label{font-size:11px;color:var(--text2);width:90px;font-weight:500}
+.calc-row input{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;max-width:110px;background:var(--surface2);color:var(--text)}
+.calc-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.calc-btn{background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.calc-btn:hover{box-shadow:0 0 20px var(--accent-glow)}
+.calc-btn-all{background:#0ea5e9}
+.calc-btn-all:hover{box-shadow:0 0 20px rgba(14,165,233,.2)}
+.calc-btn-rev{background:var(--accent2)}
+.calc-btn-rev:hover{box-shadow:0 0 20px rgba(168,85,247,.2)}
+.calc-result{margin-top:10px;max-height:350px;overflow-y:auto}
+.calc-table-wrap{overflow-x:auto}
+.calc-table{width:100%;border-collapse:collapse;font-size:11px}
+.calc-table th,.calc-table td{padding:5px 8px;border:1px solid var(--border);text-align:left}
+.calc-table th{background:var(--surface2);font-weight:600;color:var(--text2)}
+.calc-table tr:nth-child(even){background:rgba(255,255,255,.02)}
+
+/* 模型对比 */
+.cmp-panel{background:var(--surface);border:1px solid rgba(99,102,241,.15);border-radius:var(--radius-lg);padding:12px;margin-bottom:10px;backdrop-filter:blur(8px)}
+.cmp-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:6px}
+.cmp-list{margin-bottom:8px}
+.cmp-item{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--surface2);border-radius:6px;margin-bottom:3px;border:1px solid var(--border)}
+.cmp-item-name{flex:1;font-size:12px;font-weight:500;color:var(--text)}
+.cmp-item-price{font-size:11px;color:var(--accent);font-weight:600}
+.cmp-item-del{background:rgba(239,68,68,.1);color:#f87171;border:none;width:18px;height:18px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1}
+.cmp-actions{display:flex;gap:6px}
+.cmp-btn{padding:5px 12px;border-radius:6px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:all .2s}
+.cmp-btn:hover{box-shadow:0 0 16px var(--accent-glow)}
+.cmp-btn-clear{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.cmp-btn-clear:hover{border-color:var(--border-hi)}
+.cmp-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9999}
+.cmp-modal-content{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:800px;width:90%;max-height:80vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.cmp-modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600}
+.cmp-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2)}
+.cmp-close:hover{color:var(--text)}
+.cmp-modal-body{padding:18px}
+.cmp-table{width:100%;border-collapse:collapse;font-size:12px}
+.cmp-table th,.cmp-table td{padding:8px 10px;border:1px solid var(--border);text-align:left}
+.cmp-table th{background:var(--surface2);font-weight:600;color:var(--text2)}
+
+/* 卡片操作 */
+.cb-wrap{display:flex;align-items:center;gap:3px}
+.cb-lbl{font-size:9px;color:var(--accent);cursor:pointer;font-weight:500}
+.mc-cb{width:12px;height:12px;cursor:pointer;accent-color:var(--accent)}
+
+/* 智能推荐 */
+.rec-panel{background:var(--surface);border:1px solid rgba(99,102,241,.12);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
+.rec-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:3px}
+.rec-desc{font-size:11px;color:var(--text2);margin-bottom:8px}
+.rec-options{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.rec-btn{padding:6px 12px;border-radius:8px;border:1px solid rgba(99,102,241,.2);background:var(--surface);color:var(--accent);font-size:11px;cursor:pointer;transition:all .2s;font-weight:500}
+.rec-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 16px var(--accent-glow)}
+.rec-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 16px var(--accent-glow)}
+.rec-result{margin-top:6px}
+.rec-card{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface2);border-radius:8px;margin-bottom:4px;border:1px solid var(--border)}
+.rec-rank{width:22px;height:22px;border-radius:6px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.rec-info{flex:1}
+.rec-info .ri-name{font-size:12px;font-weight:600;color:var(--text)}
+.rec-info .ri-reason{font-size:10px;color:var(--text2)}
+.rec-price{font-size:11px;font-weight:600;color:var(--accent)}
+
+/* 跨平台比价 */
+.cross-panel{background:var(--surface);border:1px solid rgba(34,197,94,.12);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
+.cross-title{font-size:13px;font-weight:600;color:#4ade80;margin-bottom:6px}
+.cross-list{max-height:280px;overflow-y:auto}
+.cross-group{margin-bottom:6px}
+.cross-group-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
+.cross-item{display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--surface2);border-radius:4px;margin-bottom:2px;font-size:11px;border:1px solid var(--border)}
+.cross-platform{color:var(--text2);min-width:80px}
+.cross-price{font-weight:600;color:#4ade80}
+.cross-best{background:rgba(34,197,94,.1);border-radius:3px;padding:1px 5px;font-size:9px;color:#4ade80;font-weight:600}
+
+/* 价格变动提示 */
+.price-change-note{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--radius);padding:7px 12px;margin-bottom:10px;font-size:11px;color:#fbbf24;text-align:center;backdrop-filter:blur(8px)}
+.price-change-note strong{color:#f59e0b}
+
+/* 工具栏 */
+.toolbar{display:flex;gap:6px;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap}
+.toolbar-left{display:flex;gap:6px;align-items:center}
+.toolbar-right{display:flex;gap:6px;align-items:center}
+.tool-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:4px;font-weight:500}
+.tool-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.tool-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+
+/* 筛选结果计数 */
+.filter-count{font-size:11px;color:var(--text2);padding:3px 0;margin-bottom:6px;font-weight:500}
+.filter-count strong{color:var(--accent);font-weight:600}
+
+/* 货币切换 */
+.cur-switch{display:flex;align-items:center;gap:5px}
+.cur-btn{padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
+.cur-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+
+/* Light mode overrides */
+body.light .snote{background:#fffbeb;border-color:#fde68a;color:#92400e}
+body.light .snote strong{color:#d97706}
+body.light .mc:hover{box-shadow:0 4px 20px rgba(0,0,0,.08),0 0 30px var(--accent-glow)}
+body.light .mc::after{background:linear-gradient(90deg,transparent,rgba(0,0,0,.02),transparent)}
+body.light .calc-table tr:nth-child(even){background:rgba(0,0,0,.02)}
+body.light .tg-other{border:none}
+body.light .cmp-modal{background:rgba(0,0,0,.3)}
+body.light .cmp-modal-content{box-shadow:0 24px 80px rgba(0,0,0,.15)}
+
+/* Toast 提示 */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);padding:10px 20px;border-radius:10px;font-size:12px;font-weight:500;z-index:9999;pointer-events:none;opacity:0;transition:all .3s cubic-bezier(.4,0,.2,1);white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;letter-spacing:.01em;backdrop-filter:blur(12px)}
+.toast-show{opacity:1!important;transform:translateX(-50%) translateY(0)!important}
+.toast-ok{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.25);box-shadow:0 4px 24px rgba(34,197,94,.1)}
+.toast-err{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.25)}
+body.light .toast-ok{background:rgba(22,163,74,.1);color:#16a34a;border-color:rgba(22,163,74,.2)}
+body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:rgba(220,38,38,.2)}
+
+/* Base URL 显示 */
+.base-url{font-size:9px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:"SF Mono",Monaco,"Cascadia Code",monospace;letter-spacing:0;opacity:.7;transition:opacity .2s}
+.mc:hover .base-url{opacity:1}
+
+/* ═══════════════════════════════════════════════════════════
+   移动端适配
+   ═══════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+/* 整体布局 */
+.wrap{padding:0 10px 30px}
+.hdr{padding:20px 8px 12px}
+.hdr h1{font-size:20px;margin-bottom:4px}
+.hdr p{font-size:10px;line-height:1.4}
+.brow{gap:4px;margin-top:8px}
+.bd{padding:2px 7px;font-size:9px;border-radius:16px}
+
+/* 筛选栏 - 横向滚动，不换行 */
+.pbar,.ptbar,.sbar,.sort-bar,.tag-bar,.ctx-filter-bar,.price-range-bar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 0;gap:4px}
+.pbar::-webkit-scrollbar,.ptbar::-webkit-scrollbar,.sbar::-webkit-scrollbar{display:none}
+.pt{padding:5px 10px;font-size:10px;border-radius:16px;flex-shrink:0}
+.pc{font-size:8px;padding:1px 4px}
+.pt-filter{padding:4px 9px;font-size:10px;border-radius:12px;flex-shrink:0}
+.sc{padding:3px 8px;font-size:10px;border-radius:8px;flex-shrink:0}
+.sort-btn{padding:3px 8px;font-size:10px;flex-shrink:0}
+.sort-lbl,.tag-lbl,.ctx-lbl,.pr-lbl,.calc-preset-lbl{font-size:10px;flex-shrink:0}
+.tag-btn{padding:2px 6px;font-size:9px;flex-shrink:0}
+.ctx-btn{padding:2px 6px;font-size:9px;flex-shrink:0}
+
+/* 搜索框 */
+.srow input{padding:9px 12px 9px 32px;font-size:14px;border-radius:8px}
+.srow::before{left:10px;font-size:15px}
+
+/* 网格 - 单列 */
+.grid{grid-template-columns:1fr;gap:6px}
+
+/* 卡片 - 紧凑 */
+.mc{padding:10px 12px;border-radius:10px}
+.mname{font-size:12px;margin-bottom:4px}
+.prov{font-size:8px;margin-bottom:2px}
+.tags{gap:2px;margin-bottom:5px}
+.tg{font-size:8px;padding:1px 5px;border-radius:4px}
+.prow{margin-bottom:2px;min-height:18px}
+.price-badge{font-size:10px;padding:1px 6px;border-radius:6px}
+.ctx-row{gap:4px;margin-bottom:2px}
+.ctx{font-size:9px}
+.ctx-bar-wrap{height:2px}
+.base-url{font-size:8px;margin-top:1px}
+.hint{font-size:9px;margin-top:3px}
+.dot{width:5px;height:5px;top:10px;right:10px}
+.fav-btn{font-size:12px}
+.cb-lbl{font-size:8px}
+.mc-cb{width:10px;height:10px}
+.card-actions{margin-top:2px}
+
+/* 工具栏 */
+.toolbar{gap:4px;margin-bottom:8px}
+.tool-btn{padding:4px 8px;font-size:10px;gap:3px}
+.cur-switch{gap:3px}
+.cur-btn{padding:2px 6px;font-size:9px}
+.filter-count{font-size:10px;padding:2px 0;margin-bottom:4px}
+
+/* 面板 - 紧凑 */
+.calc-panel,.cmp-panel,.rec-panel,.cross-panel{padding:10px;border-radius:10px;margin-bottom:10px}
+.calc-title,.cmp-title,.rec-title,.cross-title{font-size:12px;margin-bottom:6px}
+.calc-row{gap:6px;margin-bottom:5px}
+.calc-row label{font-size:10px;width:70px}
+.calc-row input{padding:4px 6px;font-size:11px;max-width:90px}
+.calc-btns{gap:4px}
+.calc-btn{padding:5px 10px;font-size:11px}
+.calc-presets{gap:3px;margin-bottom:6px}
+.preset-btn{padding:2px 6px;font-size:9px}
+.calc-result{max-height:250px;margin-top:6px}
+.calc-table{font-size:10px}
+.calc-table th,.calc-table td{padding:3px 5px}
+.cmp-item{padding:4px 6px;gap:4px}
+.cmp-item-name{font-size:11px}
+.cmp-item-price{font-size:10px}
+.cmp-btn{padding:4px 10px;font-size:10px}
+.cmp-btn-clear{padding:4px 10px;font-size:10px}
+.rec-btn{padding:5px 10px;font-size:10px}
+.rec-card{padding:5px 8px;gap:6px}
+.rec-rank{width:18px;height:18px;font-size:9px;border-radius:4px}
+.rec-info .ri-name{font-size:11px}
+.rec-info .ri-reason{font-size:9px}
+.rec-price{font-size:10px}
+.cross-list{max-height:200px}
+.cross-group-name{font-size:11px}
+.cross-item{padding:2px 6px;font-size:10px}
+.cross-platform{min-width:60px}
+.cross-best{font-size:8px;padding:0 4px}
+
+/* 价格区间 */
+.price-range-bar input{width:55px;padding:3px 5px;font-size:10px}
+.pr-btn{padding:3px 6px;font-size:9px}
+.pr-btn-clear{padding:3px 6px;font-size:9px}
+
+/* 弹窗 */
+.cmp-modal-content{width:95%;max-height:90vh;border-radius:12px}
+.cmp-modal-header{padding:10px 14px;font-size:13px}
+.cmp-modal-body{padding:12px}
+.cmp-table{font-size:10px}
+.cmp-table th,.cmp-table td{padding:5px 6px}
+.cmp-close{font-size:18px}
+
+/* Toast */
+#toast{bottom:16px;padding:8px 14px;font-size:11px;border-radius:8px;max-width:85vw}
+
+/* 页脚 */
+.ftr{padding:16px 8px;margin-top:20px}
+.ftr p{font-size:10px;line-height:1.8}
+
+/* 数据说明 */
+.snote{padding:8px 10px;margin:8px 0 12px;font-size:10px;border-radius:8px}
+.price-change-note{padding:6px 10px;margin-bottom:8px;font-size:10px;border-radius:6px}
+}
+
+/* 超小屏幕 (<400px) 进一步压缩 */
+@media(max-width:400px){
+.hdr h1{font-size:18px}
+.hdr p{font-size:9px}
+.pt{padding:4px 8px;font-size:9px}
+.pt-filter{padding:3px 7px;font-size:9px}
+.sc{padding:2px 6px;font-size:9px}
+.mc{padding:8px 10px}
+.mname{font-size:11px}
+.base-url{font-size:7px}
+.calc-row label{width:60px;font-size:9px}
+}
+'''
+
+# ═══════════════════════════════════════════════════════════
+# JavaScript (完整前端逻辑)
+# ═══════════════════════════════════════════════════════════
+
+JS = r'''
 var curP='all',curS='all',curPT='all',curSort='default',selModels=[];
+var curTags=[],curCtx='all',curCur='CNY',priceMin=null,priceMax=null;
+var isDark=localStorage.getItem('dark')!=='0';
+var isListView=localStorage.getItem('listView')==='1';
+var favs=JSON.parse(localStorage.getItem('favs')||'[]');
+var USD_TO_CNY=7.25;
+
+// 初始化
 document.addEventListener('DOMContentLoaded',function(){
+if(!isDark)document.body.classList.add('light');
+if(isListView){document.getElementById('grid').classList.add('list-view');document.getElementById('listBtn').classList.add('active');}
+// 恢复收藏
+favs.forEach(function(f){var c=findCardByName(f);if(c){c.classList.add('fav-card');var fb=c.querySelector('.fav-btn');if(fb)fb.classList.add('active');}});
+// 加载动画
 var ld=document.getElementById('ld');ld.classList.add('show');
 setTimeout(function(){ld.classList.remove('show')},600);
+// 平台筛选
 document.querySelectorAll('.pt').forEach(function(b){b.addEventListener('click',function(){
 document.querySelectorAll('.pt').forEach(function(x){x.classList.remove('active')});
-b.classList.add('active');curP=b.dataset.p;filter()});});
+b.classList.add('active');curP=b.dataset.p;filter();saveState();});});
+// 价格分级筛选
 document.querySelectorAll('.pt-filter').forEach(function(b){b.addEventListener('click',function(){
 document.querySelectorAll('.pt-filter').forEach(function(x){x.classList.remove('active')});
-b.classList.add('active');curPT=b.dataset.pt;filter()});});
+b.classList.add('active');curPT=b.dataset.pt;filter();saveState();});});
+// 场景筛选
 document.querySelectorAll('.sc').forEach(function(b){b.addEventListener('click',function(){
 document.querySelectorAll('.sc').forEach(function(x){x.classList.remove('active')});
-b.classList.add('active');curS=b.dataset.sc;filter()});});
+b.classList.add('active');curS=b.dataset.sc;filter();saveState();});});
+// 排序
 document.querySelectorAll('.sort-btn').forEach(function(b){b.addEventListener('click',function(){
 document.querySelectorAll('.sort-btn').forEach(function(x){x.classList.remove('active')});
-b.classList.add('active');curSort=b.dataset.sort;sortCards()});});
+b.classList.add('active');curSort=b.dataset.sort;sortCards();});});
+// 标签筛选
+document.querySelectorAll('.tag-btn').forEach(function(b){b.addEventListener('click',function(){
+b.classList.toggle('active');
+curTags=Array.from(document.querySelectorAll('.tag-btn.active')).map(function(x){return x.dataset.tag;});
+filter();saveState();});});
+// 上下文筛选
+document.querySelectorAll('.ctx-btn').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.ctx-btn').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');curCtx=b.dataset.ctx;filter();saveState();});});
+// 货币切换
+document.querySelectorAll('.cur-btn').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.cur-btn').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');curCur=b.dataset.cur;updatePrices();});});
+// 搜索
 var st;
-document.getElementById('si').addEventListener('input',function(){clearTimeout(st);st=setTimeout(filter,200)});
+document.getElementById('si').addEventListener('input',function(){clearTimeout(st);st=setTimeout(function(){filter();saveState();},200)});
+// 预设按钮
+document.querySelectorAll('.preset-btn').forEach(function(b){b.addEventListener('click',function(){
+document.getElementById('calcChats').value=b.dataset.chats;
+document.getElementById('calcTokens').value=b.dataset.tokens;
+document.getElementById('calcRatio').value=b.dataset.ratio;});});
+// 智能推荐
+document.querySelectorAll('.rec-btn').forEach(function(b){b.addEventListener('click',function(){
+document.querySelectorAll('.rec-btn').forEach(function(x){x.classList.remove('active')});
+b.classList.add('active');runRecommend(b.dataset.rec);});});
+// 键盘快捷键
 document.addEventListener('keydown',function(e){
 if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();document.getElementById('si').focus()}
-if(e.key==='Escape'){document.getElementById('si').blur()}});
+if(e.key==='Escape'){document.getElementById('si').blur();document.getElementById('si').value='';filter();}
+if(e.key==='d'&&!e.ctrlKey&&document.activeElement.tagName!=='INPUT'){toggleDark();}
+if(e.key==='v'&&!e.ctrlKey&&document.activeElement.tagName!=='INPUT'){toggleView();}
+// 数字键1-9快速切换平台
+var platforms=['all','openrouter','aliyun','siliconflow','moonshot','zhipu','volcengine','baidu','tencent'];
+var num=parseInt(e.key);
+if(num>=1&&num<=9&&document.activeElement.tagName!=='INPUT'){
+var pb=document.querySelector('.pt[data-p="'+platforms[num-1]+'"]');
+if(pb)pb.click();
+}
 });
+// 从URL hash恢复状态
+restoreState();
+// 初始筛选
+filter();
+// 生成跨平台比价
+buildCrossPrice();
+});
+
+function findCardByName(name){
+var cards=document.querySelectorAll('.mc');
+for(var i=0;i<cards.length;i++){
+var mn=(cards[i].querySelector('.mname')||{}).textContent||'';
+if(mn===name)return cards[i];
+}return null;
+}
+
+// ─── 筛选 ───
 function filter(){
 var cs=document.querySelectorAll('.mc');
 var q=(document.getElementById('si').value||'').toLowerCase().trim();
@@ -484,12 +1391,40 @@ cs.forEach(function(c){
 var sh=true;
 var pn=(c.querySelector('.prov')||{}).textContent||'';
 var mn=(c.querySelector('.mname')||{}).textContent||'';
-if(curP!='all'&&curP!==(c.dataset.p||'')){sh=false}
-if(curPT!='all'&&curPT!==(c.dataset.pt||'')){sh=false}
-if(curS!='all'&&curS!==(c.dataset.s||'')){sh=false}
-if(q&&mn.toLowerCase().indexOf(q)===-1&&pn.toLowerCase().indexOf(q)===-1){sh=false}
-c.style.display=sh?'block':'none';if(sh)n++});
-document.getElementById('empty').style.display=n===0?'block':'none'}
+if(curP!='all'&&curP!==(c.dataset.p||''))sh=false;
+if(curPT!='all'&&curPT!==(c.dataset.pt||''))sh=false;
+if(curS!='all'&&curS!==(c.dataset.s||''))sh=false;
+// 标签筛选
+if(curTags.length>0){
+var cardTags=Array.from(c.querySelectorAll('.tg')).map(function(t){return t.textContent;});
+var match=curTags.some(function(t){return cardTags.indexOf(t)!==-1;});
+if(!match)sh=false;
+}
+// 上下文筛选
+if(curCtx!=='all'){
+var ctxVal=parseInt(c.dataset.ctx||0);
+var ctxMin=parseInt(curCtx)*1000;
+if(ctxVal<ctxMin)sh=false;
+}
+// 价格区间筛选
+if(priceMin!==null||priceMax!==null){
+var inp=parseFloat(c.dataset.inp||0);
+var cur=c.dataset.cur||'CNY';
+var cnyInp=cur==='USD'?inp*1e6*USD_TO_CNY:inp;
+if(priceMin!==null&&cnyInp<priceMin)sh=false;
+if(priceMax!==null&&cnyInp>priceMax)sh=false;
+}
+// 搜索
+if(q&&mn.toLowerCase().indexOf(q)===-1&&pn.toLowerCase().indexOf(q)===-1)sh=false;
+c.style.display=sh?'block':'none';if(sh)n++;
+});
+document.getElementById('empty').style.display=n===0?'block':'none';
+// 更新筛选计数
+var fc=document.getElementById('filterCount');
+if(fc)fc.innerHTML='显示 <strong>'+n+'</strong> / '+cs.length+' 个模型';
+}
+
+// ─── 排序 ───
 function sortCards(){
 var grid=document.getElementById('grid');
 var cs=Array.from(grid.querySelectorAll('.mc'));
@@ -498,12 +1433,114 @@ var sortFn={
 'inp-asc':function(a,b){return (parseFloat(a.dataset.inp)||0)-(parseFloat(b.dataset.inp)||0)},
 'inp-desc':function(a,b){return (parseFloat(b.dataset.inp)||0)-(parseFloat(a.dataset.inp)||0)},
 'out-asc':function(a,b){return (parseFloat(a.dataset.out)||0)-(parseFloat(b.dataset.out)||0)},
-'out-desc':function(a,b){return (parseFloat(b.dataset.out)||0)-(parseFloat(a.dataset.out)||0)},
-'name':function(a,b){return (a.querySelector('.mname')||{}).textContent.localeCompare((b.querySelector('.mname')||{}).textContent)}
+'out-desc':function(a,b){return (parseFloat(b.dataset.out)||0)-(parseFloat(b.dataset.out)||0)},
+'name':function(a,b){return (a.querySelector('.mname')||{}).textContent.localeCompare((b.querySelector('.mname')||{}).textContent)},
+'combined':function(a,b){
+var ai=parseFloat(a.dataset.inp)||0,ao=parseFloat(a.dataset.out)||0;
+var bi=parseFloat(b.dataset.inp)||0,bo=parseFloat(b.dataset.out)||0;
+return (ai+ao*0.5)-(bi+bo*0.5);
+},
+'ctx':function(a,b){return (parseInt(b.dataset.ctx)||0)-(parseInt(a.dataset.ctx)||0)},
+'costperf':function(a,b){
+// 性价比 = 上下文长度 / (输入价+输出价*0.5)，越大越好
+var ai=parseFloat(a.dataset.inp)||0,ao=parseFloat(a.dataset.out)||0,ac2=parseInt(a.dataset.ctx)||1;
+var bi=parseFloat(b.dataset.inp)||0,bo=parseFloat(b.dataset.out)||0,bc2=parseInt(b.dataset.ctx)||1;
+var pa=(ai+ao*0.5)||0.001,pb=(bi+bo*0.5)||0.001;
+return (bc2/pb)-(ac2/pa);
+}
 };
 cs.sort(sortFn[curSort]||sortFn['default']);
 cs.forEach(function(c){grid.appendChild(c)});
-filter()}
+filter();
+}
+
+// ─── 货币切换 ───
+function updatePrices(){
+document.querySelectorAll('.mc').forEach(function(c){
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var prow=c.querySelector('.prow');
+if(!prow)return;
+if(curCur==='CNY'){
+if(cur==='USD'){
+var cnyInp=inp*1e6*USD_TO_CNY;
+var cnyOut=out*1e6*USD_TO_CNY;
+prow.innerHTML=makeCNYBadge(cnyInp,cnyOut);
+}else{
+prow.innerHTML=makeCNYBadge(inp,out);
+}
+}else{
+if(cur==='CNY'){
+var usdInp=inp/USD_TO_CNY;
+var usdOut=out/USD_TO_CNY;
+prow.innerHTML=makeUSDBadge(usdInp,usdOut);
+}else{
+prow.innerHTML=makeUSDBadge(inp*1e6,out*1e6);
+}
+}
+});
+}
+function makeCNYBadge(inp,out){
+if(inp===0&&out===0)return '<span class="price-badge price-free">免费额度</span>';
+if(Math.abs(inp-out)<0.01){
+var c=inp<1?"price-cheap":inp<10?"price-mid":inp<100?"price-high":"price-ultra";
+return '<span class="price-badge '+c+'">¥'+inp.toFixed(2)+'/M</span>';
+}
+return '<span class="price-badge price-mid">IN:¥'+inp.toFixed(2)+' OUT:¥'+out.toFixed(2)+'/M</span>';
+}
+function makeUSDBadge(inp,out){
+if(inp===0&&out===0)return '<span class="price-badge price-free">$0 (免费)</span>';
+if(Math.abs(inp-out)<0.01){
+var c=inp<0.1?"price-free":inp<1?"price-cheap":inp<10?"price-mid":inp<100?"price-high":"price-ultra";
+return '<span class="price-badge '+c+'">$'+inp.toFixed(2)+'/1M</span>';
+}
+return '<span class="price-badge price-mid">IN:$'+inp.toFixed(2)+' OUT:$'+out.toFixed(2)+'/1M</span>';
+}
+
+// ─── 收藏 ───
+function toggleFav(btn){
+btn.classList.toggle('active');
+var c=btn.closest('.mc');
+c.classList.toggle('fav-card');
+var mn=(c.querySelector('.mname')||{}).textContent||'';
+if(btn.classList.contains('active')){
+if(favs.indexOf(mn)===-1)favs.push(mn);
+}else{
+var idx=favs.indexOf(mn);if(idx!==-1)favs.splice(idx,1);
+}
+localStorage.setItem('favs',JSON.stringify(favs));
+}
+
+// ─── 暗色模式 ───
+function toggleDark(){
+isDark=!isDark;
+document.body.classList.toggle('light');
+localStorage.setItem('dark',isDark?'1':'0');
+}
+
+// ─── 视图切换 ───
+function toggleView(){
+isListView=!isListView;
+document.getElementById('grid').classList.toggle('list-view');
+document.getElementById('listBtn').classList.toggle('active');
+localStorage.setItem('listView',isListView?'1':'0');
+}
+
+// ─── 价格区间 ───
+function applyPriceRange(){
+priceMin=parseFloat(document.getElementById('priceMin').value)||null;
+priceMax=parseFloat(document.getElementById('priceMax').value)||null;
+filter();
+}
+function clearPriceRange(){
+priceMin=null;priceMax=null;
+document.getElementById('priceMin').value='';
+document.getElementById('priceMax').value='';
+filter();
+}
+
+// ─── 模型对比 ───
 function toggleSel(cb){
 var c=cb.closest('.mc');
 var mName=(c.querySelector('.mname')||{}).textContent||'';
@@ -511,15 +1548,17 @@ var prov=(c.querySelector('.prov')||{}).textContent||'';
 var inp=parseFloat(c.dataset.inp)||0;
 var out=parseFloat(c.dataset.out)||0;
 var cur=c.dataset.cur||'CNY';
+var ctx=c.dataset.ctxDisplay||'';
 var cmd=c.getAttribute('onclick')||'';
 var mIdx=selModels.findIndex(function(m){return m.name===mName});
 if(cb.checked){
 if(selModels.length>=3){cb.checked=false;alert('最多选择3个模型对比');return}
-if(mIdx===-1)selModels.push({name:mName,prov:prov,inp:inp,out:out,cur:cur,cmd:cmd});
+if(mIdx===-1)selModels.push({name:mName,prov:prov,inp:inp,out:out,cur:cur,ctx:ctx,cmd:cmd});
 }else{
 if(mIdx!==-1)selModels.splice(mIdx,1);
 }
-updateCmpPanel()}
+updateCmpPanel();
+}
 function updateCmpPanel(){
 var panel=document.getElementById('cmpPanel');
 var list=document.getElementById('cmpList');
@@ -532,9 +1571,10 @@ var price=m.cur==='USD'?'$'+(m.inp*1e6).toFixed(2)+'/M':'¥'+m.inp.toFixed(2)+'/
 return '<div class="cmp-item"><span class="cmp-item-name">'+m.name+'</span>'
 +'<span class="cmp-item-price">'+price+'</span>'
 +'<button class="cmp-item-del" onclick="delSel('+i+')">&times;</button></div>';
-}).join('')}
+}).join('');
+}
 function delSel(i){selModels.splice(i,1);updateCmpPanel();
-var cbs=document.querySelectorAll('.mc-cb');cbs.forEach(function(cb,i2){
+var cbs=document.querySelectorAll('.mc-cb');cbs.forEach(function(cb){
 var c=cb.closest('.mc');var n=(c.querySelector('.mname')||{}).textContent||'';
 if(!selModels.find(function(m){return m.name===n}))cb.checked=false;
 });}
@@ -555,103 +1595,449 @@ return '<td>'+p+'/M</td>';
 var p=m.cur==='USD'?'$'+(m.out*1e6).toFixed(4):'¥'+m.out.toFixed(4);
 return '<td>'+p+'/M</td>';
 }).join('')+'</tr>'
++'<tr><td>上下文</td>'+selModels.map(function(m){return '<td>'+m.ctx+'</td>'}).join('')+'</tr>'
 +'<tr><td>货币</td>'+selModels.map(function(m){return '<td>'+m.cur+'</td>'}).join('')+'</tr>'
 +'</tbody></table>';
 document.getElementById('cmpModal').style.display='flex';
 }
 function closeCmpModal(){document.getElementById('cmpModal').style.display='none'}
-function runCalc(){
-var chats=parseInt(document.getElementById('calcChats').value)||0;
-var tokens=parseInt(document.getElementById('calcTokens').value)||0;
-var ratio=parseFloat(document.getElementById('calcRatio').value)||1;
-var inTok=chats*tokens;
-var outTok=inTok*ratio;
-var results=selModels.map(function(m){
-var cost;
-if(m.cur==='USD'){
-cost=(m.inp*inTok+m.out*outTok)*1e6;
-}else{
-cost=m.inp*inTok/1e6+m.out*outTok/1e6;
+
+// ─── 月费计算器 ───
+function getCalcParams(){
+return {
+chats:parseInt(document.getElementById('calcChats').value)||0,
+tokens:parseInt(document.getElementById('calcTokens').value)||0,
+ratio:parseFloat(document.getElementById('calcRatio').value)||1
+};
 }
-return {name:m.name,cost:cost,cur:m.cur,inp:m.inp,out:m.out};
+function calcModelCost(m,params){
+var inTok=params.chats*params.tokens;
+var outTok=inTok*params.ratio;
+if(m.cur==='USD'){return (m.inp*inTok+m.out*outTok)*1e6*USD_TO_CNY;}
+else{return m.inp*inTok/1e6+m.out*outTok/1e6;}
+}
+function runCalc(){
+var params=getCalcParams();
+var results=selModels.map(function(m){
+return {name:m.name,cost:calcModelCost(m,params),cur:m.cur,inp:m.inp,out:m.out};
 });
 results.sort(function(a,b){return a.cost-b.cost});
 if(results.length===0){
 document.getElementById('calcResult').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">请先在上方勾选要计算的模型（最多3个）</div>';
 return;
 }
-var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费用(¥'+chats+'次×'+tokens+'T)</th></tr></thead><tbody>';
+renderCalcResult(results,params);
+}
+function runCalcAll(){
+var params=getCalcParams();
+var cs=document.querySelectorAll('.mc');
+var results=[];
+cs.forEach(function(c){
+if(c.style.display==='none')return;
+var mName=(c.querySelector('.mname')||{}).textContent||'';
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var m={name:mName,inp:inp,out:out,cur:cur};
+var cost=calcModelCost(m,params);
+results.push({name:mName,cost:cost,cur:cur,inp:inp,out:out});
+});
+results.sort(function(a,b){return a.cost-b.cost});
+if(results.length===0){
+document.getElementById('calcResult').innerHTML='<div style="color:#94a3b8;font-size:13px;padding:10px">没有可计算的模型</div>';
+return;
+}
+renderCalcResult(results.slice(0,30),params);
+}
+function runCalcReverse(){
+var budget=parseFloat(document.getElementById('calcBudget').value)||0;
+if(budget<=0){alert('请输入月预算金额');return;}
+var params=getCalcParams();
+if(params.chats<=0||params.tokens<=0){alert('请先设置对话次数和Token数');return;}
+var cs=document.querySelectorAll('.mc');
+var results=[];
+cs.forEach(function(c){
+if(c.style.display==='none')return;
+var mName=(c.querySelector('.mname')||{}).textContent||'';
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var m={name:mName,inp:inp,out:out,cur:cur};
+var cost=calcModelCost(m,params);
+var maxChats=budget>0&&cost>0?Math.floor(budget/cost*params.chats):0;
+results.push({name:mName,cost:cost,maxChats:maxChats,cur:cur});
+});
+results.sort(function(a,b){return b.maxChats-a.maxChats});
+var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费(¥)</th><th>预算内最多对话</th></tr></thead><tbody>';
+results.slice(0,30).forEach(function(r,i){
+var costStr='¥'+r.cost.toFixed(2);
+html+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td>'+costStr+'</td><td><b>'+r.maxChats.toLocaleString()+'</b> 次</td></tr>';
+});
+html+='</tbody></table></div>';
+document.getElementById('calcResult').innerHTML=html;
+}
+function renderCalcResult(results,params){
+var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费用(¥'+params.chats+'次×'+params.tokens+'T)</th></tr></thead><tbody>';
 results.forEach(function(r,i){
-var costStr=r.cur==='USD'?'$'+r.cost.toFixed(2):'¥'+r.cost.toFixed(2);
+var costStr='¥'+r.cost.toFixed(2);
 html+='<tr><td>'+(i+1)+'</td><td>'+r.name+'</td><td><b>'+costStr+'</b></td></tr>';
 });
 html+='</tbody></table></div>';
 document.getElementById('calcResult').innerHTML=html;
 }
+
+// ─── 智能推荐 ───
+function runRecommend(scene){
+var cs=document.querySelectorAll('.mc');
+var results=[];
+cs.forEach(function(c){
+var mName=(c.querySelector('.mname')||{}).textContent||'';
+var prov=(c.querySelector('.prov')||{}).textContent||'';
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var scen=c.dataset.s||'';
+var ctx=parseInt(c.dataset.ctx)||0;
+var tags=Array.from(c.querySelectorAll('.tg')).map(function(t){return t.textContent;});
+var score=0;
+var reason='';
+// 场景匹配评分
+if(scene==='chat'){
+if(scen==='日常对话')score+=30;
+if(tags.indexOf('便宜')!==-1||tags.indexOf('极便宜')!==-1)score+=20;
+if(tags.indexOf('免费额度')!==-1)score+=25;
+if(inp>0&&inp<1)score+=15;
+if(tags.indexOf('视觉')!==-1)score-=10; // 不需要视觉
+if(inp>10)score-=20; // 太贵
+reason=score>50?'性价比高，适合日常使用':'价格适中';
+}else if(scene==='code'){
+if(scen==='编程代码')score+=30;
+if(tags.indexOf('代码')!==-1)score+=25;
+if(tags.indexOf('推理')!==-1)score+=10;
+if(ctx>=32000)score+=10;
+if(tags.indexOf('视觉')!==-1)score-=5;
+reason=tags.indexOf('代码')!==-1?'代码专用模型':'通用模型，可写代码';
+}else if(scene==='translate'){
+if(scen==='日常对话')score+=25;
+if(inp>0&&inp<2)score+=20;
+if(tags.indexOf('免费额度')!==-1)score+=25;
+if(ctx>=32000)score+=10;
+if(tags.indexOf('视觉')!==-1)score-=10;
+reason='翻译不需要高级模型，便宜即可';
+}else if(scene==='write'){
+if(scen==='日常对话')score+=20;
+if(scen==='深度推理')score+=15;
+if(ctx>=64000)score+=15;
+if(inp>0&&inp<5)score+=10;
+reason=ctx>=64000?'长上下文，适合长文':'适合一般写作';
+}else if(scene==='reason'){
+if(scen==='深度推理')score+=30;
+if(tags.indexOf('推理')!==-1)score+=25;
+if(tags.indexOf('旗舰')!==-1)score+=10;
+if(ctx>=128000)score+=10;
+reason=tags.indexOf('推理')!==-1?'推理专用模型':'通用模型';
+}else if(scene==='vision'){
+if(scen==='视觉图片')score+=30;
+if(tags.indexOf('视觉')!==-1)score+=25;
+if(tags.indexOf('多模态')!==-1)score+=20;
+reason='视觉/多模态模型';
+}else if(scene==='image'){
+if(scen==='图片生成')score+=30;
+if(tags.indexOf('图片生成')!==-1)score+=25;
+reason='图片生成专用';
+}else if(scene==='video'){
+if(scen==='视频生成')score+=30;
+if(tags.indexOf('视频生成')!==-1)score+=25;
+reason='视频生成专用';
+}
+// 通用加分
+if(tags.indexOf('免费额度')!==-1)score+=5;
+if(score>0)results.push({name:mName,prov:prov,score:score,inp:inp,out:out,cur:cur,reason:reason});
+});
+results.sort(function(a,b){return b.score-a.score});
+var html='';
+results.slice(0,5).forEach(function(r,i){
+var price=r.cur==='USD'?'$'+(r.inp*1e6).toFixed(2)+'/M':'¥'+r.inp.toFixed(2)+'/M';
+if(r.inp===0&&r.out===0)price='免费';
+html+='<div class="rec-card"><div class="rec-rank">'+(i+1)+'</div>'
++'<div class="rec-info"><div class="ri-name">'+r.name+'</div>'
++'<div class="ri-reason">'+r.prov+' · '+r.reason+'</div></div>'
++'<div class="rec-price">'+price+'</div></div>';
+});
+if(!html)html='<div style="color:#94a3b8;font-size:13px;padding:10px">未找到匹配模型</div>';
+document.getElementById('recResult').innerHTML=html;
+}
+
+// ─── 跨平台比价 ───
+// 精确的模型名标准化：提取模型系列+参数量+版本，用于跨平台匹配
+function normalizeModelName(rawName){
+var n=rawName;
+// 去掉 OPENROUTER: 前缀
+n=n.replace(/^OPENROUTER:/i,'');
+// 去掉供应商前缀 (如 deepseek-ai/, Qwen/, Pro/ 等)
+n=n.split('/').pop();
+// 统一大小写用于匹配
+var lower=n.toLowerCase();
+// 提取模型系列名 + 参数量 + 关键版本标识
+// DeepSeek 系列
+if(lower.indexOf('deepseek')!==-1){
+var v='';
+if(/r1/i.test(n))v='R1';
+else if(/v3\.2/i.test(n))v='V3.2';
+else if(/v3\.1/i.test(n))v='V3.1';
+else if(/v3/i.test(n))v='V3';
+else if(/ocr/i.test(n))v='OCR';
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var distill=/distill/i.test(n)?'-Distill':'';
+var chat=/chat/i.test(n)?'-Chat':'';
+return 'DeepSeek-'+v+distill+chat+(sz?'-'+sz:'');
+}
+// Qwen 系列
+if(lower.indexOf('qwen')!==-1||lower.indexOf('qwq')!==-1){
+var base=/qwq/i.test(n)?'QwQ':'Qwen';
+var ver=(n.match(/(\d+\.\d+|\d+)/)||['',''])[1];
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var vl=/vl/i.test(n)?'-VL':'';
+var coder=/coder/i.test(n)?'-Coder':'';
+var img=/image/i.test(n)?'-Image':'';
+var think=/thinking/i.test(n)?'-Thinking':'';
+var omni=/omni/i.test(n)?'-Omni':'';
+var emb=/embedding/i.test(n)?'-Embedding':'';
+return base+(ver?'-'+ver:'')+vl+coder+img+think+omni+emb+(sz?'-'+sz:'');
+}
+// GLM 系列
+if(lower.indexOf('glm')!==-1){
+var ver=(n.match(/glm[-_]?(\d+\.?\d*)/i)||['',''])[1];
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var flash=/flash/i.test(n)?'-Flash':'';
+var air=/air/i.test(n)?'-Air':'';
+var turbo=/turbo/i.test(n)?'-Turbo':'';
+var v=/v/i.test(n)&&/flash|air|turbo/i.test(n)===false?'-V':'';
+var z=/z1/i.test(n)?'-Z1':'';
+return 'GLM-'+ver+flash+air+turbo+v+z+(sz?'-'+sz:'');
+}
+// Kimi/Moonshot 系列
+if(lower.indexOf('kimi')!==-1||lower.indexOf('moonshot')!==-1){
+var v=/k2\.5/i.test(n)?'K2.5':/k2/i.test(n)?'K2':'V1';
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var ctx=(n.match(/(\d+k)/i)||['',''])[1].toLowerCase();
+var think=/thinking/i.test(n)?'-Thinking':'';
+var turbo=/turbo/i.test(n)?'-Turbo':'';
+var vis=/vision/i.test(n)?'-Vision':'';
+return 'Kimi-'+v+think+turbo+vis+(ctx?'-'+ctx:'')+(sz?'-'+sz:'');
+}
+// Doubao/豆包 系列
+if(lower.indexOf('doubao')!==-1||lower.indexOf('seed')!==-1){
+var v=(n.match(/(seed[-_]?\d+\.\d+|doubao[-_]?\d+\.\d+)/i)||['',''])[1]||'';
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var pro=/pro/i.test(n)?'-Pro':'';
+var lite=/lite/i.test(n)?'-Lite':'';
+var mini=/mini/i.test(n)?'-Mini':'';
+var flash=/flash/i.test(n)?'-Flash':'';
+var vis=/vision/i.test(n)?'-Vision':'';
+var think=/thinking/i.test(n)?'-Thinking':'';
+var coder=/coder/i.test(n)?'-Coder':'';
+return 'Doubao-'+v+pro+lite+mini+flash+vis+think+coder+(sz?'-'+sz:'');
+}
+// Llama 系列
+if(lower.indexOf('llama')!==-1){
+var ver=(n.match(/(\d+\.?\d*)/)||['',''])[1];
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var guard=/guard/i.test(n)?'-Guard':'';
+var chat=/chat/i.test(n)?'-Chat':'';
+var instruct=/instruct/i.test(n)?'-Instruct':'';
+return 'Llama-'+ver+guard+chat+instruct+(sz?'-'+sz:'');
+}
+// Mistral 系列
+if(lower.indexOf('mistral')!==-1||lower.indexOf('mixtral')!==-1){
+var base=/mixtral/i.test(n)?'Mixtral':'Mistral';
+var ver=(n.match(/(\d+\.?\d*)/)||['',''])[1];
+var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+var small=/small/i.test(n)?'-Small':'';
+var medium=/medium/i.test(n)?'-Medium':'';
+var large=/large/i.test(n)?'-Large':'';
+var nemo=/nemo/i.test(n)?'-Nemo':'';
+var codestral=/codestral/i.test(n)?'-Codestral':'';
+var pixtral=/pixtral/i.test(n)?'-Pixtral':'';
+return base+(ver?'-'+ver:'')+small+medium+large+nemo+codestral+pixtral+(sz?'-'+sz:'');
+}
+// Claude 系列
+if(lower.indexOf('claude')!==-1){
+var ver=(n.match(/(\d+\.?\d*)/)||['',''])[1];
+var haiku=/haiku/i.test(n)?'-Haiku':'';
+var sonnet=/sonnet/i.test(n)?'-Sonnet':'';
+var opus=/opus/i.test(n)?'-Opus':'';
+return 'Claude-'+ver+haiku+sonnet+opus;
+}
+// GPT 系列
+if(lower.indexOf('gpt')!==-1){
+var ver=(n.match(/(\d+\.?\d*)/)||['',''])[1];
+var turbo=/turbo/i.test(n)?'-Turbo':'';
+var mini=/mini/i.test(n)?'-Mini':'';
+var omni=/omni/i.test(n)?'-Omni':'';
+var vis=/vision/i.test(n)?'-Vision':'';
+return 'GPT-'+ver+turbo+mini+omni+vis;
+}
+// Gemini 系列
+if(lower.indexOf('gemini')!==-1){
+var ver=(n.match(/(\d+\.?\d*)/)||['',''])[1];
+var flash=/flash/i.test(n)?'-Flash':'';
+var pro=/pro/i.test(n)?'-Pro':'';
+var think=/thinking/i.test(n)?'-Thinking':'';
+return 'Gemini-'+ver+flash+pro+think;
+}
+// Yi/零一万物 系列
+if(lower.indexOf('yi-')!==-1||lower.indexOf('yi ')!==-1){
+var v=(n.match(/yi[-_](light|medium|large|spark|lightning|vision)/i)||['',''])[1]||'';
+var turbo=/turbo/i.test(n)?'-Turbo':'';
+return 'Yi-'+v.charAt(0).toUpperCase()+v.slice(1)+turbo;
+}
+// 通用的兜底：去掉常见后缀，保留核心名
+var core=n.replace(/[-_](chat|instruct|fp\d+|latest|main|default|v\d+|it\d+|q\d+)/gi,'');
+var sz2=(core.match(/(\d+b)/i)||['',''])[1].toUpperCase();
+core=core.replace(/[-_]?\d+b/i,'');
+return core+(sz2?'-'+sz2:'');
+}
+
+function buildCrossPrice(){
+var cs=document.querySelectorAll('.mc');
+var modelMap={};
+var platformSet={};
+cs.forEach(function(c){
+var mName=(c.querySelector('.mname')||{}).textContent||'';
+var prov=(c.querySelector('.prov')||{}).textContent||'';
+var inp=parseFloat(c.dataset.inp)||0;
+var out=parseFloat(c.dataset.out)||0;
+var cur=c.dataset.cur||'CNY';
+var pid=c.dataset.p||'';
+// 精确标准化模型名
+var coreName=normalizeModelName(mName);
+if(!coreName)return;
+if(!modelMap[coreName])modelMap[coreName]=[];
+// 去重：同一平台同一模型只保留一个
+var key=pid+'_'+coreName;
+if(platformSet[key])return;
+platformSet[key]=true;
+modelMap[coreName].push({name:mName,prov:prov,inp:inp,out:out,cur:cur,baseName:coreName,pid:pid});
+});
+// 只显示在2个以上不同平台出现的模型
+var groups=Object.values(modelMap).filter(function(g){
+var pids={};g.forEach(function(m){pids[m.pid]=1;});
+return Object.keys(pids).length>=2&&g.length<=15;
+});
+// 按平台数排序，平台数相同按最低价排序
+groups.sort(function(a,b){
+var pa={};a.forEach(function(m){pa[m.pid]=1;});
+var pb={};b.forEach(function(m){pb[m.pid]=1;});
+var da=Object.keys(pa).length,db=Object.keys(pb).length;
+if(da!==db)return db-da;
+var minA=Infinity,minB=Infinity;
+a.forEach(function(m){var c=m.cur==='USD'?m.inp*1e6*USD_TO_CNY:m.inp;if(c<minA)minA=c;});
+b.forEach(function(m){var c=m.cur==='USD'?m.inp*1e6*USD_TO_CNY:m.inp;if(c<minB)minB=c;});
+return minA-minB;
+});
+var html='';
+groups.slice(0,30).forEach(function(g){
+// 找最低价
+var minCost=Infinity;
+g.forEach(function(m){
+var cnyInp=m.cur==='USD'?m.inp*1e6*USD_TO_CNY:m.inp;
+if(cnyInp<minCost)minCost=cnyInp;
+});
+// 统计平台数
+var pids={};g.forEach(function(m){pids[m.pid]=1;});
+var pCount=Object.keys(pids).length;
+html+='<div class="cross-group"><div class="cross-group-name">'+g[0].baseName+' ('+pCount+'个平台, '+g.length+'个渠道)</div>';
+// 按价格排序
+var sorted=g.slice().sort(function(a,b){
+var ca=a.cur==='USD'?a.inp*1e6*USD_TO_CNY:a.inp;
+var cb=b.cur==='USD'?b.inp*1e6*USD_TO_CNY:b.inp;
+return ca-cb;
+});
+sorted.forEach(function(m){
+var cnyInp=m.cur==='USD'?m.inp*1e6*USD_TO_CNY:m.inp;
+var priceStr=m.cur==="USD"?"$"+(m.inp*1e6).toFixed(2)+"/M":"\u00a5"+m.inp.toFixed(2)+"/M";
+if(m.inp===0&&m.out===0)priceStr="\u514d\u8d39";
+var isBest=Math.abs(cnyInp-minCost)<0.01;
+var diff=cnyInp-minCost;
+var diffStr="";
+if(diff>0.01&&minCost>0)diffStr=" <span style=\"color:#94a3b8;font-size:10px\">(+"+((diff/minCost)*100).toFixed(0)+"%)</span>";
+html+="<div class=\"cross-item\"><span class=\"cross-platform\">"+m.prov+"</span>"
++"<span class=\"cross-price\">"+priceStr+"</span>"
++(isBest?"<span class=\"cross-best\">\u6700\u4f4e</span>":"")
++diffStr
++"</div>";
+});
+html+="</div>";
+});
+if(html){
+document.getElementById("crossPanel").style.display="block";
+document.getElementById("crossList").innerHTML=html;
+}else{
+document.getElementById("crossPanel").style.display="none";
+}
+}
+
+// ─── 复制命令 ───
 function copyCmd(cmd,name){
+function showTip(msg,ok){
+var t=document.getElementById("toast");
+t.innerHTML=(ok?"<span style=\"margin-right:6px\">\u2713</span>":"")+msg;
+t.className="toast-show"+(ok?" toast-ok":" toast-err");
+clearTimeout(t._tid);
+t._tid=setTimeout(function(){t.className="";},2800);
+}
+if(navigator.clipboard&&navigator.clipboard.writeText){
 navigator.clipboard.writeText(cmd).then(function(){
-var t=document.getElementById('toast');t.textContent='OK '+cmd.substring(0,80);t.classList.add('show');
-setTimeout(function(){t.classList.remove('show')},2500)
+showTip("\u5df2\u590d\u5236: "+cmd.substring(0,60),true);
 }).catch(function(){
-var t=document.getElementById('toast');t.textContent=cmd.substring(0,60);t.classList.add('show');
-setTimeout(function(){t.classList.remove('show')},2500)});}
+fallbackCopy(cmd);showTip("\u5df2\u590d\u5236: "+cmd.substring(0,60),true);
+});
+}else{
+fallbackCopy(cmd);showTip("\u5df2\u590d\u5236: "+cmd.substring(0,60),true);
+}
+}
+function fallbackCopy(text){
+var ta=document.createElement("textarea");ta.value=text;ta.style.cssText="position:fixed;left:-9999px";
+document.body.appendChild(ta);ta.select();
+try{document.execCommand("copy");}catch(e){}
+document.body.removeChild(ta);
+}
+
+// ─── 状态持久化 ───
+function saveState(){
+var state={p:curP,s:curS,pt:curPT,sort:curSort,tags:curTags,ctx:curCtx,
+q:(document.getElementById('si').value||'')};
+window.location.hash=encodeURIComponent(JSON.stringify(state));
+}
+function restoreState(){
+try{
+var hash=window.location.hash.substring(1);
+if(!hash)return;
+var state=JSON.parse(decodeURIComponent(hash));
+if(state.p){curP=state.p;var pb=document.querySelector('.pt[data-p="'+state.p+'"]');if(pb){document.querySelectorAll('.pt').forEach(function(x){x.classList.remove('active')});pb.classList.add('active');}}
+if(state.s){curS=state.s;var sb=document.querySelector('.sc[data-sc="'+state.s+'"]');if(sb){document.querySelectorAll('.sc').forEach(function(x){x.classList.remove('active')});sb.classList.add('active');}}
+if(state.pt){curPT=state.pt;var ptb=document.querySelector('.pt-filter[data-pt="'+state.pt+'"]');if(ptb){document.querySelectorAll('.pt-filter').forEach(function(x){x.classList.remove('active')});ptb.classList.add('active');}}
+if(state.sort){curSort=state.sort;var sob=document.querySelector('.sort-btn[data-sort="'+state.sort+'"]');if(sob){document.querySelectorAll('.sort-btn').forEach(function(x){x.classList.remove('active')});sob.classList.add('active');}}
+if(state.tags&&state.tags.length>0){curTags=state.tags;state.tags.forEach(function(t){var tb=document.querySelector('.tag-btn[data-tag="'+t+'"]');if(tb)tb.classList.add('active');});}
+if(state.ctx){curCtx=state.ctx;var cb=document.querySelector('.ctx-btn[data-ctx="'+state.ctx+'"]');if(cb){document.querySelectorAll('.ctx-btn').forEach(function(x){x.classList.remove('active')});cb.classList.add('active');}}
+if(state.q){document.getElementById('si').value=state.q;}
+}catch(e){}
+}
 '''
 
-CSS = open("/tmp/css.txt").read()
-
-extra_css = '''
-.sort-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
-.sort-lbl{font-size:12px;color:#64748b;font-weight:600}
-.sort-btn{padding:5px 12px;border-radius:14px;border:1.5px solid #e2e8f0;background:#fff;color:#64748b;font-size:12px;cursor:pointer;transition:all .1s}
-.sort-btn:hover{border-color:#6366f1;color:#6366f1}
-.sort-btn.active{background:#6366f1;color:#fff;border-color:#6366f1}
-.calc-panel{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:16px}
-.calc-title{font-size:14px;font-weight:700;color:#1e293b;margin-bottom:10px}
-.calc-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.calc-row label{font-size:12px;color:#64748b;width:100px}
-.calc-row input{flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;max-width:120px}
-.calc-btn{background:#6366f1;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px}
-.calc-btn:hover{background:#4f46e5}
-.calc-result{margin-top:12px;max-height:300px;overflow-y:auto}
-.calc-table-wrap{overflow-x:auto}
-.calc-table{width:100%;border-collapse:collapse;font-size:12px}
-.calc-table th,.calc-table td{padding:6px 10px;border:1px solid #e2e8f0;text-align:left}
-.calc-table th{background:#f1f5f9;font-weight:600}
-.calc-table tr:nth-child(even){background:#fafafa}
-.cmp-panel{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:12px;margin-bottom:12px}
-.cmp-title{font-size:14px;font-weight:700;color:#4f46e5;margin-bottom:8px}
-.cmp-list{margin-bottom:10px}
-.cmp-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#fff;border-radius:8px;margin-bottom:4px}
-.cmp-item-name{flex:1;font-size:13px;font-weight:600}
-.cmp-item-price{font-size:12px;color:#6366f1}
-.cmp-item-del{background:#fee2e2;color:#dc2626;border:none;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1}
-.cmp-actions{display:flex;gap:8px}
-.cmp-btn{padding:6px 14px;border-radius:8px;border:none;font-size:12px;font-weight:600;cursor:pointer;background:#6366f1;color:#fff}
-.cmp-btn:hover{background:#4f46e5}
-.cmp-btn-clear{background:#f1f5f9;color:#64748b}
-.cmp-btn-clear:hover{background:#e2e8f0}
-.cmp-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
-.cmp-modal-content{background:#fff;border-radius:16px;max-width:800px;width:90%;max-height:80vh;overflow:auto}
-.cmp-modal-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #e2e8f0;font-size:16px;font-weight:700}
-.cmp-close{background:none;border:none;font-size:24px;cursor:pointer;color:#64748b}
-.cmp-close:hover{color:#1e293b}
-.cmp-modal-body{padding:20px}
-.cmp-table{width:100%;border-collapse:collapse;font-size:13px}
-.cmp-table th,.cmp-table td{padding:10px 12px;border:1px solid #e2e8f0;text-align:left}
-.cmp-table th{background:#f1f5f9;font-weight:600}
-.cb-wrap{position:absolute;bottom:8px;right:8px;display:flex;align-items:center;gap:4px}
-.cb-lbl{font-size:10px;color:#6366f1;cursor:pointer}
-.mc-cb{width:14px;height:14px;cursor:pointer}
-'''
+# ═══════════════════════════════════════════════════════════
+# 组装 HTML
+# ═══════════════════════════════════════════════════════════
 
 HDR = (
     '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n'
     '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
     '<title>AI 模型选择器 - 全网价格对比 2026</title>\n'
-    '<style>\n' + CSS + '\n' + extra_css + '\n</style>\n'
+    '<style>\n' + CSS + '\n</style>\n'
     '</head>\n<body>\n<div class="wrap">\n'
     '<div class="hdr"><h1>AI 模型选择器</h1>'
-    '<p>一键对比全网价格 &middot; 点击卡片复制切换命令 &middot; 按 / 快速搜索</p>'
+    '<p>一键对比全网价格 &middot; 点击卡片复制切换命令 &middot; 按 / 搜索 &middot; 按 D 暗色 &middot; 按 V 切换视图</p>'
     '<div class="brow">'
     '<span class="bd">&#128202; ' + str(total) + ' 个模型</span>'
     '<span class="bd bd-free">&#128998; 免费</span>'
@@ -661,16 +2047,34 @@ HDR = (
     '<span class="bd bd-ultra">&#127745; &gt;¥100/M</span>'
     '</div></div>\n'
     '<div class="snote">' + snote + '</div>\n'
+    + price_change_html + '\n'
     '<div class="pbar">' + tabs_bar + '</div>\n'
     '<div class="ptbar">' + pt_bar + '</div>\n'
     '<div class="sbar">' + scen_bar + '</div>\n'
+    + tag_bar + '\n'
+    + ctx_bar + '\n'
+    + price_range_bar + '\n'
     '<div class="sort-bar">' + sort_bar + '</div>\n'
-    '<div class="srow"><input id="si" type="text" placeholder="搜索模型...  (按 / 快速聚焦)"></div>\n'
+    '<div class="toolbar">'
+    '<div class="toolbar-left">'
+    '<div class="cur-switch"><span style="font-size:12px;color:#64748b">货币:</span>'
+    '<button class="cur-btn active" data-cur="CNY">¥ CNY</button>'
+    '<button class="cur-btn" data-cur="USD">$ USD</button>'
+    '</div></div>'
+    '<div class="toolbar-right">'
+    '<button class="tool-btn" id="listBtn" onclick="toggleView()">&#9776; 列表</button>'
+    '<button class="tool-btn" onclick="toggleDark()">&#9728; 亮色</button>'
+    '</div></div>\n'
+    '<div class="srow"><input id="si" type="text" placeholder="搜索模型...  (按 / 快速聚焦, Esc 清空)"></div>\n'
+    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型</div>\n'
+    + recommend_panel + '\n'
+    + crossprice_panel + '\n'
     + calc_panel + '\n'
     + cmp_panel + '\n'
     '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
+
 FTR = (
     '\n</div>\n'
     '<div class="empty" id="empty" style="display:none">没有找到符合条件的模型</div>\n'
@@ -678,11 +2082,10 @@ FTR = (
     '<div class="ftr">'
     '<p>&#128202; 数据来源：各平台 API 实时拉取 + 官网公告（更新时间：' + now + '）</p>'
     '<p>OpenRouter 显示原始美元价格 &middot; 国内平台显示人民币价格 &middot; 点击卡片复制接入方式</p>'
+    '<p>快捷键: / 搜索 | Esc 清空 | D 暗色 | V 视图 | 1-9 切换平台</p>'
     '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a></p>'
     '</div>\n'
-    '<div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%);'
-    'background:#1e293b;color:#fff;padding:8px 16px;border-radius:8px;'
-    'font-size:13px;display:none;z-index:9999"></div>\n'
+    '<div id="toast" class=""></div>\n'
     '<script>\n' + JS + '\n</script>\n'
     '</body>\n</html>'
 )
@@ -693,5 +2096,6 @@ with open(OUT,"w",encoding="utf-8") as f:
     f.write(HTML)
 sz = os.path.getsize(OUT)
 print("\nDONE:", OUT, "(%.0f KB)" % (sz/1024))
-print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d Total:%d" % (oc,ac,sc2,mc2,zc,vc2,bc2,total))
+print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d Total:%d" % (
+    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,total))
 print("Time: %.1fs" % (time.time()-t0))
