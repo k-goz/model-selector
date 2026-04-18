@@ -1613,7 +1613,7 @@ ratio:parseFloat(document.getElementById('calcRatio').value)||1
 function calcModelCost(m,params){
 var inTok=params.chats*params.tokens;
 var outTok=inTok*params.ratio;
-if(m.cur==='USD'){return (m.inp*inTok+m.out*outTok)*1e6*USD_TO_CNY;}
+if(m.cur==="USD"){return (m.inp*inTok+m.out*outTok)*USD_TO_CNY;}
 else{return m.inp*inTok/1e6+m.out*outTok/1e6;}
 }
 function runCalc(){
