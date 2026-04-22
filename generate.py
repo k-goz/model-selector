@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """AI 模型选择器 - 数据抓取与页面生成脚本
 支持平台: 阿里百炼, 硅基流动, 月之暗面, 智谱AI, 火山引擎, 百度文心, OpenRouter,
-           腾讯混元, 讯飞星火, MiniMax, 零一万物, 百川智能, 阶跃星辰, DeepSeek, Groq
+           腾讯混元, 讯飞星火, MiniMax, 零一万物, 百川智能, 阶跃星辰, DeepSeek, Groq,
+           Together AI, Fireworks AI, Cohere
 """
 import os, time, json, sys, urllib.request, hashlib, re
 from datetime import datetime
@@ -22,6 +23,9 @@ JC  = os.environ.get("JIEYUE_KEY", "")
 DS  = os.environ.get("DEEPSEEK_KEY", "")
 GQ  = os.environ.get("GROQ_KEY", "")
 BDK = os.environ.get("BAIDU_KEY", "")
+TG  = os.environ.get("TOGETHER_KEY", "")
+FW  = os.environ.get("FIREWORKS_KEY", "")
+CO  = os.environ.get("COHERE_KEY", "")
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -554,6 +558,78 @@ def gp(mid):
         if k in m2: return ii, oo, cc, tt, ss
     return 0.12, 0.18, "32k", ["价格待确认"], "日常对话"
 
+# ─── Together AI 价格映射 ───
+def tgp(mid):
+    """Together AI - 开源模型托管平台，价格极低"""
+    m = {
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo": (0.88,0.88,"128k",["主力","快速"],"日常对话"),
+        "meta-llama/Llama-3.1-8B-Instruct-Turbo":  (0.06,0.06,"128k",["极便宜","快速"],"日常对话"),
+        "meta-llama/Llama-3.1-405B-Instruct-Turbo":(3.50,3.50,"128k",["旗舰"],"深度推理"),
+        "meta-llama/Llama-3.2-3B-Instruct-Turbo":  (0.04,0.04,"128k",["极便宜","快速"],"日常对话"),
+        "Qwen/Qwen2.5-72B-Instruct-Turbo":         (0.88,0.88,"128k",["主力","快速"],"日常对话"),
+        "Qwen/Qwen2.5-Coder-32B-Instruct":         (0.50,0.50,"32k",["代码","便宜"],"编程代码"),
+        "Qwen/QwQ-32B":                            (0.50,0.50,"128k",["推理","便宜"],"深度推理"),
+        "deepseek-ai/DeepSeek-V3":                  (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
+        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B":(0.88,0.88,"128k",["推理","快速"],"深度推理"),
+        "mistralai/Mixtral-8x7B-Instruct-v0.1":    (0.18,0.18,"32k",["便宜","快速"],"日常对话"),
+        "mistralai/Mixtral-8x22B-Instruct-v0.3":   (0.60,0.60,"64k",["主力"],"日常对话"),
+        "google/gemma-2-27b-it":                    (0.40,0.40,"8k",["便宜"],"日常对话"),
+        "databricks/DBRX-Instruct":                 (0.50,0.50,"32k",["开源"],"日常对话"),
+        "zero-one-ai/Yi-34B-Chat":                  (0.40,0.40,"4k",["便宜"],"日常对话"),
+        "snorkelai/Snorkel-Mistral-PairRM-DPO":    (0.18,0.18,"32k",["便宜"],"日常对话"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k.lower() in m2: return ii, oo, cc, tt, ss
+    # 通用：根据模型名推断
+    if "405b" in m2: return 3.50, 3.50, "128k", ["旗舰"], "深度推理"
+    if "70b" in m2 or "72b" in m2: return 0.88, 0.88, "128k", ["主力"], "日常对话"
+    if "32b" in m2 or "34b" in m2: return 0.50, 0.50, "32k", ["便宜"], "日常对话"
+    if "8b" in m2 or "9b" in m2: return 0.06, 0.06, "128k", ["极便宜"], "日常对话"
+    if "3b" in m2: return 0.04, 0.04, "128k", ["极便宜"], "日常对话"
+    return 0.30, 0.30, "32k", ["价格待确认"], "日常对话"
+
+# ─── Fireworks AI 价格映射 ───
+def fwp(mid):
+    """Fireworks AI - 快速推理平台"""
+    m = {
+        "accounts/fireworks/models/llama-v3p3-70b-instruct":  (0.90,0.90,"128k",["主力","快速"],"日常对话"),
+        "accounts/fireworks/models/llama-v3p1-8b-instruct":   (0.08,0.08,"128k",["极便宜","快速"],"日常对话"),
+        "accounts/fireworks/models/llama-v3p1-70b-instruct":  (0.90,0.90,"128k",["主力","快速"],"日常对话"),
+        "accounts/fireworks/models/llama-v3p2-3b-instruct":   (0.04,0.04,"128k",["极便宜","快速"],"日常对话"),
+        "accounts/fireworks/models/qwen2p5-72b-instruct":     (0.90,0.90,"128k",["主力","快速"],"日常对话"),
+        "accounts/fireworks/models/qwen2p5-coder-32b-instruct":(0.55,0.55,"32k",["代码","便宜"],"编程代码"),
+        "accounts/fireworks/models/deepseek-v3":               (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
+        "accounts/fireworks/models/deepseek-r1":               (2.50,2.50,"64k",["推理","旗舰"],"深度推理"),
+        "accounts/fireworks/models/mixtral-8x7b-instruct":    (0.18,0.18,"32k",["便宜","快速"],"日常对话"),
+        "accounts/fireworks/models/mixtral-8x22b-instruct":   (0.60,0.60,"64k",["主力"],"日常对话"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k.lower() in m2: return ii, oo, cc, tt, ss
+    if "70b" in m2 or "72b" in m2: return 0.90, 0.90, "128k", ["主力","快速"], "日常对话"
+    if "8b" in m2: return 0.08, 0.08, "128k", ["极便宜","快速"], "日常对话"
+    if "32b" in m2: return 0.55, 0.55, "32k", ["便宜"], "日常对话"
+    return 0.30, 0.30, "32k", ["价格待确认"], "日常对话"
+
+# ─── Cohere 价格映射 ───
+def cop(mid):
+    """Cohere - Command R+ 系列，企业级"""
+    m = {
+        "command-r-plus":  (2.50,10.00,"128k",["旗舰","长上下文"],"深度推理"),
+        "command-r":        (0.50,1.50,"128k",["主力","长上下文"],"日常对话"),
+        "command-r7b":      (0.15,0.15,"8k",["便宜"],"日常对话"),
+        "command-a":        (0.15,0.15,"256k",["便宜","长上下文"],"日常对话"),
+        "c4ai-aya-expanse-8b": (0.15,0.15,"8k",["便宜"],"日常对话"),
+        "c4ai-aya-expanse-32b":(0.50,1.50,"128k",["主力"],"日常对话"),
+        "embed-v3":         (0.10,0,"512",["向量"],"其他"),
+        "rerank-v3":        (0.10,0,"512",["排序"],"其他"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 0.50, 1.50, "128k", ["价格待确认"], "日常对话"
+
 # ═══════════════════════════════════════════════════════════
 # 数据抓取
 # ═══════════════════════════════════════════════════════════
@@ -722,6 +798,53 @@ if not gq_ids:
               "deepseek-r1-distill-llama-70b","deepseek-r1-distill-qwen-32b"]
 print("  Groq:", len(gq_ids), file=sys.stderr)
 
+# ─── Together AI ───
+tg_list = []
+if TG:
+    d = fj("https://api.together.xyz/v1/models", TG)
+    if d:
+        tg_list = [{"id":m.get("id","")} for m in (d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else [])]
+if not tg_list:
+    tg_list = [{"id":x} for x in [
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo","meta-llama/Llama-3.1-8B-Instruct-Turbo",
+        "meta-llama/Llama-3.1-405B-Instruct-Turbo","meta-llama/Llama-3.2-3B-Instruct-Turbo",
+        "Qwen/Qwen2.5-72B-Instruct-Turbo","Qwen/Qwen2.5-Coder-32B-Instruct",
+        "Qwen/QwQ-32B","deepseek-ai/DeepSeek-V3",
+        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B","mistralai/Mixtral-8x7B-Instruct-v0.1",
+        "mistralai/Mixtral-8x22B-Instruct-v0.3","google/gemma-2-27b-it"]]
+print("  Together:", len(tg_list), file=sys.stderr)
+
+# ─── Fireworks AI ───
+fw_list = []
+if FW:
+    d = fj("https://api.fireworks.ai/inference/v1/models", FW)
+    if d:
+        fw_list = [{"id":m.get("id","")} for m in (d.get("data",[]) if d else [])]
+if not fw_list:
+    fw_list = [{"id":x} for x in [
+        "accounts/fireworks/models/llama-v3p3-70b-instruct",
+        "accounts/fireworks/models/llama-v3p1-8b-instruct",
+        "accounts/fireworks/models/llama-v3p1-70b-instruct",
+        "accounts/fireworks/models/llama-v3p2-3b-instruct",
+        "accounts/fireworks/models/qwen2p5-72b-instruct",
+        "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
+        "accounts/fireworks/models/deepseek-v3",
+        "accounts/fireworks/models/deepseek-r1",
+        "accounts/fireworks/models/mixtral-8x7b-instruct"]]
+print("  Fireworks:", len(fw_list), file=sys.stderr)
+
+# ─── Cohere ───
+co_list = []
+if CO:
+    d = fj("https://api.cohere.com/v1/models", CO)
+    if d:
+        co_list = [{"id":m.get("name",m.get("id",""))} for m in (d.get("models",d.get("data",[])) if d else [])]
+if not co_list:
+    co_list = [{"id":x} for x in [
+        "command-r-plus","command-r","command-r7b","command-a",
+        "c4ai-aya-expanse-8b","c4ai-aya-expanse-32b","embed-v3","rerank-v3"]]
+print("  Cohere:", len(co_list), file=sys.stderr)
+
 # ═══════════════════════════════════════════════════════════
 # 生成模型卡片
 # ═══════════════════════════════════════════════════════════
@@ -868,6 +991,33 @@ for mid in gq_ids:
                  "https://api.groq.com/openai/v1/chat/completions","USD",family=fam))
     all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
+# Together AI
+for m in tg_list:
+    mid = m["id"]
+    ii, oo, cc, tt, ss = tgp(mid)
+    fam = get_family(mid)
+    cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.together.xyz/v1/chat/completions","USD",family=fam))
+    all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+# Fireworks AI
+for m in fw_list:
+    mid = m["id"]
+    ii, oo, cc, tt, ss = fwp(mid)
+    fam = get_family(mid)
+    cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam))
+    all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+# Cohere
+for m in co_list:
+    mid = m["id"]
+    ii, oo, cc, tt, ss = cop(mid)
+    fam = get_family(mid)
+    cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.cohere.com/v2/chat/completions","USD",family=fam))
+    all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
 # ─── 价格变动检测 ───
 price_changes = []
 if os.path.exists(PREV_DATA):
@@ -900,6 +1050,7 @@ zc = cn("zhipu"); vc2 = cn("volcengine"); bc2 = cn("baidu"); oc = cn("openrouter
 tc2 = cn("tencent"); xc = cn("spark"); mmc = cn("minimax")
 yc = cn("yi"); bcc = cn("baichuan"); jcc = cn("jieyue")
 dc = cn("deepseek"); gc = cn("groq")
+tgc = cn("together"); fwc = cn("fireworks"); coc = cn("cohere")
 
 def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
 print("  Tier free:%d cheap:%d mid:%d high:%d ultra:%d" % (
@@ -945,6 +1096,9 @@ tabs_bar = (
     '<button class="pt" data-p="jieyue" style="--c:#8b5cf6;--bg:#f5f3ff">阶跃星辰 <span class="pc">' + str(jcc) + '</span></button>'
     '<button class="pt" data-p="deepseek" style="--c:#4d6dff;--bg:#eef0ff">DeepSeek <span class="pc">' + str(dc) + '</span></button>'
     '<button class="pt" data-p="groq" style="--c:#f55036;--bg:#fff0ee">Groq <span class="pc">' + str(gc) + '</span></button>'
+    '<button class="pt" data-p="together" style="--c:#00d4ff;--bg:#eef8ff">Together <span class="pc">' + str(tgc) + '</span></button>'
+    '<button class="pt" data-p="fireworks" style="--c:#ff6b35;--bg:#fff5ee">Fireworks <span class="pc">' + str(fwc) + '</span></button>'
+    '<button class="pt" data-p="cohere" style="--c:#39d989;--bg:#eefbf4">Cohere <span class="pc">' + str(coc) + '</span></button>'
 )
 
 snote = (
@@ -2585,6 +2739,6 @@ with open(OUT,"w",encoding="utf-8") as f:
     f.write(HTML)
 sz = os.path.getsize(OUT)
 print("\nDONE:", OUT, "(%.0f KB)" % (sz/1024))
-print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d Total:%d" % (
-    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,total))
+print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d Total:%d" % (
+    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,total))
 print("Time: %.1fs" % (time.time()-t0))
