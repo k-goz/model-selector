@@ -68,10 +68,13 @@ def fj(url, tok="", to=20, retries=3):
                 return None
 
 # ─── 价格分级 ───
-def PT(inp, out, cur="CNY"):
+def PT(inp, out, cur="CNY", price_unit="per_token"):
     inp = float(inp or 0); out = float(out or 0)
     if inp == 0 and out == 0: return "free"
-    p = inp * 1e6 if cur == "USD" else inp
+    if cur == "USD" and price_unit == "per_token":
+        p = inp * 1e6
+    else:
+        p = inp
     if p < 0.1:   return "cheap"
     elif p < 10:   return "mid"
     elif p < 100:  return "high"
@@ -106,23 +109,32 @@ def bc(inp, out):
     return '<span class="price-badge price-mid">IN:¥' + ("%.2f" % inp) + ' OUT:¥' + ("%.2f" % out) + '/M</span>'
 
 # ─── 价格徽章 (USD) ───
-def bo(inp, out):
+# price_unit: "per_token" = $/token (multiply 1e6 to display), "per_1m" = already $/1M tokens
+def bo(inp, out, price_unit="per_token"):
     inp = float(inp or 0); out = float(out or 0)
     if inp == 0 and out == 0:
         return '<span class="price-badge price-free">$0 (免费)</span>'
-    p = inp * 1e6
+    if price_unit == "per_token":
+        p = inp * 1e6; q = out * 1e6
+    else:
+        p = inp; q = out
     if inp == out:
         c = "price-free" if p < 0.1 else "price-cheap" if p < 1 else "price-mid" if p < 10 else "price-high" if p < 100 else "price-ultra"
         return '<span class="price-badge ' + c + '">$' + ("%.2f" % p) + '/1M</span>'
-    return '<span class="price-badge price-mid">IN:$' + ("%.1f" % (inp*1e6)) + ' OUT:$' + ("%.1f" % (out*1e6)) + '/1M</span>'
+    return '<span class="price-badge price-mid">IN:$' + ("%.1f" % p) + ' OUT:$' + ("%.1f" % q) + '/1M</span>'
 
 # ─── 模型卡片生成 ───
-def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="CNY", extra_attrs="", family=""):
-    pt = PT(inp, out, cur)
+def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="CNY", extra_attrs="", family="", price_unit="per_token"):
+    pt = PT(inp, out, cur, price_unit)
     ts = th(tags)
-    bg = bc(inp, out) if cur == "CNY" else bo(inp, out)
-    inp_s = str(inp) if inp else "0"
-    out_s = str(out) if out else "0"
+    bg = bc(inp, out) if cur == "CNY" else bo(inp, out, price_unit)
+    # data-inp/data-out: unified to $/token (consistent with OpenRouter), per_1m needs /1e6
+    if price_unit == "per_1m" and cur == "USD":
+        inp_s = str(inp / 1e6) if inp else "0"
+        out_s = str(out / 1e6) if out else "0"
+    else:
+        inp_s = str(inp) if inp else "0"
+        out_s = str(out) if out else "0"
     # 上下文数值用于筛选
     ctx_num = re.sub(r'[^\d]', '', ctx) if ctx else "0"
     fam_attr = ' data-family="' + family + '"' if family else ''
@@ -144,10 +156,10 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
         '</div></div>'
     )
 
-def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family=""):
-    pp = PT(inp, out, "USD")
+def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_token"):
+    pp = PT(inp, out, "USD", price_unit)
     tts = th(tt)
-    bg = bo(inp, out)
+    bg = bo(inp, out, price_unit)
     inp_s = str(inp) if inp else "0"
     out_s = str(out) if out else "0"
     or_base = "https://openrouter.ai/api/v1/chat/completions"
@@ -1034,7 +1046,7 @@ for mid in gq_ids:
     ii, oo, cc, tt, ss = gp(mid)
     fam = get_family(mid)
     cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.groq.com/openai/v1/chat/completions","USD",family=fam))
+                 "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
     all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
 # Together AI
@@ -1056,7 +1068,7 @@ for m in tg_list:
         tt, ss = tgp_tags(mid, ii, oo, api_ctx)
     fam = get_family(mid)
     cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.together.xyz/v1/chat/completions","USD",family=fam))
+                 "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
     all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
 # Fireworks AI
@@ -1069,7 +1081,7 @@ for m in fw_list:
         cc = str(int(api_ctx)//1000)+"k"
     fam = get_family(mid)
     cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam))
+                 "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
     all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
 # Cohere
@@ -1078,7 +1090,7 @@ for m in co_list:
     ii, oo, cc, tt, ss = cop(mid)
     fam = get_family(mid)
     cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.cohere.com/v2/chat/completions","USD",family=fam))
+                 "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m"))
     all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
 # ─── 价格变动检测 ───
