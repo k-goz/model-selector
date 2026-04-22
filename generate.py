@@ -524,59 +524,63 @@ def jp(mid):
 
 # ─── DeepSeek 官方价格映射 ───
 def dp(mid):
+    """DeepSeek 官方（¥/M tokens，2026年4月官网定价）"""
     m = {
-        "deepseek-chat":     (2,8,"64k",["主力","满血版"],"日常对话"),
+        "deepseek-chat":     (1,4,"64k",["主力","满血版"],"日常对话"),
         "deepseek-reasoner": (4,16,"64k",["推理","旗舰"],"深度推理"),
-        "deepseek-v3":       (2,8,"64k",["主力","满血版"],"日常对话"),
+        "deepseek-v3":       (1,4,"64k",["主力","满血版"],"日常对话"),
         "deepseek-r1":       (4,16,"64k",["推理","旗舰"],"深度推理"),
-        "deepseek-v2.5":     (1.5,6,"32k",["主力"],"日常对话"),
-        "deepseek-coder":    (1.5,6,"16k",["代码"],"编程代码"),
+        "deepseek-v3.1":     (1,4,"128k",["主力","满血版"],"日常对话"),
         "deepseek-prover-v2":(4,16,"64k",["推理"],"深度推理"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k in m2: return ii, oo, cc, tt, ss
-    return 2, 8, "64k", ["价格待确认"], "日常对话"
+    return 1, 4, "64k", ["价格待确认"], "日常对话"
 
 # ─── Groq 价格映射 ───
 def gp(mid):
+    """Groq - 超快推理（$/1M tokens，2026年4月官网定价）"""
     m = {
-        "llama-3.3-70b":       (0.59,0.79,"128k",["主力","快速"],"日常对话"),
-        "llama-3.1-8b":        (0.05,0.08,"128k",["极便宜","快速"],"日常对话"),
-        "llama-3.1-70b":       (0.59,0.79,"128k",["主力","快速"],"日常对话"),
-        "llama-3.2-1b":        (0.02,0.02,"128k",["极便宜","快速"],"日常对话"),
-        "llama-3.2-3b":        (0.03,0.06,"128k",["极便宜","快速"],"日常对话"),
-        "llama-3.2-11b-vision":(0.12,0.18,"128k",["视觉","便宜"],"视觉图片"),
-        "llama-3.2-90b-vision":(0.59,0.79,"128k",["视觉","主力"],"视觉图片"),
-        "mixtral-8x7b":        (0.12,0.18,"32k",["便宜","快速"],"日常对话"),
-        "gemma2-9b":           (0.05,0.07,"8k",["极便宜","快速"],"日常对话"),
+        "llama-3.3-70b-versatile":  (0.59,0.79,"128k",["主力","快速"],"日常对话"),
+        "llama-3.3-70b-instruct":   (0.59,0.79,"128k",["主力","快速"],"日常对话"),
+        "llama-3.1-8b-instant":     (0.05,0.08,"128k",["极便宜","快速"],"日常对话"),
+        "llama-3.1-70b-versatile":  (0.59,0.79,"128k",["主力","快速"],"日常对话"),
+        "llama-3.2-1b-preview":     (0.02,0.02,"128k",["极便宜","快速"],"日常对话"),
+        "llama-3.2-3b-preview":     (0.03,0.06,"128k",["极便宜","快速"],"日常对话"),
+        "llama-3.2-11b-vision-preview":(0.12,0.18,"128k",["视觉","便宜"],"视觉图片"),
+        "llama-3.2-90b-vision-preview":(0.59,0.79,"128k",["视觉","主力"],"视觉图片"),
+        "mixtral-8x7b-32768":       (0.24,0.24,"32k",["便宜","快速"],"日常对话"),
+        "gemma2-9b-it":             (0.05,0.07,"8k",["极便宜","快速"],"日常对话"),
         "deepseek-r1-distill-llama-70b": (0.59,0.79,"128k",["推理","快速"],"深度推理"),
         "deepseek-r1-distill-qwen-32b":  (0.12,0.18,"128k",["推理","便宜"],"深度推理"),
+        "qwen-qwq-32b":             (0.12,0.18,"128k",["推理","便宜"],"深度推理"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k in m2: return ii, oo, cc, tt, ss
-    return 0.12, 0.18, "32k", ["价格待确认"], "日常对话"
+    return 0.24, 0.24, "32k", ["价格待确认"], "日常对话"
 
 # ─── Together AI 价格映射 ───
 def tgp(mid):
-    """Together AI - 开源模型托管平台，价格极低"""
+    """Together AI - 开源模型托管平台，价格极低（$/1M tokens）"""
     m = {
         "meta-llama/Llama-3.3-70B-Instruct-Turbo": (0.88,0.88,"128k",["主力","快速"],"日常对话"),
-        "meta-llama/Llama-3.1-8B-Instruct-Turbo":  (0.06,0.06,"128k",["极便宜","快速"],"日常对话"),
+        "meta-llama/Llama-3.1-8B-Instruct-Turbo":  (0.18,0.18,"128k",["便宜","快速"],"日常对话"),
         "meta-llama/Llama-3.1-405B-Instruct-Turbo":(3.50,3.50,"128k",["旗舰"],"深度推理"),
         "meta-llama/Llama-3.2-3B-Instruct-Turbo":  (0.04,0.04,"128k",["极便宜","快速"],"日常对话"),
-        "Qwen/Qwen2.5-72B-Instruct-Turbo":         (0.88,0.88,"128k",["主力","快速"],"日常对话"),
-        "Qwen/Qwen2.5-Coder-32B-Instruct":         (0.50,0.50,"32k",["代码","便宜"],"编程代码"),
-        "Qwen/QwQ-32B":                            (0.50,0.50,"128k",["推理","便宜"],"深度推理"),
-        "deepseek-ai/DeepSeek-V3":                  (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
-        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B":(0.88,0.88,"128k",["推理","快速"],"深度推理"),
-        "mistralai/Mixtral-8x7B-Instruct-v0.1":    (0.18,0.18,"32k",["便宜","快速"],"日常对话"),
+        "Qwen/Qwen2.5-72B-Instruct-Turbo":         (1.20,1.20,"128k",["主力","快速"],"日常对话"),
+        "Qwen/Qwen2.5-Coder-32B-Instruct":         (0.80,0.80,"32k",["代码","便宜"],"编程代码"),
+        "Qwen/QwQ-32B":                            (1.20,1.20,"128k",["推理","便宜"],"深度推理"),
+        "deepseek-ai/DeepSeek-V3-0324":             (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
+        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B":(2.00,2.00,"128k",["推理"],"深度推理"),
+        "mistralai/Mixtral-8x7B-Instruct-v0.1":    (0.60,0.60,"32k",["便宜","快速"],"日常对话"),
         "mistralai/Mixtral-8x22B-Instruct-v0.3":   (0.60,0.60,"64k",["主力"],"日常对话"),
-        "google/gemma-2-27b-it":                    (0.40,0.40,"8k",["便宜"],"日常对话"),
-        "databricks/DBRX-Instruct":                 (0.50,0.50,"32k",["开源"],"日常对话"),
-        "zero-one-ai/Yi-34B-Chat":                  (0.40,0.40,"4k",["便宜"],"日常对话"),
-        "snorkelai/Snorkel-Mistral-PairRM-DPO":    (0.18,0.18,"32k",["便宜"],"日常对话"),
+        "google/gemma-2-27b-it":                    (0.80,0.80,"8k",["便宜"],"日常对话"),
+        "deepseek-ai/DeepSeek-R1":                  (3.00,7.00,"128k",["推理","旗舰"],"深度推理"),
+        "deepseek-ai/DeepSeek-V3.1":                (0.60,1.70,"128k",["主力"],"日常对话"),
+        "Qwen/Qwen3-235B-A22B-Instruct-2507-tput":  (0.20,0.60,"256k",["主力","快速"],"日常对话"),
+        "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8":(0.27,0.85,"1M",["旗舰","长上下文"],"日常对话"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
@@ -584,14 +588,38 @@ def tgp(mid):
     # 通用：根据模型名推断
     if "405b" in m2: return 3.50, 3.50, "128k", ["旗舰"], "深度推理"
     if "70b" in m2 or "72b" in m2: return 0.88, 0.88, "128k", ["主力"], "日常对话"
-    if "32b" in m2 or "34b" in m2: return 0.50, 0.50, "32k", ["便宜"], "日常对话"
-    if "8b" in m2 or "9b" in m2: return 0.06, 0.06, "128k", ["极便宜"], "日常对话"
+    if "32b" in m2 or "34b" in m2: return 0.80, 0.80, "32k", ["便宜"], "日常对话"
+    if "8b" in m2 or "9b" in m2: return 0.18, 0.18, "128k", ["便宜"], "日常对话"
     if "3b" in m2: return 0.04, 0.04, "128k", ["极便宜"], "日常对话"
     return 0.30, 0.30, "32k", ["价格待确认"], "日常对话"
 
+# ─── Together AI 标签推断 (API有真实价格时使用) ───
+def tgp_tags(mid, inp, out, ctx):
+    """根据模型名和价格推断标签和场景"""
+    n = mid.lower()
+    tt = []
+    ss = "日常对话"
+    # 价格标签
+    if inp < 0.1: tt.append("极便宜")
+    elif inp < 0.5: tt.append("便宜")
+    elif inp < 2: pass
+    elif inp < 5: tt.append("旗舰")
+    else: tt.append("旗舰")
+    # 上下文标签
+    if ctx >= 128000: tt.append("长上下文")
+    # 模型类型标签
+    if "deepseek-r1" in n: tt.append("推理"); ss = "深度推理"
+    elif "qwq" in n or "thinking" in n: tt.append("推理"); ss = "深度推理"
+    elif "coder" in n or "code" in n: tt.append("代码"); ss = "编程代码"
+    elif "vl" in n or "vision" in n: tt.append("视觉"); ss = "视觉图片"
+    elif "embed" in n or "rerank" in n: ss = "其他"
+    elif "405b" in n: tt.append("旗舰"); ss = "深度推理"
+    elif "70b" in n or "72b" in n or "397b" in n: tt.append("主力")
+    return tt, ss
+
 # ─── Fireworks AI 价格映射 ───
 def fwp(mid):
-    """Fireworks AI - 快速推理平台"""
+    """Fireworks AI - 快速推理平台（$/1M tokens，2026年4月官网定价）"""
     m = {
         "accounts/fireworks/models/llama-v3p3-70b-instruct":  (0.90,0.90,"128k",["主力","快速"],"日常对话"),
         "accounts/fireworks/models/llama-v3p1-8b-instruct":   (0.08,0.08,"128k",["极便宜","快速"],"日常对话"),
@@ -601,8 +629,14 @@ def fwp(mid):
         "accounts/fireworks/models/qwen2p5-coder-32b-instruct":(0.55,0.55,"32k",["代码","便宜"],"编程代码"),
         "accounts/fireworks/models/deepseek-v3":               (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
         "accounts/fireworks/models/deepseek-r1":               (2.50,2.50,"64k",["推理","旗舰"],"深度推理"),
-        "accounts/fireworks/models/mixtral-8x7b-instruct":    (0.18,0.18,"32k",["便宜","快速"],"日常对话"),
-        "accounts/fireworks/models/mixtral-8x22b-instruct":   (0.60,0.60,"64k",["主力"],"日常对话"),
+        "accounts/fireworks/models/mixtral-8x7b-instruct":    (0.24,0.24,"32k",["便宜","快速"],"日常对话"),
+        "accounts/fireworks/models/deepseek-v3p2":             (1.25,1.25,"128k",["主力","满血版"],"日常对话"),
+        "accounts/fireworks/models/deepseek-v3p1":             (1.25,1.25,"128k",["主力","满血版"],"日常对话"),
+        "accounts/fireworks/models/kimi-k2p5":                 (0.50,2.80,"256k",["旗舰","长上下文"],"深度推理"),
+        "accounts/fireworks/models/glm-5p1":                   (1.40,4.40,"200k",["旗舰"],"深度推理"),
+        "accounts/fireworks/models/glm-5":                     (1.00,3.20,"200k",["主力"],"日常对话"),
+        "accounts/fireworks/models/minimax-m2p7":              (0.30,1.20,"196k",["主力","长上下文"],"日常对话"),
+        "accounts/fireworks/models/gpt-oss-120b":              (0.15,0.60,"128k",["便宜","快速"],"日常对话"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
@@ -614,12 +648,12 @@ def fwp(mid):
 
 # ─── Cohere 价格映射 ───
 def cop(mid):
-    """Cohere - Command R+ 系列，企业级"""
+    """Cohere - Command R+ 系列，企业级（$/1M tokens，2026年4月官网定价）"""
     m = {
         "command-r-plus":  (2.50,10.00,"128k",["旗舰","长上下文"],"深度推理"),
         "command-r":        (0.50,1.50,"128k",["主力","长上下文"],"日常对话"),
-        "command-r7b":      (0.15,0.15,"8k",["便宜"],"日常对话"),
-        "command-a":        (0.15,0.15,"256k",["便宜","长上下文"],"日常对话"),
+        "command-r7b":      (0.0375,0.0375,"8k",["极便宜"],"日常对话"),
+        "command-a":        (0.15,0.60,"256k",["便宜","长上下文"],"日常对话"),
         "c4ai-aya-expanse-8b": (0.15,0.15,"8k",["便宜"],"日常对话"),
         "c4ai-aya-expanse-32b":(0.50,1.50,"128k",["主力"],"日常对话"),
         "embed-v3":         (0.10,0,"512",["向量"],"其他"),
@@ -803,13 +837,22 @@ tg_list = []
 if TG:
     d = fj("https://api.together.xyz/v1/models", TG)
     if d:
-        tg_list = [{"id":m.get("id","")} for m in (d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else [])]
+        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+        for m in raw:
+            mid = m.get("id","")
+            pricing = m.get("pricing", {})
+            inp = float(pricing.get("input", 0) or 0)
+            out = float(pricing.get("output", 0) or 0)
+            ctx = m.get("context_length", 0) or 0
+            # 只保留有价格且有上下文的文本模型
+            if inp > 0 and out > 0 and ctx > 0:
+                tg_list.append({"id": mid, "i": inp, "o": out, "c": ctx})
 if not tg_list:
-    tg_list = [{"id":x} for x in [
+    tg_list = [{"id":x,"i":0,"o":0,"c":0} for x in [
         "meta-llama/Llama-3.3-70B-Instruct-Turbo","meta-llama/Llama-3.1-8B-Instruct-Turbo",
         "meta-llama/Llama-3.1-405B-Instruct-Turbo","meta-llama/Llama-3.2-3B-Instruct-Turbo",
         "Qwen/Qwen2.5-72B-Instruct-Turbo","Qwen/Qwen2.5-Coder-32B-Instruct",
-        "Qwen/QwQ-32B","deepseek-ai/DeepSeek-V3",
+        "Qwen/QwQ-32B","deepseek-ai/DeepSeek-V3-0324",
         "deepseek-ai/DeepSeek-R1-Distill-Llama-70B","mistralai/Mixtral-8x7B-Instruct-v0.1",
         "mistralai/Mixtral-8x22B-Instruct-v0.3","google/gemma-2-27b-it"]]
 print("  Together:", len(tg_list), file=sys.stderr)
@@ -819,9 +862,12 @@ fw_list = []
 if FW:
     d = fj("https://api.fireworks.ai/inference/v1/models", FW)
     if d:
-        fw_list = [{"id":m.get("id","")} for m in (d.get("data",[]) if d else [])]
+        for m in (d.get("data",[]) if d else []):
+            mid = m.get("id","")
+            ctx = m.get("context_length", 0) or 0
+            fw_list.append({"id": mid, "c": ctx})
 if not fw_list:
-    fw_list = [{"id":x} for x in [
+    fw_list = [{"id":x,"c":0} for x in [
         "accounts/fireworks/models/llama-v3p3-70b-instruct",
         "accounts/fireworks/models/llama-v3p1-8b-instruct",
         "accounts/fireworks/models/llama-v3p1-70b-instruct",
@@ -994,7 +1040,20 @@ for mid in gq_ids:
 # Together AI
 for m in tg_list:
     mid = m["id"]
-    ii, oo, cc, tt, ss = tgp(mid)
+    # 优先使用 API 返回的真实价格
+    api_inp = m.get("i", 0)
+    api_out = m.get("o", 0)
+    api_ctx = m.get("c", 0)
+    if api_inp > 0 and api_out > 0:
+        ii, oo = api_inp, api_out
+        cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
+    else:
+        ii, oo, cc, tt, ss = tgp(mid)
+    if api_inp == 0 and api_out == 0:
+        ii, oo, cc, tt, ss = tgp(mid)
+    else:
+        # 从模型名推断标签
+        tt, ss = tgp_tags(mid, ii, oo, api_ctx)
     fam = get_family(mid)
     cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
                  "https://api.together.xyz/v1/chat/completions","USD",family=fam))
@@ -1004,6 +1063,10 @@ for m in tg_list:
 for m in fw_list:
     mid = m["id"]
     ii, oo, cc, tt, ss = fwp(mid)
+    # 使用 API 返回的上下文长度
+    api_ctx = m.get("c", 0)
+    if api_ctx > 0:
+        cc = str(int(api_ctx)//1000)+"k"
     fam = get_family(mid)
     cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
                  "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam))
