@@ -30,6 +30,9 @@ INFINI = os.environ.get("INFINI_KEY", "")
 NOVITA = os.environ.get("NOVITA_KEY", "")
 DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "")
 AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "")
+N1N = os.environ.get("N1N_KEY", "")
+AIGC2D = os.environ.get("AIGC2D_KEY", "")
+CA = os.environ.get("CA_KEY", "")
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -794,6 +797,68 @@ def ahmp(mid):
     if "minimax" in m2: return 0.30, 1.20, "200k", ["主力"], "日常对话"
     return 1.00, 5.00, "128k", ["价格待确认"], "日常对话"
 
+# ─── n1n.ai 价格映射 ───
+def n1np(mid):
+    """n1n.ai - 国内聚合平台（¥/M tokens，从API获取真实价格）"""
+    if mid in n1n_prices:
+        ii, oo = n1n_prices[mid]
+        return ii, oo
+    # 通用推断
+    m = mid.lower()
+    if "gpt-5.4" in m: return 17.5, 105.0
+    if "gpt-5.2" in m and "pro" in m: return 147.0, 1176.0
+    if "gpt-5.2" in m: return 12.25, 98.0
+    if "gpt-5.1" in m: return 8.75, 70.0
+    if "gpt-5" in m and "nano" in m: return 0.35, 2.8
+    if "gpt-5" in m and "mini" in m: return 1.75, 14.0
+    if "gpt-5" in m: return 8.75, 70.0
+    if "gpt-4o" in m and "mini" in m: return 1.05, 4.2
+    if "gpt-4o" in m: return 17.5, 70.0
+    if "opus" in m: return 75.0, 375.0
+    if "sonnet" in m: return 15.0, 75.0
+    if "haiku" in m: return 0.5, 2.5
+    if "gemini" in m and "pro" in m: return 7.0, 40.0
+    if "gemini" in m and "flash" in m: return 1.2, 10.0
+    if "deepseek-r1" in m: return 2.0, 8.0
+    if "deepseek" in m: return 1.0, 1.5
+    if "qwen" in m and "72b" in m: return 1.4, 5.6
+    if "qwen" in m: return 1.4, 5.6
+    if "glm" in m: return 2.4, 9.6
+    if "kimi" in m: return 2.0, 8.0
+    return 1.0, 5.0
+
+# ─── AIGC2D 价格映射 ───
+def aigc2dp(mid):
+    """AIGC2D - 国内聚合平台（¥/M tokens，从API获取真实价格）"""
+    if mid in aigc2d_prices:
+        ii, oo = aigc2d_prices[mid]
+        return ii, oo
+    return n1np(mid)  # fallback to n1n prices
+
+# ─── ChatAnywhere 价格映射 ───
+def cap(mid):
+    """ChatAnywhere - 国内中转平台（¥/M tokens，从网页获取真实价格）"""
+    if mid in ca_prices:
+        ii, oo = ca_prices[mid]
+        return ii, oo
+    # 通用推断 (ChatAnywhere 价格约为官方的0.6-1.0x)
+    m = mid.lower()
+    if "gpt-5.4" in m: return 17.5, 105.0
+    if "gpt-5.2" in m: return 12.25, 98.0
+    if "gpt-5.1" in m: return 8.75, 70.0
+    if "gpt-5" in m and "nano" in m: return 0.35, 2.8
+    if "gpt-5" in m and "mini" in m: return 1.75, 14.0
+    if "gpt-5" in m: return 8.75, 70.0
+    if "gpt-4o" in m and "mini" in m: return 1.05, 4.2
+    if "gpt-4o" in m: return 17.5, 70.0
+    if "sonnet" in m: return 15.0, 75.0
+    if "deepseek-r1" in m: return 2.4, 9.6
+    if "deepseek" in m: return 1.2, 1.8
+    if "gemini" in m and "pro" in m: return 7.0, 40.0
+    if "gemini" in m and "flash" in m: return 1.2, 10.0
+    if "qwen" in m: return 1.4, 5.6
+    return 1.0, 5.0
+
 # ─── Cohere 价格映射 ───
 def cop(mid):
     """Cohere - Command R+ 系列，企业级（$/1M tokens，2026年4月官网定价）"""
@@ -1105,6 +1170,85 @@ if not ahm_list:
     ahm_list = ["gpt-4o","gpt-4o-mini","claude-sonnet-4-5","deepseek-chat","qwen-plus","glm-4-plus"]
 print("  AiHubMix:", len(ahm_list), file=sys.stderr)
 
+# n1n.ai
+n1n_list = []
+n1n_prices = {}
+d = fj("https://api.n1n.ai/api/pricing", "")
+if d and isinstance(d, dict):
+    dd = d.get("data", {})
+    mcr = dd.get("model_completion_ratio", {})
+    groups = dd.get("model_group", {})
+    mi = dd.get("model_info", {})
+    for gname, gdata in groups.items():
+        mp2 = gdata.get("ModelPrice", {})
+        for mid2, pinfo in mp2.items():
+            if mid2 not in n1n_prices:
+                price = pinfo.get("price", 0)
+                cr = mcr.get(mid2, 1)
+                n1n_prices[mid2] = (price, round(price * cr, 4))
+    skip_kw = ["embed","rerank","tts","whisper","dall","midjourney","mj_","stable-diffusion","moderation","bge-","sd1","sd3","flux","cogview","paint","audio"]
+    for mid2, (ii, oo) in n1n_prices.items():
+        if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
+            n1n_list.append(mid2)
+if not n1n_list:
+    n1n_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","qwen-plus"]
+print("  n1n.ai:", len(n1n_list), file=sys.stderr)
+
+# AIGC2D
+aigc2d_list = []
+aigc2d_prices = {}
+d = fj("https://next.aigc2d.com/api/pricing", "")
+if d and isinstance(d, dict):
+    dd = d.get("data", {})
+    mcr = dd.get("model_completion_ratio", {})
+    groups = dd.get("model_group", {})
+    mi = dd.get("model_info", {})
+    for gname, gdata in groups.items():
+        mp2 = gdata.get("ModelPrice", {})
+        for mid2, pinfo in mp2.items():
+            if mid2 not in aigc2d_prices:
+                price = pinfo.get("price", 0)
+                cr = mcr.get(mid2, 1)
+                aigc2d_prices[mid2] = (price, round(price * cr, 4))
+    for mid2, (ii, oo) in aigc2d_prices.items():
+        if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
+            aigc2d_list.append(mid2)
+if not aigc2d_list:
+    aigc2d_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5"]
+print("  AIGC2D:", len(aigc2d_list), file=sys.stderr)
+
+# ChatAnywhere
+ca_list = []
+ca_prices = {}
+try:
+    import urllib.request as ur2, re as re2
+    req2 = ur2.Request("https://chatanywhere.apifox.cn/doc-2694962")
+    req2.add_header("User-Agent", "Mozilla/5.0")
+    with ur2.urlopen(req2, timeout=15) as r2:
+        html2 = r2.read().decode("utf-8", errors="ignore")
+    cells2 = re2.findall(r'<td[^>]*>(.*?)</td>', html2, re2.DOTALL)
+    for i2 in range(0, len(cells2) - 2, 5):
+        model2 = re2.sub(r'<[^>]+>', '', cells2[i2]).strip()
+        inp_t = re2.sub(r'<[^>]+>', '', cells2[i2+1]).strip()
+        out_t = re2.sub(r'<[^>]+>', '', cells2[i2+2]).strip()
+        inp_m = re2.search(r'^([\d.]+)', inp_t.strip())
+        out_m = re2.search(r'^([\d.]+)', out_t.strip())
+        if inp_m and out_m and model2 and len(model2) > 1:
+            inp2 = float(inp_m.group(1))
+            out2 = float(out_m.group(1))
+            if inp2 > 0 and out2 > 0 and inp2 < 100 and out2 < 1000:
+                if model2 not in ca_prices:
+                    ca_prices[model2] = (round(inp2 * 1000, 4), round(out2 * 1000, 4))
+    skip_ca = ["-ca","-search","-image","-audio","-realtime","moderation","embed","bge-","rerank","tts","whisper","dall","instruct-0","codex-ca","chat-latest-ca"]
+    for mid2, (ii, oo) in ca_prices.items():
+        if not any(s in mid2.lower() for s in skip_ca):
+            ca_list.append(mid2)
+except Exception as e2:
+    print("  ChatAnywhere fetch error:", str(e2)[:80], file=sys.stderr)
+if not ca_list:
+    ca_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","gemini-2.5-flash"]
+print("  ChatAnywhere:", len(ca_list), file=sys.stderr)
+
 # ═══════════════════════════════════════════════════════════
 # 生成模型卡片
 # ═══════════════════════════════════════════════════════════
@@ -1336,6 +1480,69 @@ for mid in ahm_list:
                  "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
     all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
+# n1n.ai
+for mid in n1n_list:
+    ii, oo = n1np(mid)
+    fam = get_family(mid)
+    cc = "128k"
+    m = mid.lower()
+    if "1m" in m or "1000k" in m: cc = "1M"
+    elif "200k" in m: cc = "200k"
+    elif "128k" in m: cc = "128k"
+    elif "32k" in m: cc = "32k"
+    elif "8k" in m: cc = "8k"
+    tt = []
+    if ii < 1: tt.append("便宜")
+    elif ii < 10: tt.append("主力")
+    else: tt.append("旗舰")
+    if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
+    ss = "深度推理" if "推理" in tt else "日常对话"
+    cards.append(make_card("n1n","n1n.ai","#f59e0b",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.n1n.ai/v1/chat/completions","CNY",family=fam))
+    all_models.append({"p":"n1n","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+
+# AIGC2D
+for mid in aigc2d_list:
+    ii, oo = aigc2dp(mid)
+    fam = get_family(mid)
+    cc = "128k"
+    m = mid.lower()
+    if "1m" in m or "1000k" in m: cc = "1M"
+    elif "200k" in m: cc = "200k"
+    elif "128k" in m: cc = "128k"
+    elif "32k" in m: cc = "32k"
+    elif "8k" in m: cc = "8k"
+    tt = []
+    if ii < 1: tt.append("便宜")
+    elif ii < 10: tt.append("主力")
+    else: tt.append("旗舰")
+    if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
+    ss = "深度推理" if "推理" in tt else "日常对话"
+    cards.append(make_card("aigc2d","AIGC2D","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.aigc2d.com/v1/chat/completions","CNY",family=fam))
+    all_models.append({"p":"aigc2d","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+
+# ChatAnywhere
+for mid in ca_list:
+    ii, oo = cap(mid)
+    fam = get_family(mid)
+    cc = "128k"
+    m = mid.lower()
+    if "1m" in m or "1000k" in m: cc = "1M"
+    elif "200k" in m: cc = "200k"
+    elif "128k" in m: cc = "128k"
+    elif "32k" in m: cc = "32k"
+    elif "8k" in m: cc = "8k"
+    tt = []
+    if ii < 1: tt.append("便宜")
+    elif ii < 10: tt.append("主力")
+    else: tt.append("旗舰")
+    if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
+    ss = "深度推理" if "推理" in tt else "日常对话"
+    cards.append(make_card("ca","ChatAnywhere","#06b6d4",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam))
+    all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+
 # ─── 价格变动检测 ───
 price_changes = []
 if os.path.exists(PREV_DATA):
@@ -1373,6 +1580,9 @@ ic = cn("infini")
 nc = cn("novita")
 dic = cn("deepinfra")
 ahmc = cn("aihubmix")
+n1nc = cn("n1n")
+a2c = cn("aigc2d")
+cac = cn("ca")
 
 def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
 print("  Tier free:%d cheap:%d mid:%d high:%d ultra:%d" % (
@@ -1425,6 +1635,9 @@ tabs_bar = (
     '<button class="pt" data-p="novita" style="--c:#6366f1;--bg:#eef2ff">Novita AI <span class="pc">' + str(nc) + '</span></button>'
     '<button class="pt" data-p="deepinfra" style="--c:#7!c3aed;--bg:#f5f0ff">DeepInfra <span class="pc">' + str(dic) + '</span></button>'
     '<button class="pt" data-p="aihubmix" style="--c:#10b981;--bg:#ecfdf5">AiHubMix <span class="pc">' + str(ahmc) + '</span></button>'
+    '<button class="pt" data-p="n1n" style="--c:#f59e0b;--bg:#fffbeb">n1n.ai <span class="pc">' + str(n1nc) + '</span></button>'
+    '<button class="pt" data-p="aigc2d" style="--c:#8b5cf6;--bg:#f5f3ff">AIGC2D <span class="pc">' + str(a2c) + '</span></button>'
+    '<button class="pt" data-p="ca" style="--c:#06b6d4;--bg:#ecfeff">ChatAnywhere <span class="pc">' + str(cac) + '</span></button>'
 )
 
 snote = (
@@ -3168,6 +3381,6 @@ with open(OUT,"w",encoding="utf-8") as f:
     f.write(HTML)
 sz = os.path.getsize(OUT)
 print("\nDONE:", OUT, "(%.0f KB)" % (sz/1024))
-print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d AH:%d Total:%d" % (
-    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,ic,nc,dic,ahmc,total))
+print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d AH:%d N1:%d A2:%d CA:%d Total:%d" % (
+    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,ic,nc,dic,ahmc,n1nc,a2c,cac,total))
 print("Time: %.1fs" % (time.time()-t0))
