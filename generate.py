@@ -2004,16 +2004,17 @@ if(adv.platform){
 if((c.dataset.p||'')!==adv.platform)sh=false;
 }
 }
+c.setAttribute('data-visible',sh?'1':'0');
 c.style.display=sh?'':'none';if(sh)n++;
 });
 document.getElementById('empty').style.display=n===0?'block':'none';
 // 更新筛选计数
 totalFiltered=n;
 currentPage=1;
-// Apply pagination
+// Apply pagination based on data-visible
 var visIdx=0;
 cs.forEach(function(c){
-    if(c.style.display!=='none'){
+    if(c.getAttribute('data-visible')==='1'){
         var page=Math.floor(visIdx/PAGE_SIZE)+1;
         c.style.display=(page===currentPage)?'':'none';
         visIdx++;
@@ -2064,13 +2065,11 @@ function applyPage(){
     var cards=document.querySelectorAll('.mc');
     var vis=0;
     cards.forEach(function(c){
-        if(c.style.display!=='none'){
+        if(c.getAttribute('data-visible')==='1'){
             var page=Math.floor(vis/PAGE_SIZE)+1;
             var show=(page===currentPage);
             c.style.display=show?'':'none';
             vis++;
-        }else{
-            // already hidden by filter, skip
         }
     });
 }
