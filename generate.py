@@ -1438,6 +1438,25 @@ a{color:var(--accent);text-decoration:none}
 .ftr p{font-size:11px;color:var(--text3);line-height:2}
 
 
+/* 筛选分组 */
+.fg{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:10px 12px;margin-bottom:10px;backdrop-filter:blur(8px)}
+.fg-title{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px;letter-spacing:.02em;text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:4px}
+.fg .pbar,.fg .ptbar,.fg .sbar,.fg .sort-bar,.fg .tag-bar,.fg .ctx-filter-bar,.fg .price-range-bar,.fg .family-bar{margin-bottom:4px}
+.fg .rec-panel{margin-bottom:0;padding:8px 10px}
+.fg .toolbar{margin-bottom:0}
+
+/* 跨平台比价 + 月费计算器 同行 */
+.side-panels{display:flex;gap:10px;margin-bottom:10px}
+.side-panels .cross-panel{flex:1;margin-bottom:0}
+.side-panels .calc-panel{flex:1;margin-bottom:0}
+
+/* 分页 */
+.pagination{display:flex;gap:6px;align-items:center;justify-content:center;padding:12px 0;flex-wrap:wrap}
+.page-btn{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:12px;cursor:pointer;transition:all .2s;font-weight:500}
+.page-btn:hover{border-color:var(--border-hi);color:var(--text)}
+.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.page-info{font-size:11px;color:var(--text3);margin:0 8px}
+
 /* 排序栏 */
 .sort-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .sort-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
@@ -1646,6 +1665,8 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 
 /* 筛选栏 - 横向滚动，不换行 */
 .pbar,.ptbar,.sbar,.sort-bar,.tag-bar,.ctx-filter-bar,.price-range-bar,.family-bar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 0;gap:4px}
+.side-panels{flex-direction:column}
+.fg{padding:8px 10px}
 .pbar::-webkit-scrollbar,.ptbar::-webkit-scrollbar,.sbar::-webkit-scrollbar{display:none}
 .pt{padding:5px 10px;font-size:10px;border-radius:16px;flex-shrink:0}
 .pc{font-size:8px;padding:1px 4px}
@@ -1983,12 +2004,75 @@ if(adv.platform){
 if((c.dataset.p||'')!==adv.platform)sh=false;
 }
 }
-c.style.display=sh?'block':'none';if(sh)n++;
+c.style.display=sh?'':'none';if(sh)n++;
 });
 document.getElementById('empty').style.display=n===0?'block':'none';
 // 更新筛选计数
+totalFiltered=n;
+currentPage=1;
+// Apply pagination
+var visIdx=0;
+cs.forEach(function(c){
+    if(c.style.display!=='none'){
+        var page=Math.floor(visIdx/PAGE_SIZE)+1;
+        c.style.display=(page===currentPage)?'':'none';
+        visIdx++;
+    }
+});
 var fc=document.getElementById('filterCount');
 if(fc)fc.innerHTML='显示 <strong>'+n+'</strong> / '+cs.length+' 个模型';
+renderPagination();
+}
+
+// ─── 分页 ───
+var PAGE_SIZE=60;
+var currentPage=1;
+var totalFiltered=0;
+
+function renderPagination(){
+    var totalPages=Math.ceil(totalFiltered/PAGE_SIZE)||1;
+    if(currentPage>totalPages)currentPage=totalPages;
+    var pg=document.getElementById('pagination');
+    if(!pg)return;
+    if(totalPages<=1){pg.innerHTML='';return;}
+    var h='';
+    h+='<button class="page-btn" onclick="goPage(1)"'+(currentPage===1?' disabled':'')+'>&laquo; 首页</button>';
+    h+='<button class="page-btn" onclick="goPage('+(currentPage-1)+')"'+(currentPage===1?' disabled':'')+'>&lsaquo; 上一页</button>';
+    var start=Math.max(1,currentPage-3);
+    var end=Math.min(totalPages,currentPage+3);
+    if(start>1)h+='<span class="page-info">...</span>';
+    for(var i=start;i<=end;i++){
+        h+='<button class="page-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+    }
+    if(end<totalPages)h+='<span class="page-info">...</span>';
+    h+='<button class="page-btn" onclick="goPage('+(currentPage+1)+')"'+(currentPage===totalPages?' disabled':'')+'>下一页 &rsaquo;</button>';
+    h+='<button class="page-btn" onclick="goPage('+totalPages+')"'+(currentPage===totalPages?' disabled':'')+'>末页 &raquo;</button>';
+    h+='<span class="page-info">第 '+currentPage+' / '+totalPages+' 页 (共 '+totalFiltered+' 个)</span>';
+    pg.innerHTML=h;
+}
+
+function goPage(p){
+    var totalPages=Math.ceil(totalFiltered/PAGE_SIZE)||1;
+    if(p<1)p=1;if(p>totalPages)p=totalPages;
+    currentPage=p;
+    applyPage();
+    renderPagination();
+    document.querySelector('.grid').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function applyPage(){
+    var cards=document.querySelectorAll('.mc');
+    var vis=0;
+    cards.forEach(function(c){
+        if(c.style.display!=='none'){
+            var page=Math.floor(vis/PAGE_SIZE)+1;
+            var show=(page===currentPage);
+            c.style.display=show?'':'none';
+            vis++;
+        }else{
+            // already hidden by filter, skip
+        }
+    });
 }
 
 // ─── 排序 ───
@@ -2019,6 +2103,9 @@ return (bc2/pb)-(ac2/pa);
 cs.sort(sortFn[curSort]||sortFn['default']);
 cs.forEach(function(c){grid.appendChild(c)});
 filter();
+// Re-apply pagination after sort
+applyPage();
+renderPagination();
 }
 
 // ─── 货币切换 ───
@@ -2746,14 +2833,28 @@ HDR = (
     '</div></div>\n'
     '<div class="snote">' + snote + '</div>\n'
     + price_change_html + '\n'
-    '<div class="pbar">' + tabs_bar + '</div>\n'
-    '<div class="ptbar">' + pt_bar + '</div>\n'
-    '<div class="sbar">' + scen_bar + '</div>\n'
-    + family_bar + '\n'
-    + tag_bar + '\n'
-    + ctx_bar + '\n'
-    + price_range_bar + '\n'
-    '<div class="sort-bar">' + sort_bar + '</div>\n'
+    # ─── 搜索框置顶 ───
+    '<div class="srow"><input id="si" type="text" placeholder="搜索模型... 支持 price<1, ctx>128, family:GPT, platform:aliyun 等高级语法 (按 / 聚焦)"></div>\n'
+    # ─── 第一大类：厂家与模型 ───
+    '<div class="fg">'
+    '<div class="fg-title">厂家与模型</div>'
+    '<div class="pbar">' + tabs_bar + '</div>'
+    + family_bar
+    + tag_bar
+    + ctx_bar +
+    '</div>\n'
+    # ─── 第二大类：用途 ───
+    '<div class="fg">'
+    '<div class="fg-title">用途</div>'
+    '<div class="sbar">' + scen_bar + '</div>'
+    + recommend_panel +
+    '</div>\n'
+    # ─── 第三大类：价格 ───
+    '<div class="fg">'
+    '<div class="fg-title">价格</div>'
+    '<div class="ptbar">' + pt_bar + '</div>'
+    + price_range_bar +
+    '<div class="sort-bar">' + sort_bar + '</div>'
     '<div class="toolbar">'
     '<div class="toolbar-left">'
     '<div class="cur-switch"><span style="font-size:12px;color:#64748b">货币:</span>'
@@ -2769,19 +2870,22 @@ HDR = (
     '</div></div>'
     '<button class="tool-btn" id="listBtn" onclick="toggleView()">&#9776; 列表</button>'
     '<button class="tool-btn" onclick="toggleDark()">&#9728; 亮色</button>'
-    '</div></div>\n'
-    '<div class="srow"><input id="si" type="text" placeholder="搜索模型... 支持 price<1, ctx>128, family:GPT, platform:aliyun 等高级语法 (按 / 聚焦)"></div>\n'
-    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型</div>\n'
-    + recommend_panel + '\n'
+    '</div></div>'
+    '</div>\n'
+    # ─── 跨平台比价 + 月费计算器 同行 ───
+    '<div class="side-panels">\n'
     + crossprice_panel + '\n'
     + calc_panel + '\n'
+    '</div>\n'
     + cmp_panel + '\n'
-    '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
+    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型</div>\n'
+        '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
 
 FTR = (
     '\n</div>\n'
+    '<div class="pagination" id="pagination"></div>\n'
     '<div class="empty" id="empty" style="display:none">没有找到符合条件的模型</div>\n'
     '</div>\n'
     '<div class="ftr">'
