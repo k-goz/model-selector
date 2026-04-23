@@ -43,6 +43,9 @@ jobs:
           TOGETHER_KEY: ${{ secrets.TOGETHER_KEY }}
           FIREWORKS_KEY: ${{ secrets.FIREWORKS_KEY }}
           COHERE_KEY: ${{ secrets.COHERE_KEY }}
+          INFINI_KEY: ${{ secrets.INFINI_KEY }}
+          NOVITA_KEY: ${{ secrets.NOVITA_KEY }}
+          DEEPINFRA_KEY: ${{ secrets.DEEPINFRA_KEY }}
         run: python3 generate.py
 
       - name: Check for changes

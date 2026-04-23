@@ -26,6 +26,9 @@ BDK = os.environ.get("BAIDU_KEY", "")
 TG  = os.environ.get("TOGETHER_KEY", "")
 FW  = os.environ.get("FIREWORKS_KEY", "")
 CO  = os.environ.get("COHERE_KEY", "")
+INFINI = os.environ.get("INFINI_KEY", "")
+NOVITA = os.environ.get("NOVITA_KEY", "")
+DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "")
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -658,6 +661,103 @@ def fwp(mid):
     if "32b" in m2: return 0.55, 0.55, "32k", ["便宜"], "日常对话"
     return 0.30, 0.30, "32k", ["价格待确认"], "日常对话"
 
+# ─── 无问芯穹 价格映射 ───
+def ip(mid):
+    """无问芯穹 InfiniAI - 国内聚合平台（¥/M tokens）"""
+    m = {
+        "qwen2.5-72b-instruct": (4,4,"128k",["主力","长上下文"],"日常对话"),
+        "qwen2.5-32b-instruct": (1.5,1.5,"32k",["便宜"],"日常对话"),
+        "qwen2.5-14b-instruct": (0.8,0.8,"32k",["便宜"],"日常对话"),
+        "qwen2.5-7b-instruct":  (0.4,0.4,"32k",["极便宜"],"日常对话"),
+        "qwen2.5-coder-32b-instruct": (1.5,1.5,"32k",["代码","便宜"],"编程代码"),
+        "qwq-32b":              (1.5,1.5,"128k",["推理","便宜"],"深度推理"),
+        "deepseek-v3":          (2,8,"64k",["主力","满血版"],"日常对话"),
+        "deepseek-r1":          (4,16,"64k",["推理","旗舰"],"深度推理"),
+        "glm-4-plus":           (2,8,"128k",["主力"],"日常对话"),
+        "glm-4-flash":          (0.5,3,"128k",["便宜","快速"],"日常对话"),
+        "glm-4-9b-chat":        (0.1,0.1,"8k",["极便宜"],"日常对话"),
+        "kimi-k2":              (4,16,"128k",["旗舰","长上下文"],"深度推理"),
+        "yi-lightning":         (0.1,0.1,"16k",["极便宜","快速"],"日常对话"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    if "72b" in m2: return 4, 4, "128k", ["主力"], "日常对话"
+    if "32b" in m2: return 1.5, 1.5, "32k", ["便宜"], "日常对话"
+    if "14b" in m2: return 0.8, 0.8, "32k", ["便宜"], "日常对话"
+    if "7b" in m2 or "9b" in m2: return 0.4, 0.4, "32k", ["极便宜"], "日常对话"
+    return 1, 4, "32k", ["价格待确认"], "日常对话"
+
+# ─── Novita AI 价格映射 (fallback) ───
+def np(mid):
+    """Novita AI - 聚合平台（¥/M tokens，API返回真实价格时不用此函数）"""
+    m2 = mid.lower()
+    if "glm-5.1" in m2: return 1.4, 4.4, "200k", ["旗舰"], "深度推理"
+    if "glm-5" in m2: return 1.0, 3.2, "200k", ["主力"], "日常对话"
+    if "glm-4.7" in m2: return 0.6, 2.2, "200k", ["主力"], "日常对话"
+    if "deepseek" in m2: return 0.269, 0.4, "128k", ["主力"], "日常对话"
+    if "kimi" in m2: return 0.95, 4.0, "256k", ["旗舰","长上下文"], "深度推理"
+    if "qwen3.5" in m2: return 0.3, 2.4, "256k", ["主力"], "日常对话"
+    if "minimax" in m2: return 0.3, 1.2, "200k", ["主力"], "日常对话"
+    if "gemma" in m2: return 0.13, 0.4, "256k", ["便宜"], "日常对话"
+    return 0.3, 1.2, "128k", ["价格待确认"], "日常对话"
+
+# ─── DeepInfra 价格映射 ───
+def dip(mid):
+    """DeepInfra - 开源模型推理（$/1M tokens）"""
+    m = {
+        "Qwen/Qwen3.5-27B": (0.12,0.36,"128k",["主力","便宜"],"日常对话"),
+        "Qwen/Qwen3.5-4B":  (0.02,0.06,"128k",["极便宜"],"日常对话"),
+        "Qwen/QwQ-32B":     (0.12,0.36,"128k",["推理","便宜"],"深度推理"),
+        "meta-llama/Llama-3.3-70B-Instruct": (0.35,0.40,"128k",["主力"],"日常对话"),
+        "meta-llama/Llama-3.1-8B-Instruct":  (0.05,0.05,"128k",["极便宜"],"日常对话"),
+        "deepseek-ai/DeepSeek-V3":  (0.42,0.85,"64k",["主力","满血版"],"日常对话"),
+        "deepseek-ai/DeepSeek-R1":  (0.80,2.19,"64k",["推理","旗舰"],"深度推理"),
+        "google/gemma-3-27b-it":    (0.10,0.10,"128k",["便宜"],"日常对话"),
+        "mistralai/Mixtral-8x7B-Instruct-v0.1": (0.24,0.24,"32k",["便宜"],"日常对话"),
+        "microsoft/phi-4": (0.07,0.14,"16k",["极便宜"],"日常对话"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k.lower() in m2: return ii, oo, cc, tt, ss
+    if "70b" in m2 or "72b" in m2: return 0.35, 0.40, "128k", ["主力"], "日常对话"
+    if "32b" in m2 or "34b" in m2: return 0.12, 0.36, "128k", ["便宜"], "日常对话"
+    if "8b" in m2 or "9b" in m2: return 0.05, 0.05, "128k", ["极便宜"], "日常对话"
+    if "4b" in m2: return 0.02, 0.06, "128k", ["极便宜"], "日常对话"
+    return 0.12, 0.36, "32k", ["价格待确认"], "日常对话"
+
+# ─── Novita AI 标签推断 ───
+def np_tags(mid, inp, out, ctx):
+    """根据模型名和价格推断标签和场景"""
+    m2 = mid.lower()
+    tt = []
+    if inp < 0.1: tt.append("极便宜")
+    elif inp < 0.5: tt.append("便宜")
+    elif inp < 2: tt.append("主力")
+    else: tt.append("旗舰")
+    if "coder" in m2 or "code" in m2: tt.append("代码"); ss = "编程代码"
+    elif "reason" in m2 or "r1" in m2 or "qwq" in m2 or "kimi-k2" in m2: tt.append("推理"); ss = "深度推理"
+    elif "vision" in m2 or "vl" in m2: tt.append("视觉"); ss = "视觉图片"
+    elif "ocr" in m2: tt.append("OCR"); ss = "其他"
+    else: ss = "日常对话"
+    if ctx >= 200000: tt.append("长上下文")
+    return tt, ss
+
+# ─── DeepInfra 标签推断 ───
+def dip_tags(mid, inp, out, ctx):
+    m2 = mid.lower()
+    tt = []
+    if inp < 0.05: tt.append("极便宜")
+    elif inp < 0.2: tt.append("便宜")
+    elif inp < 1: tt.append("主力")
+    else: tt.append("旗舰")
+    if "coder" in m2 or "code" in m2: tt.append("代码"); ss = "编程代码"
+    elif "r1" in m2 or "qwq" in m2: tt.append("推理"); ss = "深度推理"
+    elif "vision" in m2 or "vl" in m2: tt.append("视觉"); ss = "视觉图片"
+    else: ss = "日常对话"
+    if ctx >= 128000: tt.append("长上下文")
+    return tt, ss
+
 # ─── Cohere 价格映射 ───
 def cop(mid):
     """Cohere - Command R+ 系列，企业级（$/1M tokens，2026年4月官网定价）"""
@@ -903,6 +1003,59 @@ if not co_list:
         "c4ai-aya-expanse-8b","c4ai-aya-expanse-32b","embed-v3","rerank-v3"]]
 print("  Cohere:", len(co_list), file=sys.stderr)
 
+# 无问芯穹 (InfiniAI)
+infini_list = []
+if INFINI:
+    d = fj("https://cloud.infini-ai.com/maas/v1/models", INFINI)
+    if d:
+        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+        for m in raw:
+            mid = m.get("id","")
+            if mid and "embed" not in mid.lower() and "rerank" not in mid.lower():
+                infini_list.append(mid)
+if not infini_list:
+    infini_list = ["qwen2.5-72b-instruct","qwen2.5-32b-instruct","qwen2.5-14b-instruct","qwen2.5-7b-instruct",
+                   "glm-4-9b-chat","deepseek-v3","deepseek-r1","kimi-k2","yi-lightning",
+                   "qwen2.5-coder-32b-instruct","qwq-32b","glm-4-plus","glm-4-flash"]
+print("  InfiniAI:", len(infini_list), file=sys.stderr)
+
+# Novita AI
+novita_list = []
+d = fj("https://api.novita.ai/v3/openai/models", NOVITA)
+if d:
+    raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+    for m in raw:
+        mid = m.get("id","")
+        inp_p = float(m.get("input_token_price_per_m", 0) or 0)
+        out_p = float(m.get("output_token_price_per_m", 0) or 0)
+        ctx = int(m.get("context_size", 0) or 0)
+        status = m.get("status", "")
+        if mid and inp_p > 0 and out_p > 0 and status != "deprecated":
+            novita_list.append({"id": mid, "i": inp_p / 10000, "o": out_p / 10000, "c": ctx})
+if not novita_list:
+    novita_list = [{"id":"zai-org/glm-4.7-flash","i":0.07,"o":0.4,"c":200000},
+                   {"id":"deepseek/deepseek-v3.2","i":0.269,"o":0.4,"c":163840},
+                   {"id":"qwen/qwen3.5-27b","i":0.3,"o":2.4,"c":262144},
+                   {"id":"qwen/qwen3.5-122b-a10b","i":0.4,"o":3.2,"c":262144}]
+print("  Novita:", len(novita_list), file=sys.stderr)
+
+# DeepInfra
+di_list = []
+if DEEPINFRA:
+    d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
+    if d:
+        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+        for m in raw:
+            mid = m.get("id","")
+            if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "flux" not in mid.lower() and "remove" not in mid.lower() and "enhance" not in mid.lower():
+                di_list.append(mid)
+if not di_list:
+    di_list = ["Qwen/Qwen3.5-27B","Qwen/Qwen3.5-4B","meta-llama/Llama-3.3-70B-Instruct",
+               "meta-llama/Llama-3.1-8B-Instruct","deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
+               "google/gemma-3-27b-it","mistralai/Mixtral-8x7B-Instruct-v0.1",
+               "microsoft/phi-4","Qwen/QwQ-32B"]
+print("  DeepInfra:", len(di_list), file=sys.stderr)
+
 # ═══════════════════════════════════════════════════════════
 # 生成模型卡片
 # ═══════════════════════════════════════════════════════════
@@ -1093,6 +1246,39 @@ for m in co_list:
                  "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m"))
     all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
+# 无问芯穹 (InfiniAI)
+for mid in infini_list:
+    ii, oo, cc, tt, ss = ip(mid)
+    fam = get_family(mid)
+    cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
+                 "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam))
+    all_models.append({"p":"infini","n":mid,"i":ii,"o":oo})
+
+# Novita AI
+for m in novita_list:
+    mid = m["id"]
+    api_inp = m.get("i", 0)
+    api_out = m.get("o", 0)
+    api_ctx = m.get("c", 0)
+    if api_inp > 0 and api_out > 0:
+        ii, oo = api_inp, api_out
+        cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
+        tt, ss = np_tags(mid, ii, oo, api_ctx)
+    else:
+        ii, oo, cc, tt, ss = np(mid)
+    fam = get_family(mid)
+    cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.novita.ai/v3/openai/chat/completions","CNY",family=fam))
+    all_models.append({"p":"novita","n":mid,"i":ii,"o":oo})
+
+# DeepInfra
+for mid in di_list:
+    ii, oo, cc, tt, ss = dip(mid)
+    fam = get_family(mid)
+    cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
+    all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
 # ─── 价格变动检测 ───
 price_changes = []
 if os.path.exists(PREV_DATA):
@@ -1126,6 +1312,9 @@ tc2 = cn("tencent"); xc = cn("spark"); mmc = cn("minimax")
 yc = cn("yi"); bcc = cn("baichuan"); jcc = cn("jieyue")
 dc = cn("deepseek"); gc = cn("groq")
 tgc = cn("together"); fwc = cn("fireworks"); coc = cn("cohere")
+ic = cn("infini")
+nc = cn("novita")
+dic = cn("deepinfra")
 
 def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
 print("  Tier free:%d cheap:%d mid:%d high:%d ultra:%d" % (
@@ -1174,6 +1363,9 @@ tabs_bar = (
     '<button class="pt" data-p="together" style="--c:#00d4ff;--bg:#eef8ff">Together <span class="pc">' + str(tgc) + '</span></button>'
     '<button class="pt" data-p="fireworks" style="--c:#ff6b35;--bg:#fff5ee">Fireworks <span class="pc">' + str(fwc) + '</span></button>'
     '<button class="pt" data-p="cohere" style="--c:#39d989;--bg:#eefbf4">Cohere <span class="pc">' + str(coc) + '</span></button>'
+    '<button class="pt" data-p="infini" style="--c:#ff6b9d;--bg:#fff0f6">无问芯穹 <span class="pc">' + str(ic) + '</span></button>'
+    '<button class="pt" data-p="novita" style="--c:#6366f1;--bg:#eef2ff">Novita AI <span class="pc">' + str(nc) + '</span></button>'
+    '<button class="pt" data-p="deepinfra" style="--c:#7c3aed;--bg:#f5f0ff">DeepInfra <span class="pc">' + str(dic) + '</span></button>'
 )
 
 snote = (
@@ -2917,6 +3109,6 @@ with open(OUT,"w",encoding="utf-8") as f:
     f.write(HTML)
 sz = os.path.getsize(OUT)
 print("\nDONE:", OUT, "(%.0f KB)" % (sz/1024))
-print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d Total:%d" % (
-    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,total))
+print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d Total:%d" % (
+    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,ic,nc,dic,total))
 print("Time: %.1fs" % (time.time()-t0))
