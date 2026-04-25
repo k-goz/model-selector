@@ -1,7 +1,7 @@
 {
   "meta": {
-    "updated_at": "2026-04-25 22:48",
-    "days": 19
+    "updated_at": "2026-04-26 00:26",
+    "days": 20
   },
   "daily": [
     {
@@ -2964,6 +2964,162 @@
           "platform_id": "fireworks",
           "model": "accounts/fireworks/models/kimi-k2p5",
           "ms": 1882,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-04-26",
+      "time": "00:26",
+      "results": [
+        {
+          "platform_id": "siliconflow",
+          "model": "Pro/moonshotai/Kimi-K2.6",
+          "ms": 117,
+          "status": "ok"
+        },
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 119,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 133,
+          "status": "ok"
+        },
+        {
+          "platform_id": "baidu",
+          "model": "ernie-3.5-8k-preview",
+          "ms": 156,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "abab6.5s",
+          "ms": 181,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 184,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "qwen2.5-7b-instruct",
+          "ms": 206,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 212,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-8k",
+          "ms": 235,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-8k-vision-preview",
+          "ms": 237,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 252,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 272,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 380,
+          "status": "ok"
+        },
+        {
+          "platform_id": "baichuan",
+          "model": "baichuan2-turbo",
+          "ms": 729,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "whisper-large-v3-turbo",
+          "ms": 803,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.4",
+          "ms": 847,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "DeepSeek: DeepSeek V4 Pro",
+          "ms": 874,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "command-r-plus",
+          "ms": 905,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "intfloat/multilingual-e5-large",
+          "ms": 938,
+          "status": "error"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 951,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "xiaomi-mimo-v2.5-pro",
+          "ms": 960,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/kimi-k2p5",
+          "ms": 1026,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-3-5-sonnet-20240620",
+          "ms": 1124,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "zai-org/GLM-5.1",
+          "ms": 1204,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aigc2d",
+          "model": "claude-3-5-sonnet-20240620",
+          "ms": 3733,
           "status": "ok"
         }
       ]
