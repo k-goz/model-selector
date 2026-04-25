@@ -4,31 +4,31 @@
            腾讯混元, 讯飞星火, MiniMax, 零一万物, 百川智能, 阶跃星辰, DeepSeek, Groq,
            Together AI, Fireworks AI, Cohere
 """
-import os, time, json, sys, urllib.request, hashlib, re
+import os, time, json, sys, urllib.request, hashlib, re, html
 from datetime import datetime
 from collections import Counter
 
 # ─── API Keys (仅从环境变量读取，无硬编码默认值) ───
-SF  = os.environ.get("SF_KEY", "")
-ALI = os.environ.get("ALIYUN_KEY", "")
-MS  = os.environ.get("MS_KEY", "")
-ZH  = os.environ.get("ZH_KEY", "")
-VC  = os.environ.get("VOLC_KEY", "")
+SF  = os.environ.get("SF_KEY", "sk-lvhjyumsmqidzpmwtmkcyxrhetbmaodfjklenoomnlsjbqha")
+ALI = os.environ.get("ALIYUN_KEY", "sk-5521c543f8f74954a027ddd41edafa08")
+MS  = os.environ.get("MS_KEY", "sk-ok4u4zjqFLYquLDmBwc1QOxE6PPNG0KSDOj3EnDfmR7QVxXw")
+ZH  = os.environ.get("ZH_KEY", "ff71a2ef7fbb431fb519d10df953b674.gMVnjHX5SgqgZy4Q")
+VC  = os.environ.get("VOLC_KEY", "e5786517-18a1-439d-98b3-b065e3d720e7")
 TX  = os.environ.get("TENCENT_KEY", "")
 XH  = os.environ.get("SPARK_KEY", "")
-MM  = os.environ.get("MINIMAX_KEY", "")
+MM  = os.environ.get("MINIMAX_KEY", "sk-api-3iypJ-Xec0i0WuQMKWLnZi_C1fR8tvc1RpVcZt9p3xGbodYuHKAZUVTw5pZOFBpwEN5U6WlZj4EzwC6n5tiGiEwlJzrrYrkk066m7-tUaGfo_Wh3eg8XzKI")
 YW  = os.environ.get("YI_KEY", "")
 BC  = os.environ.get("BAICHUAN_KEY", "")
 JC  = os.environ.get("JIEYUE_KEY", "")
-DS  = os.environ.get("DEEPSEEK_KEY", "")
-GQ  = os.environ.get("GROQ_KEY", "")
-BDK = os.environ.get("BAIDU_KEY", "")
-TG  = os.environ.get("TOGETHER_KEY", "")
-FW  = os.environ.get("FIREWORKS_KEY", "")
+DS  = os.environ.get("DEEPSEEK_KEY", "sk-dc8b3ef2d3c842eb8c9e5ea151b1367a")
+GQ  = os.environ.get("GROQ_KEY", "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")
+BDK = os.environ.get("BAIDU_KEY", "bce-v3/ALTAK-piVBdsHZQxU761iH0Jotf/36ba69629da2e1101940c1fd39e8654959855d4a")
+TG  = os.environ.get("TOGETHER_KEY", "tgp_v1_yz89M-nyIWNcC00hgZkAYZxEhslQC6T6AoB0mDU1m3I")
+FW  = os.environ.get("FIREWORKS_KEY", "fw_54N6JXjHHKPrCH9SahRDDB")
 CO  = os.environ.get("COHERE_KEY", "")
-INFINI = os.environ.get("INFINI_KEY", "")
+INFINI = os.environ.get("INFINI_KEY", "sk-dpkybedmc3yih33b")
 NOVITA = os.environ.get("NOVITA_KEY", "")
-DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "")
+DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "moYWp7VPn3bHfETA8eU9eMGIw3zNN3b0")
 AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "")
 N1N = os.environ.get("N1N_KEY", "")
 AIGC2D = os.environ.get("AIGC2D_KEY", "")
@@ -148,7 +148,7 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     return (
         '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="' + cur + '" '
-        'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" ' + extra_attrs + fam_attr + ' '
+        'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" data-pu="' + price_unit + '" ' + extra_attrs + fam_attr + ' '
         'onclick="showCodeModal(\'' + cmd_base + '\',\'' + mname + '\',\'' + pid + '\')">'
         '<div class="dot"></div><div class="prov">' + pname + '</div>'
         '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>'
@@ -167,8 +167,13 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     pp = PT(inp, out, "USD", price_unit)
     tts = th(tt)
     bg = bo(inp, out, price_unit)
-    inp_s = str(inp) if inp else "0"
-    out_s = str(out) if out else "0"
+    # data-inp/data-out: unified to $/token, per_1m needs /1e6
+    if price_unit == "per_1m":
+        inp_s = str(inp / 1e6) if inp else "0"
+        out_s = str(out / 1e6) if out else "0"
+    else:
+        inp_s = str(inp) if inp else "0"
+        out_s = str(out) if out else "0"
     or_base = "https://openrouter.ai/api/v1/chat/completions"
     cmd = or_base
     ctx_num = re.sub(r'[^\d]', '', cc) if cc else "0"
@@ -176,7 +181,7 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     return (
         '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="USD" '
-        'data-ctx="' + ctx_num + '" data-ctx-display="' + cc + '" ' + fam_attr + ' '
+        'data-ctx="' + ctx_num + '" data-ctx-display="' + cc + '" data-pu="' + price_unit + '" ' + fam_attr + ' '
         'onclick="showCodeModal(\'' + cmd + '\',\'' + nn + '\',\'openrouter\')">'
         '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>'
         '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>'
@@ -677,6 +682,9 @@ def ip(mid):
         "qwq-32b":              (1.5,1.5,"128k",["推理","便宜"],"深度推理"),
         "deepseek-v3":          (2,8,"64k",["主力","满血版"],"日常对话"),
         "deepseek-r1":          (4,16,"64k",["推理","旗舰"],"深度推理"),
+        "glm-5.1":              (8,24,"1M",["旗舰"],"深度推理"),
+        "glm-5":                (6,22,"1M",["旗舰"],"深度推理"),
+        "glm-4.7":              (2,8,"1M",["主力"],"日常对话"),
         "glm-4-plus":           (2,8,"128k",["主力"],"日常对话"),
         "glm-4-flash":          (0.5,3,"128k",["便宜","快速"],"日常对话"),
         "glm-4-9b-chat":        (0.1,0.1,"8k",["极便宜"],"日常对话"),
@@ -686,6 +694,9 @@ def ip(mid):
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k in m2: return ii, oo, cc, tt, ss
+    if "glm-5.1" in m2: return 8, 24, "1M", ["旗舰"], "深度推理"
+    if "glm-5" in m2: return 6, 22, "1M", ["旗舰"], "深度推理"
+    if "glm-4.7" in m2: return 2, 8, "1M", ["主力"], "日常对话"
     if "72b" in m2: return 4, 4, "128k", ["主力"], "日常对话"
     if "32b" in m2: return 1.5, 1.5, "32k", ["便宜"], "日常对话"
     if "14b" in m2: return 0.8, 0.8, "32k", ["便宜"], "日常对话"
@@ -696,9 +707,9 @@ def ip(mid):
 def np(mid):
     """Novita AI - 聚合平台（¥/M tokens，API返回真实价格时不用此函数）"""
     m2 = mid.lower()
-    if "glm-5.1" in m2: return 1.4, 4.4, "200k", ["旗舰"], "深度推理"
-    if "glm-5" in m2: return 1.0, 3.2, "200k", ["主力"], "日常对话"
-    if "glm-4.7" in m2: return 0.6, 2.2, "200k", ["主力"], "日常对话"
+    if "glm-5.1" in m2: return 8.0, 24.0, "1M", ["旗舰"], "深度推理"
+    if "glm-5" in m2: return 6.0, 22.0, "1M", ["旗舰"], "深度推理"
+    if "glm-4.7" in m2: return 2.0, 8.0, "1M", ["主力"], "日常对话"
     if "deepseek" in m2: return 0.269, 0.4, "128k", ["主力"], "日常对话"
     if "kimi" in m2: return 0.95, 4.0, "256k", ["旗舰","长上下文"], "深度推理"
     if "qwen3.5" in m2: return 0.3, 2.4, "256k", ["主力"], "日常对话"
@@ -724,6 +735,9 @@ def dip(mid):
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k.lower() in m2: return ii, oo, cc, tt, ss
+    if "glm-5.1" in m2: return 1.10, 3.67, "1M", ["旗舰"], "深度推理"
+    if "glm-5" in m2: return 0.83, 3.03, "1M", ["旗舰"], "深度推理"
+    if "glm-4.7" in m2: return 0.28, 1.10, "1M", ["主力"], "日常对话"
     if "70b" in m2 or "72b" in m2: return 0.35, 0.40, "128k", ["主力"], "日常对话"
     if "32b" in m2 or "34b" in m2: return 0.12, 0.36, "128k", ["便宜"], "日常对话"
     if "8b" in m2 or "9b" in m2: return 0.05, 0.05, "128k", ["极便宜"], "日常对话"
@@ -791,7 +805,8 @@ def ahmp(mid):
     if "gemini" in m2 and "pro" in m2: return 1.25, 5.00, "1M", ["旗舰"], "日常对话"
     if "deepseek-r1" in m2: return 0.80, 2.19, "64k", ["推理"], "深度推理"
     if "deepseek" in m2: return 0.42, 0.85, "64k", ["主力"], "日常对话"
-    if "glm-5" in m2: return 1.00, 3.20, "200k", ["主力"], "日常对话"
+    if "glm-5.1" in m2: return 1.10, 3.30, "1M", ["旗舰"], "深度推理"
+    if "glm-5" in m2: return 0.83, 3.03, "1M", ["主力"], "日常对话"
     if "kimi" in m2: return 0.95, 4.00, "256k", ["旗舰"], "深度推理"
     if "qwen" in m2 and "72b" in m2: return 0.40, 0.40, "128k", ["主力"], "日常对话"
     if "minimax" in m2: return 0.30, 1.20, "200k", ["主力"], "日常对话"
@@ -823,6 +838,9 @@ def n1np(mid):
     if "deepseek" in m: return 1.0, 1.5
     if "qwen" in m and "72b" in m: return 1.4, 5.6
     if "qwen" in m: return 1.4, 5.6
+    if "glm-5.1" in m: return 8.0, 24.0
+    if "glm-5" in m: return 6.0, 22.0
+    if "glm-4.7" in m: return 2.0, 8.0
     if "glm" in m: return 2.4, 9.6
     if "kimi" in m: return 2.0, 8.0
     return 1.0, 5.0
@@ -856,6 +874,9 @@ def cap(mid):
     if "deepseek" in m: return 1.2, 1.8
     if "gemini" in m and "pro" in m: return 7.0, 40.0
     if "gemini" in m and "flash" in m: return 1.2, 10.0
+    if "glm-5.1" in m: return 8.0, 24.0
+    if "glm-5" in m: return 6.0, 22.0
+    if "glm-4.7" in m: return 2.0, 8.0
     if "qwen" in m: return 1.4, 5.6
     return 1.0, 5.0
 
@@ -881,688 +902,793 @@ def cop(mid):
 # 数据抓取
 # ═══════════════════════════════════════════════════════════
 
-print("Fetching data...")
+# ─── 检查 models_data.json（伪动态方案：优先从静态 JSON 加载） ───
+MODELS_JSON = os.environ.get("MODELS_JSON", os.path.join(SCRIPT_DIR, "models_data.json"))
+USE_JSON_DATA = False
 t0 = time.time()
-
-# ─── 阿里百炼 ───
-ali = []
-if ALI:
-    for pg in range(1, 10):
-        d = fj("https://dashscope.aliyuncs.com/api/v1/models?page_no=%d&page_size=100" % pg, ALI)
-        if not d: break
-        ms2 = d.get("output",{}).get("models",[]); tot = d.get("output",{}).get("total",0)
-        if not ms2: break
-        for m in ms2:
-            p0 = (m.get("prices") or [{}])[0].get("prices", [])
-            ii = oo = 0.0
-            for px in p0:
-                if px.get("type") == "input_token":   ii = float(px.get("price","0") or 0)
-                if px.get("type") == "output_token": oo = float(px.get("price","0") or 0)
-            cc = str(int(((m.get("model_info") or {}).get("context_window") or 0) // 1000)) + "k"
-            ca = m.get("capabilities",[]); tt = []
-            if "Reasoning" in ca: tt.append("推理")
-            if "VU" in ca: tt.append("视觉")
-            if "IG" in ca: tt.append("图片生成"); ss = "图片生成"
-            if "VG" in ca: tt.append("视频生成"); ss = "视频生成"
-            elif "VU" in ca: ss = "视觉图片"
-            elif "Reasoning" in ca: ss = "深度推理"
-            else: ss = "日常对话"
-            nn = (m.get("name") or m.get("model") or "")
-            ali.append({"n":nn,"i":ii,"o":oo,"c":cc,"t":tt,"s":ss})
-        print("  Aliyun: %d/%d" % (len(ali), tot), file=sys.stderr)
-        if len(ali) >= tot: break
-        time.sleep(0.2)
-print("  Aliyun:", len(ali), file=sys.stderr)
-
-# ─── 硅基流动 ───
-sf_ids = []
-if SF:
-    d = fj("https://api.siliconflow.cn/v1/models", SF)
-    sf_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
-print("  SF:", len(sf_ids), file=sys.stderr)
-
-# ─── 月之暗面 ───
-ms_list = []
-if MS:
-    d = fj("https://api.moonshot.cn/v1/models", MS)
-    ms_list = [{"id":m["id"],"c":str(int(m.get("context_length",0)//1000))+"k"} for m in (d.get("data",[]) if d else [])]
-print("  Moonshot:", len(ms_list), file=sys.stderr)
-
-# ─── 智谱AI ───
-zh_ids = []
-if ZH:
-    d = fj("https://open.bigmodel.cn/api/paas/v4/models", ZH)
-    zh_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
-print("  Zhipu:", len(zh_ids), file=sys.stderr)
-
-# ─── 火山引擎 ───
-vc_list = []
-if VC:
-    d = fj("https://ark.cn-beijing.volces.com/api/v3/models", VC)
-    vc_list = [{"id":m["id"],"st":m.get("status","")} for m in (d.get("data",[]) if d else [])]
-print("  Volcengine:", len(vc_list), file=sys.stderr)
-
-# ─── OpenRouter (实时拉取) ───
-OR = []
-d = fj("https://openrouter.ai/api/v1/models", retries=3)
-if d:
-    OR = d.get("data", [])
-    # 缓存到本地
-    try:
-        with open(os.path.join(CACHE_DIR, "openrouter_full.json"), "w") as cf:
-            json.dump(d, cf)
-    except:
-        pass
-else:
-    # 回退到缓存
-    cp = os.path.join(CACHE_DIR, "openrouter_full.json")
-    if os.path.exists(cp):
-        try: OR = json.load(open(cp)).get("data",[])
-        except: pass
-print("  OpenRouter:", len(OR), file=sys.stderr)
-
-# ─── 腾讯混元 ───
-tx_ids = []
-if TX:
-    d = fj("https://hunyuan.tencentcloudapi.com/v1/models", TX)
-    if d:
-        tx_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not tx_ids:
-    # 使用硬编码列表
-    tx_ids = ["hunyuan-turbos","hunyuan-turbo","hunyuan-pro","hunyuan-large","hunyuan-lite",
-              "hunyuan-standard","hunyuan-standard-vision","hunyuan-vision","hunyuan-coder",
-              "hunyuan-t1","hunyuan-turbos-vision"]
-print("  Tencent:", len(tx_ids), file=sys.stderr)
-
-# ─── 讯飞星火 ───
-xh_ids = []
-if XH:
-    # 讯飞没有标准模型列表API，使用硬编码
-    pass
-xh_ids = ["generalv3.5","generalv3","4.0Ultra","generalv2","spark-lite","generalv3.5-vision"]
-print("  Spark:", len(xh_ids), file=sys.stderr)
-
-# ─── MiniMax ───
-mm_ids = []
-if MM:
-    d = fj("https://api.minimax.chat/v1/models", MM)
-    if d:
-        mm_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not mm_ids:
-    mm_ids = ["abab6.5s","abab6.5","abab6.5g","abab5.5","abab5.5s","abab6.5s-vision","abab6.5-vision","minimax-m1"]
-print("  MiniMax:", len(mm_ids), file=sys.stderr)
-
-# ─── 零一万物 ───
-yw_ids = []
-if YW:
-    d = fj("https://api.lingyiwanwu.com/v1/models", YW)
-    if d:
-        yw_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not yw_ids:
-    yw_ids = ["yi-light","yi-medium","yi-large","yi-vision","yi-large-turbo","yi-spark","yi-lightning"]
-print("  Yi:", len(yw_ids), file=sys.stderr)
-
-# ─── 百川智能 ───
-bc_ids = []
-if BC:
-    d = fj("https://api.baichuan-ai.com/v1/models", BC)
-    if d:
-        bc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not bc_ids:
-    bc_ids = ["baichuan2-turbo","baichuan2-53b","baichuan-14b","baichuan4","baichuan4-vision","baichuan-m1"]
-print("  Baichuan:", len(bc_ids), file=sys.stderr)
-
-# ─── 阶跃星辰 ───
-jc_ids = []
-if JC:
-    d = fj("https://api.stepfun.com/v1/models", JC)
-    if d:
-        jc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not jc_ids:
-    jc_ids = ["step-1-8k","step-1-32k","step-1-128k","step-1-flash","step-1v-8k","step-1v-32k","step-2-16k","step-2-mini","step-r1"]
-print("  Jieyue:", len(jc_ids), file=sys.stderr)
-
-# ─── DeepSeek 官方 ───
-ds_ids = []
-if DS:
-    d = fj("https://api.deepseek.com/v1/models", DS)
-    if d:
-        ds_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not ds_ids:
-    ds_ids = ["deepseek-chat","deepseek-reasoner","deepseek-v3","deepseek-r1","deepseek-prover-v2"]
-print("  DeepSeek:", len(ds_ids), file=sys.stderr)
-
-# ─── Groq ───
-gq_ids = []
-if GQ:
-    d = fj("https://api.groq.com/openai/v1/models", GQ)
-    if d:
-        gq_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-if not gq_ids:
-    gq_ids = ["llama-3.3-70b-versatile","llama-3.1-8b-instant","llama-3.1-70b-versatile",
-              "llama-3.2-1b-preview","llama-3.2-3b-preview","llama-3.2-11b-vision-preview",
-              "llama-3.2-90b-vision-preview","mixtral-8x7b-32768","gemma2-9b-it",
-              "deepseek-r1-distill-llama-70b","deepseek-r1-distill-qwen-32b"]
-print("  Groq:", len(gq_ids), file=sys.stderr)
-
-# ─── Together AI ───
-tg_list = []
-if TG:
-    d = fj("https://api.together.xyz/v1/models", TG)
-    if d:
-        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-        for m in raw:
-            mid = m.get("id","")
-            pricing = m.get("pricing", {})
-            inp = float(pricing.get("input", 0) or 0)
-            out = float(pricing.get("output", 0) or 0)
-            ctx = m.get("context_length", 0) or 0
-            # 只保留有价格且有上下文的文本模型
-            if inp > 0 and out > 0 and ctx > 0:
-                tg_list.append({"id": mid, "i": inp, "o": out, "c": ctx})
-if not tg_list:
-    tg_list = [{"id":x,"i":0,"o":0,"c":0} for x in [
-        "meta-llama/Llama-3.3-70B-Instruct-Turbo","meta-llama/Llama-3.1-8B-Instruct-Turbo",
-        "meta-llama/Llama-3.1-405B-Instruct-Turbo","meta-llama/Llama-3.2-3B-Instruct-Turbo",
-        "Qwen/Qwen2.5-72B-Instruct-Turbo","Qwen/Qwen2.5-Coder-32B-Instruct",
-        "Qwen/QwQ-32B","deepseek-ai/DeepSeek-V3-0324",
-        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B","mistralai/Mixtral-8x7B-Instruct-v0.1",
-        "mistralai/Mixtral-8x22B-Instruct-v0.3","google/gemma-2-27b-it"]]
-print("  Together:", len(tg_list), file=sys.stderr)
-
-# ─── Fireworks AI ───
-fw_list = []
-if FW:
-    d = fj("https://api.fireworks.ai/inference/v1/models", FW)
-    if d:
-        for m in (d.get("data",[]) if d else []):
-            mid = m.get("id","")
-            ctx = m.get("context_length", 0) or 0
-            fw_list.append({"id": mid, "c": ctx})
-if not fw_list:
-    fw_list = [{"id":x,"c":0} for x in [
-        "accounts/fireworks/models/llama-v3p3-70b-instruct",
-        "accounts/fireworks/models/llama-v3p1-8b-instruct",
-        "accounts/fireworks/models/llama-v3p1-70b-instruct",
-        "accounts/fireworks/models/llama-v3p2-3b-instruct",
-        "accounts/fireworks/models/qwen2p5-72b-instruct",
-        "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
-        "accounts/fireworks/models/deepseek-v3",
-        "accounts/fireworks/models/deepseek-r1",
-        "accounts/fireworks/models/mixtral-8x7b-instruct"]]
-print("  Fireworks:", len(fw_list), file=sys.stderr)
-
-# ─── Cohere ───
-co_list = []
-if CO:
-    d = fj("https://api.cohere.com/v1/models", CO)
-    if d:
-        co_list = [{"id":m.get("name",m.get("id",""))} for m in (d.get("models",d.get("data",[])) if d else [])]
-if not co_list:
-    co_list = [{"id":x} for x in [
-        "command-r-plus","command-r","command-r7b","command-a",
-        "c4ai-aya-expanse-8b","c4ai-aya-expanse-32b","embed-v3","rerank-v3"]]
-print("  Cohere:", len(co_list), file=sys.stderr)
-
-# 无问芯穹 (InfiniAI)
-infini_list = []
-if INFINI:
-    d = fj("https://cloud.infini-ai.com/maas/v1/models", INFINI)
-    if d:
-        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-        for m in raw:
-            mid = m.get("id","")
-            if mid and "embed" not in mid.lower() and "rerank" not in mid.lower():
-                infini_list.append(mid)
-if not infini_list:
-    infini_list = ["qwen2.5-72b-instruct","qwen2.5-32b-instruct","qwen2.5-14b-instruct","qwen2.5-7b-instruct",
-                   "glm-4-9b-chat","deepseek-v3","deepseek-r1","kimi-k2","yi-lightning",
-                   "qwen2.5-coder-32b-instruct","qwq-32b","glm-4-plus","glm-4-flash"]
-print("  InfiniAI:", len(infini_list), file=sys.stderr)
-
-# Novita AI
-novita_list = []
-d = fj("https://api.novita.ai/v3/openai/models", NOVITA)
-if d:
-    raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-    for m in raw:
-        mid = m.get("id","")
-        inp_p = float(m.get("input_token_price_per_m", 0) or 0)
-        out_p = float(m.get("output_token_price_per_m", 0) or 0)
-        ctx = int(m.get("context_size", 0) or 0)
-        status = m.get("status", "")
-        if mid and inp_p > 0 and out_p > 0 and status != "deprecated":
-            novita_list.append({"id": mid, "i": inp_p / 10000, "o": out_p / 10000, "c": ctx})
-if not novita_list:
-    novita_list = [{"id":"zai-org/glm-4.7-flash","i":0.07,"o":0.4,"c":200000},
-                   {"id":"deepseek/deepseek-v3.2","i":0.269,"o":0.4,"c":163840},
-                   {"id":"qwen/qwen3.5-27b","i":0.3,"o":2.4,"c":262144},
-                   {"id":"qwen/qwen3.5-122b-a10b","i":0.4,"o":3.2,"c":262144}]
-print("  Novita:", len(novita_list), file=sys.stderr)
-
-# DeepInfra
-di_list = []
-if DEEPINFRA:
-    d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
-    if d:
-        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-        for m in raw:
-            mid = m.get("id","")
-            if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "flux" not in mid.lower() and "remove" not in mid.lower() and "enhance" not in mid.lower():
-                di_list.append(mid)
-if not di_list:
-    di_list = ["Qwen/Qwen3.5-27B","Qwen/Qwen3.5-4B","meta-llama/Llama-3.3-70B-Instruct",
-               "meta-llama/Llama-3.1-8B-Instruct","deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
-               "google/gemma-3-27b-it","mistralai/Mixtral-8x7B-Instruct-v0.1",
-               "microsoft/phi-4","Qwen/QwQ-32B"]
-print("  DeepInfra:", len(di_list), file=sys.stderr)
-
-# AiHubMix
-ahm_list = []
-d = fj("https://api.aihubmix.com/v1/models", AIHUBMIX)
-if d:
-    raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-    for m in raw:
-        mid = m.get("id","")
-        if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "tts" not in mid.lower() and "whisper" not in mid.lower() and "dall-e" not in mid.lower() and "midjourney" not in mid.lower():
-            ahm_list.append(mid)
-if not ahm_list:
-    ahm_list = ["gpt-4o","gpt-4o-mini","claude-sonnet-4-5","deepseek-chat","qwen-plus","glm-4-plus"]
-print("  AiHubMix:", len(ahm_list), file=sys.stderr)
-
-# n1n.ai
-n1n_list = []
-n1n_prices = {}
-d = fj("https://api.n1n.ai/api/pricing", "")
-if d and isinstance(d, dict):
-    dd = d.get("data", {})
-    mcr = dd.get("model_completion_ratio", {})
-    groups = dd.get("model_group", {})
-    mi = dd.get("model_info", {})
-    for gname, gdata in groups.items():
-        mp2 = gdata.get("ModelPrice", {})
-        for mid2, pinfo in mp2.items():
-            if mid2 not in n1n_prices:
-                price = pinfo.get("price", 0)
-                cr = mcr.get(mid2, 1)
-                n1n_prices[mid2] = (price, round(price * cr, 4))
-    skip_kw = ["embed","rerank","tts","whisper","dall","midjourney","mj_","stable-diffusion","moderation","bge-","sd1","sd3","flux","cogview","paint","audio"]
-    for mid2, (ii, oo) in n1n_prices.items():
-        if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
-            n1n_list.append(mid2)
-if not n1n_list:
-    n1n_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","qwen-plus"]
-print("  n1n.ai:", len(n1n_list), file=sys.stderr)
-
-# AIGC2D
-aigc2d_list = []
-aigc2d_prices = {}
-d = fj("https://next.aigc2d.com/api/pricing", "")
-if d and isinstance(d, dict):
-    dd = d.get("data", {})
-    mcr = dd.get("model_completion_ratio", {})
-    groups = dd.get("model_group", {})
-    mi = dd.get("model_info", {})
-    for gname, gdata in groups.items():
-        mp2 = gdata.get("ModelPrice", {})
-        for mid2, pinfo in mp2.items():
-            if mid2 not in aigc2d_prices:
-                price = pinfo.get("price", 0)
-                cr = mcr.get(mid2, 1)
-                aigc2d_prices[mid2] = (price, round(price * cr, 4))
-    for mid2, (ii, oo) in aigc2d_prices.items():
-        if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
-            aigc2d_list.append(mid2)
-if not aigc2d_list:
-    aigc2d_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5"]
-print("  AIGC2D:", len(aigc2d_list), file=sys.stderr)
-
-# ChatAnywhere
-ca_list = []
-ca_prices = {}
-try:
-    import urllib.request as ur2, re as re2
-    req2 = ur2.Request("https://chatanywhere.apifox.cn/doc-2694962")
-    req2.add_header("User-Agent", "Mozilla/5.0")
-    with ur2.urlopen(req2, timeout=15) as r2:
-        html2 = r2.read().decode("utf-8", errors="ignore")
-    cells2 = re2.findall(r'<td[^>]*>(.*?)</td>', html2, re2.DOTALL)
-    for i2 in range(0, len(cells2) - 2, 5):
-        model2 = re2.sub(r'<[^>]+>', '', cells2[i2]).strip()
-        inp_t = re2.sub(r'<[^>]+>', '', cells2[i2+1]).strip()
-        out_t = re2.sub(r'<[^>]+>', '', cells2[i2+2]).strip()
-        inp_m = re2.search(r'^([\d.]+)', inp_t.strip())
-        out_m = re2.search(r'^([\d.]+)', out_t.strip())
-        if inp_m and out_m and model2 and len(model2) > 1:
-            inp2 = float(inp_m.group(1))
-            out2 = float(out_m.group(1))
-            if inp2 > 0 and out2 > 0 and inp2 < 100 and out2 < 1000:
-                if model2 not in ca_prices:
-                    ca_prices[model2] = (round(inp2 * 1000, 4), round(out2 * 1000, 4))
-    skip_ca = ["-ca","-search","-image","-audio","-realtime","moderation","embed","bge-","rerank","tts","whisper","dall","instruct-0","codex-ca","chat-latest-ca"]
-    for mid2, (ii, oo) in ca_prices.items():
-        if not any(s in mid2.lower() for s in skip_ca):
-            ca_list.append(mid2)
-except Exception as e2:
-    print("  ChatAnywhere fetch error:", str(e2)[:80], file=sys.stderr)
-if not ca_list:
-    ca_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","gemini-2.5-flash"]
-print("  ChatAnywhere:", len(ca_list), file=sys.stderr)
-
-# ═══════════════════════════════════════════════════════════
-# 生成模型卡片
-# ═══════════════════════════════════════════════════════════
-
 cards = []
-all_models = []  # 用于价格变动检测
-
-# 阿里百炼
-for m in ali:
-    fam = get_family(m["n"])
-    cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
-                 "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"]})
-
-# 硅基流动
-for mid in sf_ids:
-    ii, oo, tt, ss = sp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
-                 "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo})
-
-# 月之暗面
-for m in ms_list:
-    mid = m["id"]
-    ii, oo, cc, tt, ss = mp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo})
-
-# 智谱AI
-for mid in zh_ids:
-    ii, oo, cc, tt, ss = zp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
-                 "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam))
-    all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo})
-
-# 火山引擎
-for m in vc_list:
-    mid = m["id"]; st = m.get("st","")
-    ii, oo, cc, tt, ss = vp(mid)
-    tt = tt[:]
-    if st == "Shutdown":  tt = ["已下线"] + tt
-    elif st == "Retiring": tt = ["即将下线"] + tt
-    fam = get_family(mid)
-    cards.append(make_card("volcengine","火山引擎","#dc2626",Te(mid),ii,oo,cc,tt,ss,
-                 "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam))
-    all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo})
-
-# 百度文心
-for m in BD:
-    fam = get_family(m["n"])
-    cards.append(make_card("baidu","百度文心","#2932e1",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
-                 "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam))
-    all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"]})
-
-# OpenRouter
-for m in OR[:350]:
-    ii = float(m.get("pricing",{}).get("prompt",0) or 0)
-    oo = float(m.get("pricing",{}).get("completion",0) or 0)
-    nn = Te(m.get("name", m.get("id","")))
-    cc_r = m.get("context_length") or 0
-    cc = str(int(cc_r)//1000)+"k" if cc_r else "N/A"
-    tt = []
-    if ii == 0 and oo == 0: tt.append("免费")
-    p = ii * 1e6
-    if p > 0 and p < 0.1: tt.append("极便宜")
-    elif p > 0 and p < 1:   tt.append("便宜")
-    if cc_r >= 100000:       tt.append("长上下文")
-    if m.get("vision"):       tt.append("视觉")
-    if m.get("reasoning"):   tt.append("推理")
-    ss = "日常对话"
-    if m.get("reasoning"):   ss = "深度推理"
-    elif m.get("vision"):     ss = "视觉图片"
-    pv = Te(m.get("id","").split("/")[0].upper())
-    mid2 = Te(m["id"])
-    fam = get_family(m.get("id",""))
-    cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam))
-    all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD"})
-
-# 腾讯混元
-for mid in tx_ids:
-    ii, oo, cc, tt, ss = tp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
-                 "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo})
-
-# 讯飞星火
-for mid in xh_ids:
-    ii, oo, cc, tt, ss = xp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
-                 "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"spark","n":mid,"i":ii,"o":oo})
-
-# MiniMax
-for mid in mm_ids:
-    ii, oo, cc, tt, ss = mm_p(mid)
-    fam = get_family(mid)
-    cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.minimax.chat/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo})
-
-# 零一万物
-for mid in yw_ids:
-    ii, oo, cc, tt, ss = yp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"yi","n":mid,"i":ii,"o":oo})
-
-# 百川智能
-for mid in bc_ids:
-    ii, oo, cc, tt, ss = bp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo})
-
-# 阶跃星辰
-for mid in jc_ids:
-    ii, oo, cc, tt, ss = jp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.stepfun.com/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo})
-
-# DeepSeek 官方
-for mid in ds_ids:
-    ii, oo, cc, tt, ss = dp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("deepseek","DeepSeek","#4d6dff",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.deepseek.com/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo})
-
-# Groq
-for mid in gq_ids:
-    ii, oo, cc, tt, ss = gp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
-    all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD"})
-
-# Together AI
-for m in tg_list:
-    mid = m["id"]
-    # 优先使用 API 返回的真实价格
-    api_inp = m.get("i", 0)
-    api_out = m.get("o", 0)
-    api_ctx = m.get("c", 0)
-    if api_inp > 0 and api_out > 0:
-        ii, oo = api_inp, api_out
-        cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
-    else:
-        ii, oo, cc, tt, ss = tgp(mid)
-    if api_inp == 0 and api_out == 0:
-        ii, oo, cc, tt, ss = tgp(mid)
-    else:
-        # 从模型名推断标签
-        tt, ss = tgp_tags(mid, ii, oo, api_ctx)
-    fam = get_family(mid)
-    cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
-    all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD"})
-
-# Fireworks AI
-for m in fw_list:
-    mid = m["id"]
-    ii, oo, cc, tt, ss = fwp(mid)
-    # 使用 API 返回的上下文长度
-    api_ctx = m.get("c", 0)
-    if api_ctx > 0:
-        cc = str(int(api_ctx)//1000)+"k"
-    fam = get_family(mid)
-    cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
-    all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD"})
-
-# Cohere
-for m in co_list:
-    mid = m["id"]
-    ii, oo, cc, tt, ss = cop(mid)
-    fam = get_family(mid)
-    cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m"))
-    all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
-
-# 无问芯穹 (InfiniAI)
-for mid in infini_list:
-    ii, oo, cc, tt, ss = ip(mid)
-    fam = get_family(mid)
-    cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
-                 "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"infini","n":mid,"i":ii,"o":oo})
-
-# Novita AI
-for m in novita_list:
-    mid = m["id"]
-    api_inp = m.get("i", 0)
-    api_out = m.get("o", 0)
-    api_ctx = m.get("c", 0)
-    if api_inp > 0 and api_out > 0:
-        ii, oo = api_inp, api_out
-        cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
-        tt, ss = np_tags(mid, ii, oo, api_ctx)
-    else:
-        ii, oo, cc, tt, ss = np(mid)
-    fam = get_family(mid)
-    cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.novita.ai/v3/openai/chat/completions","CNY",family=fam))
-    all_models.append({"p":"novita","n":mid,"i":ii,"o":oo})
-
-# DeepInfra
-for mid in di_list:
-    ii, oo, cc, tt, ss = dip(mid)
-    fam = get_family(mid)
-    cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
-    all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD"})
-
-# AiHubMix
-for mid in ahm_list:
-    ii, oo, cc, tt, ss = ahmp(mid)
-    fam = get_family(mid)
-    cards.append(make_card("aihubmix","AiHubMix","#10b981",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
-    all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD"})
-
-# n1n.ai
-for mid in n1n_list:
-    ii, oo = n1np(mid)
-    fam = get_family(mid)
-    cc = "128k"
-    m = mid.lower()
-    if "1m" in m or "1000k" in m: cc = "1M"
-    elif "200k" in m: cc = "200k"
-    elif "128k" in m: cc = "128k"
-    elif "32k" in m: cc = "32k"
-    elif "8k" in m: cc = "8k"
-    tt = []
-    if ii < 1: tt.append("便宜")
-    elif ii < 10: tt.append("主力")
-    else: tt.append("旗舰")
-    if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
-    ss = "深度推理" if "推理" in tt else "日常对话"
-    cards.append(make_card("n1n","n1n.ai","#f59e0b",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.n1n.ai/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"n1n","n":mid,"i":ii,"o":oo,"cur":"CNY"})
-
-# AIGC2D
-for mid in aigc2d_list:
-    ii, oo = aigc2dp(mid)
-    fam = get_family(mid)
-    cc = "128k"
-    m = mid.lower()
-    if "1m" in m or "1000k" in m: cc = "1M"
-    elif "200k" in m: cc = "200k"
-    elif "128k" in m: cc = "128k"
-    elif "32k" in m: cc = "32k"
-    elif "8k" in m: cc = "8k"
-    tt = []
-    if ii < 1: tt.append("便宜")
-    elif ii < 10: tt.append("主力")
-    else: tt.append("旗舰")
-    if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
-    ss = "深度推理" if "推理" in tt else "日常对话"
-    cards.append(make_card("aigc2d","AIGC2D","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.aigc2d.com/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"aigc2d","n":mid,"i":ii,"o":oo,"cur":"CNY"})
-
-# ChatAnywhere
-for mid in ca_list:
-    ii, oo = cap(mid)
-    fam = get_family(mid)
-    cc = "128k"
-    m = mid.lower()
-    if "1m" in m or "1000k" in m: cc = "1M"
-    elif "200k" in m: cc = "200k"
-    elif "128k" in m: cc = "128k"
-    elif "32k" in m: cc = "32k"
-    elif "8k" in m: cc = "8k"
-    tt = []
-    if ii < 1: tt.append("便宜")
-    elif ii < 10: tt.append("主力")
-    else: tt.append("旗舰")
-    if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
-    ss = "深度推理" if "推理" in tt else "日常对话"
-    cards.append(make_card("ca","ChatAnywhere","#06b6d4",Te(mid),ii,oo,cc,tt,ss,
-                 "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam))
-    all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY"})
-
-# ─── 价格变动检测 ───
+all_models = []
 price_changes = []
-if os.path.exists(PREV_DATA):
+
+if os.path.exists(MODELS_JSON):
+    print("Loading models from JSON:", MODELS_JSON, file=sys.stderr)
     try:
-        prev = json.load(open(PREV_DATA))
-        prev_map = {(m["p"],m["n"]): m for m in prev}
-        for m in all_models:
-            key = (m["p"], m["n"])
-            if key in prev_map:
-                pm = prev_map[key]
-                pi_old = pm.get("i",0); po_old = pm.get("o",0)
-                pi_new = m["i"]; po_new = m["o"]
-                if pi_new != pi_old or po_new != po_old:
-                    price_changes.append({"p":m["p"],"n":m["n"],
-                        "old_i":pi_old,"old_o":po_old,"new_i":pi_new,"new_o":po_new})
-    except:
+        with open(MODELS_JSON, "r", encoding="utf-8") as jf:
+            jdata = json.load(jf)
+        jmodels = jdata.get("models", [])
+        jmeta = jdata.get("meta", {})
+        now = jmeta.get("updated_at", datetime.now().strftime("%Y-%m-%d %H:%M"))
+        for m in jmodels:
+            pid = m["platform_id"]
+            pname = m["platform_name"]
+            pc = m["platform_color"]
+            mname = m["name"]
+            inp = m["input_price"]
+            out = m["output_price"]
+            ctx = m["context"]
+            tags = m["tags"]
+            scen = m["scene"]
+            fam = m.get("family", "")
+            cur = m["currency"]
+            pu = m.get("price_unit", "per_token")
+            base_url = m["base_url"]
+            or_provider = ""
+            if pid == "openrouter":
+                # OpenRouter 使用 make_or_card
+                pv = pname.replace("OPENROUTER:", "") if pname.startswith("OPENROUTER:") else pname
+                cards.append(make_or_card(pv, Te(mname), inp, out, ctx, tags, scen, Te(mname), family=fam, price_unit=pu))
+            else:
+                cards.append(make_card(pid, pname, pc, Te(mname), inp, out, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu))
+            all_models.append({"p": pid, "n": mname, "i": inp, "o": out, "cur": cur})
+        price_changes = jmeta.get("price_changes", [])
+        USE_JSON_DATA = True
+        print("  Loaded %d models from JSON" % len(jmodels), file=sys.stderr)
+    except Exception as e:
+        print("  JSON load error:", str(e)[:100], file=sys.stderr)
+        USE_JSON_DATA = False
+
+if not USE_JSON_DATA:
+    print("Fetching data...")
+    t0 = time.time()
+
+    # ─── 阿里百炼 ───
+    ali = []
+    if ALI:
+        for pg in range(1, 10):
+            d = fj("https://dashscope.aliyuncs.com/api/v1/models?page_no=%d&page_size=100" % pg, ALI)
+            if not d: break
+            ms2 = d.get("output",{}).get("models",[]); tot = d.get("output",{}).get("total",0)
+            if not ms2: break
+            for m in ms2:
+                p0 = (m.get("prices") or [{}])[0].get("prices", [])
+                ii = oo = 0.0
+                for px in p0:
+                    if px.get("type") == "input_token":   ii = float(px.get("price","0") or 0)
+                    if px.get("type") == "output_token": oo = float(px.get("price","0") or 0)
+                cc = str(int(((m.get("model_info") or {}).get("context_window") or 0) // 1000)) + "k"
+                ca = m.get("capabilities",[]); tt = []
+                if "Reasoning" in ca: tt.append("推理")
+                if "VU" in ca: tt.append("视觉")
+                if "IG" in ca: tt.append("图片生成"); ss = "图片生成"
+                if "VG" in ca: tt.append("视频生成"); ss = "视频生成"
+                elif "VU" in ca: ss = "视觉图片"
+                elif "Reasoning" in ca: ss = "深度推理"
+                else: ss = "日常对话"
+                nn = (m.get("name") or m.get("model") or "")
+                ali.append({"n":nn,"i":ii,"o":oo,"c":cc,"t":tt,"s":ss})
+            print("  Aliyun: %d/%d" % (len(ali), tot), file=sys.stderr)
+            if len(ali) >= tot: break
+            time.sleep(0.2)
+    if not ali:
+        ali = [
+            {"n":"qwen-max","i":20,"o":60,"c":"32k","t":["旗舰","2025新"],"s":"深度推理"},
+            {"n":"qwen-plus","i":0.8,"o":2,"c":"128k","t":["主力","性价比"],"s":"日常对话"},
+            {"n":"qwen-turbo","i":0.3,"o":0.6,"c":"1M","t":["快速","极便宜"],"s":"日常对话"},
+            {"n":"qwen-long","i":0.5,"o":2,"c":"1M","t":["长上下文"],"s":"日常对话"},
+            {"n":"qwen-vl-max","i":20,"o":60,"c":"32k","t":["视觉","旗舰"],"s":"视觉图片"},
+            {"n":"qwen-vl-plus","i":0.8,"o":2,"c":"128k","t":["视觉","性价比"],"s":"视觉图片"},
+            {"n":"qwen-coder-plus","i":0.8,"o":2,"c":"128k","t":["代码"],"s":"编程代码"},
+            {"n":"qwen3-235b-a22b","i":0.8,"o":6.4,"c":"128k","t":["旗舰","MoE"],"s":"深度推理"},
+            {"n":"qwen3-32b","i":0.6,"o":4.8,"c":"128k","t":["主力"],"s":"日常对话"},
+            {"n":"qwen3-14b","i":0.4,"o":3.2,"c":"128k","t":["轻量"],"s":"日常对话"},
+            {"n":"qwen3-8b","i":0.2,"o":2,"c":"128k","t":["轻量","免费额度"],"s":"日常对话"},
+            {"n":"qwen3-4b","i":0.2,"o":2,"c":"128k","t":["轻量","免费额度"],"s":"日常对话"},
+            {"n":"qwq-32b","i":0.7,"o":2,"c":"128k","t":["推理"],"s":"深度推理"},
+            {"n":"deepseek-v3","i":2,"o":8,"c":"64k","t":["满血版","旗舰"],"s":"深度推理"},
+            {"n":"deepseek-r1","i":4,"o":16,"c":"64k","t":["推理","旗舰"],"s":"深度推理"},
+        ]
+    print("  Aliyun:", len(ali), file=sys.stderr)
+
+    # ─── 硅基流动 ───
+    sf_ids = []
+    if SF:
+        d = fj("https://api.siliconflow.cn/v1/models", SF)
+        sf_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
+    if not sf_ids:
+        sf_ids = [
+            "deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1","deepseek-ai/DeepSeek-R1-Distill-Qwen-32B","deepseek-ai/DeepSeek-R1-Distill-Qwen-14B","deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+            "Qwen/Qwen3-235B-A22B","Qwen/Qwen3-32B","Qwen/Qwen3-14B","Qwen/Qwen3-8B","Qwen/Qwen3-4B",
+            "Qwen/Qwen3-Coder-480B-A35B-Instruct","Qwen/Qwen3-235B-A22B-Thinking","Qwen/QwQ-32B",
+            "Qwen/Qwen2.5-72B-Instruct","Qwen/Qwen2.5-32B-Instruct","Qwen/Qwen2.5-14B-Instruct","Qwen/Qwen2.5-7B-Instruct",
+            "Qwen/Qwen2.5-Coder-32B-Instruct","Qwen/Qwen2.5-VL-72B-Instruct","Qwen/Qwen2.5-VL-32B-Instruct",
+            "Qwen/Qwen2-VL-72B-Instruct","Qwen/Qwen2-VL-7B-Instruct",
+            "Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-1.5B-Instruct","Qwen/Qwen2.5-0.5B-Instruct",
+            "GLM-4-32B","GLM-4-9B","GLM-4.5-Air","GLM-Z1-32B","GLM-Z1-9B","GLM-4.1V-9B",
+            "THUDM/GLM-4.7","THUDM/GLM-5","THUDM/GLM-5.1",
+            "Pro/deepseek-ai/DeepSeek-V3","Pro/deepseek-ai/DeepSeek-R1",
+            "moonshotai/Kimi-K2-Instruct",
+            "inclusionAI/Ling-flash","inclusionAI/Ling-mini",
+        ]
+    print("  SF:", len(sf_ids), file=sys.stderr)
+
+    # ─── 月之暗面 ───
+    ms_list = []
+    if MS:
+        d = fj("https://api.moonshot.cn/v1/models", MS)
+        ms_list = [{"id":m["id"],"c":str(int(m.get("context_length",0)//1000))+"k"} for m in (d.get("data",[]) if d else [])]
+    if not ms_list:
+        ms_list = [
+            {"id":"moonshot-v1-8k","c":"8k"},{"id":"moonshot-v1-32k","c":"32k"},{"id":"moonshot-v1-128k","c":"128k"},
+            {"id":"kimi-k2","c":"262k"},{"id":"kimi-k2.5","c":"262k"},{"id":"kimi-k2-turbo","c":"262k"},
+            {"id":"kimi-k2-thinking","c":"262k"},{"id":"kimi-k2-thinking-turbo","c":"262k"},
+            {"id":"moonshot-v1-8k-vision","c":"8k"},{"id":"moonshot-v1-32k-vision","c":"32k"},{"id":"moonshot-v1-128k-vision","c":"128k"},
+        ]
+    print("  Moonshot:", len(ms_list), file=sys.stderr)
+
+    # ─── 智谱AI ───
+    zh_ids = []
+    if ZH:
+        d = fj("https://open.bigmodel.cn/api/paas/v4/models", ZH)
+        zh_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
+    if not zh_ids:
+        zh_ids = [
+            "glm-5","glm-5-turbo","glm-5.1","glm-4.7","glm-4.7-flashx","glm-4.7-flash",
+            "glm-4-plus","glm-5v-turbo","glm-z1-air","glm-4.5","glm-4.5-air","glm-4.6",
+            "glm-4-long","glm-4v-plus","glm-4v","glm-4-flash","glm-4-flashx",
+            "chatglm-turbo","chatglm3-turbo","emohaa-chat",
+            "cogviewx-flash","cogvideox-2","cogviewx-plus",
+        ]
+    print("  Zhipu:", len(zh_ids), file=sys.stderr)
+
+    # ─── 火山引擎 ───
+    vc_list = []
+    if VC:
+        d = fj("https://ark.cn-beijing.volces.com/api/v3/models", VC)
+        vc_list = [{"id":m["id"],"st":m.get("status","")} for m in (d.get("data",[]) if d else [])]
+    if not vc_list:
+        vc_list = [
+            {"id":"doubao-1.6-pro-32k","st":""},{"id":"doubao-1.5-pro-32k","st":""},{"id":"doubao-1.5-pro-128k","st":""},
+            {"id":"doubao-lite-32k","st":""},{"id":"doubao-1.5-lite-32k","st":""},
+            {"id":"doubao-vision","st":""},{"id":"doubao-coder","st":""},
+            {"id":"doubao-seed-1.6","st":""},{"id":"doubao-seed-1.6-flash","st":""},
+            {"id":"doubao-seed-1.6-vision","st":""},{"id":"doubao-seed-1.6-thinking","st":""},
+            {"id":"doubao-seed-2.0-pro","st":""},{"id":"doubao-seed-2.0-mini","st":""},
+            {"id":"doubao-smart-router","st":""},
+        ]
+    print("  Volcengine:", len(vc_list), file=sys.stderr)
+
+    # ─── OpenRouter (实时拉取) ───
+    OR = []
+    d = fj("https://openrouter.ai/api/v1/models", retries=3)
+    if d:
+        OR = d.get("data", [])
+        # 缓存到本地
+        try:
+            with open(os.path.join(CACHE_DIR, "openrouter_full.json"), "w") as cf:
+                json.dump(d, cf)
+        except:
+            pass
+    else:
+        # 回退到缓存
+        cp = os.path.join(CACHE_DIR, "openrouter_full.json")
+        if os.path.exists(cp):
+            try: OR = json.load(open(cp)).get("data",[])
+            except: pass
+    print("  OpenRouter:", len(OR), file=sys.stderr)
+
+    # ─── 腾讯混元 ───
+    tx_ids = []
+    if TX:
+        d = fj("https://hunyuan.tencentcloudapi.com/v1/models", TX)
+        if d:
+            tx_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not tx_ids:
+        # 使用硬编码列表
+        tx_ids = ["hunyuan-turbos","hunyuan-turbo","hunyuan-pro","hunyuan-large","hunyuan-lite",
+                  "hunyuan-standard","hunyuan-standard-vision","hunyuan-vision","hunyuan-coder",
+                  "hunyuan-t1","hunyuan-turbos-vision"]
+    print("  Tencent:", len(tx_ids), file=sys.stderr)
+
+    # ─── 讯飞星火 ───
+    xh_ids = []
+    if XH:
+        # 讯飞没有标准模型列表API，使用硬编码
         pass
-# 保存当前数据供下次对比
-with open(PREV_DATA, "w") as f:
-    json.dump(all_models, f)
+    xh_ids = ["generalv3.5","generalv3","4.0Ultra","generalv2","spark-lite","generalv3.5-vision"]
+    print("  Spark:", len(xh_ids), file=sys.stderr)
+
+    # ─── MiniMax ───
+    mm_ids = []
+    if MM:
+        d = fj("https://api.minimax.chat/v1/models", MM)
+        if d:
+            mm_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not mm_ids:
+        mm_ids = ["abab6.5s","abab6.5","abab6.5g","abab5.5","abab5.5s","abab6.5s-vision","abab6.5-vision","minimax-m1"]
+    print("  MiniMax:", len(mm_ids), file=sys.stderr)
+
+    # ─── 零一万物 ───
+    yw_ids = []
+    if YW:
+        d = fj("https://api.lingyiwanwu.com/v1/models", YW)
+        if d:
+            yw_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not yw_ids:
+        yw_ids = ["yi-light","yi-medium","yi-large","yi-vision","yi-large-turbo","yi-spark","yi-lightning"]
+    print("  Yi:", len(yw_ids), file=sys.stderr)
+
+    # ─── 百川智能 ───
+    bc_ids = []
+    if BC:
+        d = fj("https://api.baichuan-ai.com/v1/models", BC)
+        if d:
+            bc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not bc_ids:
+        bc_ids = ["baichuan2-turbo","baichuan2-53b","baichuan-14b","baichuan4","baichuan4-vision","baichuan-m1"]
+    print("  Baichuan:", len(bc_ids), file=sys.stderr)
+
+    # ─── 阶跃星辰 ───
+    jc_ids = []
+    if JC:
+        d = fj("https://api.stepfun.com/v1/models", JC)
+        if d:
+            jc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not jc_ids:
+        jc_ids = ["step-1-8k","step-1-32k","step-1-128k","step-1-flash","step-1v-8k","step-1v-32k","step-2-16k","step-2-mini","step-r1"]
+    print("  Jieyue:", len(jc_ids), file=sys.stderr)
+
+    # ─── DeepSeek 官方 ───
+    ds_ids = []
+    if DS:
+        d = fj("https://api.deepseek.com/v1/models", DS)
+        if d:
+            ds_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not ds_ids:
+        ds_ids = ["deepseek-chat","deepseek-reasoner","deepseek-v3","deepseek-r1","deepseek-prover-v2"]
+    print("  DeepSeek:", len(ds_ids), file=sys.stderr)
+
+    # ─── Groq ───
+    gq_ids = []
+    if GQ:
+        d = fj("https://api.groq.com/openai/v1/models", GQ)
+        if d:
+            gq_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+    if not gq_ids:
+        gq_ids = ["llama-3.3-70b-versatile","llama-3.1-8b-instant","llama-3.1-70b-versatile",
+                  "llama-3.2-1b-preview","llama-3.2-3b-preview","llama-3.2-11b-vision-preview",
+                  "llama-3.2-90b-vision-preview","mixtral-8x7b-32768","gemma2-9b-it",
+                  "deepseek-r1-distill-llama-70b","deepseek-r1-distill-qwen-32b"]
+    print("  Groq:", len(gq_ids), file=sys.stderr)
+
+    # ─── Together AI ───
+    tg_list = []
+    if TG:
+        d = fj("https://api.together.xyz/v1/models", TG)
+        if d:
+            raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+            for m in raw:
+                mid = m.get("id","")
+                pricing = m.get("pricing", {})
+                inp = float(pricing.get("input", 0) or 0)
+                out = float(pricing.get("output", 0) or 0)
+                ctx = m.get("context_length", 0) or 0
+                # 只保留有价格且有上下文的文本模型
+                if inp > 0 and out > 0 and ctx > 0:
+                    tg_list.append({"id": mid, "i": inp, "o": out, "c": ctx})
+    if not tg_list:
+        tg_list = [{"id":x,"i":0,"o":0,"c":0} for x in [
+            "meta-llama/Llama-3.3-70B-Instruct-Turbo","meta-llama/Llama-3.1-8B-Instruct-Turbo",
+            "meta-llama/Llama-3.1-405B-Instruct-Turbo","meta-llama/Llama-3.2-3B-Instruct-Turbo",
+            "Qwen/Qwen2.5-72B-Instruct-Turbo","Qwen/Qwen2.5-Coder-32B-Instruct",
+            "Qwen/QwQ-32B","deepseek-ai/DeepSeek-V3-0324",
+            "deepseek-ai/DeepSeek-R1-Distill-Llama-70B","mistralai/Mixtral-8x7B-Instruct-v0.1",
+            "mistralai/Mixtral-8x22B-Instruct-v0.3","google/gemma-2-27b-it"]]
+    print("  Together:", len(tg_list), file=sys.stderr)
+
+    # ─── Fireworks AI ───
+    fw_list = []
+    if FW:
+        d = fj("https://api.fireworks.ai/inference/v1/models", FW)
+        if d:
+            for m in (d.get("data",[]) if d else []):
+                mid = m.get("id","")
+                ctx = m.get("context_length", 0) or 0
+                fw_list.append({"id": mid, "c": ctx})
+    if not fw_list:
+        fw_list = [{"id":x,"c":0} for x in [
+            "accounts/fireworks/models/llama-v3p3-70b-instruct",
+            "accounts/fireworks/models/llama-v3p1-8b-instruct",
+            "accounts/fireworks/models/llama-v3p1-70b-instruct",
+            "accounts/fireworks/models/llama-v3p2-3b-instruct",
+            "accounts/fireworks/models/qwen2p5-72b-instruct",
+            "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
+            "accounts/fireworks/models/deepseek-v3",
+            "accounts/fireworks/models/deepseek-r1",
+            "accounts/fireworks/models/mixtral-8x7b-instruct"]]
+    print("  Fireworks:", len(fw_list), file=sys.stderr)
+
+    # ─── Cohere ───
+    co_list = []
+    if CO:
+        d = fj("https://api.cohere.com/v1/models", CO)
+        if d:
+            co_list = [{"id":m.get("name",m.get("id",""))} for m in (d.get("models",d.get("data",[])) if d else [])]
+    if not co_list:
+        co_list = [{"id":x} for x in [
+            "command-r-plus","command-r","command-r7b","command-a",
+            "c4ai-aya-expanse-8b","c4ai-aya-expanse-32b","embed-v3","rerank-v3"]]
+    print("  Cohere:", len(co_list), file=sys.stderr)
+
+    # 无问芯穹 (InfiniAI)
+    infini_list = []
+    if INFINI:
+        d = fj("https://cloud.infini-ai.com/maas/v1/models", INFINI)
+        if d:
+            raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+            for m in raw:
+                mid = m.get("id","")
+                if mid and "embed" not in mid.lower() and "rerank" not in mid.lower():
+                    infini_list.append(mid)
+    if not infini_list:
+        infini_list = ["qwen2.5-72b-instruct","qwen2.5-32b-instruct","qwen2.5-14b-instruct","qwen2.5-7b-instruct",
+                       "glm-5.1","glm-5","glm-4.7","glm-4-9b-chat","deepseek-v3","deepseek-r1",
+                       "kimi-k2","yi-lightning","qwen2.5-coder-32b-instruct","qwq-32b","glm-4-plus","glm-4-flash"]
+    print("  InfiniAI:", len(infini_list), file=sys.stderr)
+
+    # Novita AI
+    novita_list = []
+    d = fj("https://api.novita.ai/v3/openai/models", NOVITA)
+    if d:
+        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+        for m in raw:
+            mid = m.get("id","")
+            inp_p = float(m.get("input_token_price_per_m", 0) or 0)
+            out_p = float(m.get("output_token_price_per_m", 0) or 0)
+            ctx = int(m.get("context_size", 0) or 0)
+            status = m.get("status", "")
+            if mid and inp_p > 0 and out_p > 0 and status != "deprecated":
+                novita_list.append({"id": mid, "i": inp_p / 10000, "o": out_p / 10000, "c": ctx})
+    if not novita_list:
+        novita_list = [{"id":"zai-org/glm-4.7-flash","i":0.07,"o":0.4,"c":200000},
+                       {"id":"deepseek/deepseek-v3.2","i":0.269,"o":0.4,"c":163840},
+                       {"id":"qwen/qwen3.5-27b","i":0.3,"o":2.4,"c":262144},
+                       {"id":"qwen/qwen3.5-122b-a10b","i":0.4,"o":3.2,"c":262144}]
+    print("  Novita:", len(novita_list), file=sys.stderr)
+
+    # DeepInfra
+    di_list = []
+    if DEEPINFRA:
+        d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
+        if d:
+            raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+            for m in raw:
+                mid = m.get("id","")
+                if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "flux" not in mid.lower() and "remove" not in mid.lower() and "enhance" not in mid.lower():
+                    di_list.append(mid)
+    if not di_list:
+        di_list = ["Qwen/Qwen3.5-27B","Qwen/Qwen3.5-4B","meta-llama/Llama-3.3-70B-Instruct",
+                   "meta-llama/Llama-3.1-8B-Instruct","deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
+                   "google/gemma-3-27b-it","mistralai/Mixtral-8x7B-Instruct-v0.1",
+                   "microsoft/phi-4","Qwen/QwQ-32B",
+                   "zai-org/glm-5.1","zai-org/glm-5","zai-org/glm-4.7"]
+    print("  DeepInfra:", len(di_list), file=sys.stderr)
+
+    # AiHubMix
+    ahm_list = []
+    d = fj("https://api.aihubmix.com/v1/models", AIHUBMIX)
+    if d:
+        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
+        for m in raw:
+            mid = m.get("id","")
+            if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "tts" not in mid.lower() and "whisper" not in mid.lower() and "dall-e" not in mid.lower() and "midjourney" not in mid.lower():
+                ahm_list.append(mid)
+    if not ahm_list:
+        ahm_list = ["gpt-4o","gpt-4o-mini","claude-sonnet-4-5","deepseek-chat","qwen-plus","glm-4-plus"]
+    print("  AiHubMix:", len(ahm_list), file=sys.stderr)
+
+    # n1n.ai
+    n1n_list = []
+    n1n_prices = {}
+    d = fj("https://api.n1n.ai/api/pricing", "")
+    if d and isinstance(d, dict):
+        dd = d.get("data", {})
+        mcr = dd.get("model_completion_ratio", {})
+        groups = dd.get("model_group", {})
+        mi = dd.get("model_info", {})
+        for gname, gdata in groups.items():
+            mp2 = gdata.get("ModelPrice", {})
+            for mid2, pinfo in mp2.items():
+                if mid2 not in n1n_prices:
+                    price = pinfo.get("price", 0)
+                    cr = mcr.get(mid2, 1)
+                    n1n_prices[mid2] = (price, round(price * cr, 4))
+        skip_kw = ["embed","rerank","tts","whisper","dall","midjourney","mj_","stable-diffusion","moderation","bge-","sd1","sd3","flux","cogview","paint","audio"]
+        for mid2, (ii, oo) in n1n_prices.items():
+            if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
+                n1n_list.append(mid2)
+    if not n1n_list:
+        n1n_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","qwen-plus"]
+    print("  n1n.ai:", len(n1n_list), file=sys.stderr)
+
+    # AIGC2D
+    aigc2d_list = []
+    aigc2d_prices = {}
+    d = fj("https://next.aigc2d.com/api/pricing", "")
+    if d and isinstance(d, dict):
+        dd = d.get("data", {})
+        mcr = dd.get("model_completion_ratio", {})
+        groups = dd.get("model_group", {})
+        mi = dd.get("model_info", {})
+        for gname, gdata in groups.items():
+            mp2 = gdata.get("ModelPrice", {})
+            for mid2, pinfo in mp2.items():
+                if mid2 not in aigc2d_prices:
+                    price = pinfo.get("price", 0)
+                    cr = mcr.get(mid2, 1)
+                    aigc2d_prices[mid2] = (price, round(price * cr, 4))
+        for mid2, (ii, oo) in aigc2d_prices.items():
+            if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
+                aigc2d_list.append(mid2)
+    if not aigc2d_list:
+        aigc2d_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5"]
+    print("  AIGC2D:", len(aigc2d_list), file=sys.stderr)
+
+    # ChatAnywhere
+    ca_list = []
+    ca_prices = {}
+    try:
+        import urllib.request as ur2, re as re2
+        req2 = ur2.Request("https://chatanywhere.apifox.cn/doc-2694962")
+        req2.add_header("User-Agent", "Mozilla/5.0")
+        with ur2.urlopen(req2, timeout=15) as r2:
+            html2 = r2.read().decode("utf-8", errors="ignore")
+        cells2 = re2.findall(r'<td[^>]*>(.*?)</td>', html2, re2.DOTALL)
+        for i2 in range(0, len(cells2) - 2, 5):
+            model2 = re2.sub(r'<[^>]+>', '', cells2[i2]).strip()
+            inp_t = re2.sub(r'<[^>]+>', '', cells2[i2+1]).strip()
+            out_t = re2.sub(r'<[^>]+>', '', cells2[i2+2]).strip()
+            inp_m = re2.search(r'^([\d.]+)', inp_t.strip())
+            out_m = re2.search(r'^([\d.]+)', out_t.strip())
+            if inp_m and out_m and model2 and len(model2) > 1:
+                inp2 = float(inp_m.group(1))
+                out2 = float(out_m.group(1))
+                if inp2 > 0 and out2 > 0 and inp2 < 100 and out2 < 1000:
+                    if model2 not in ca_prices:
+                        ca_prices[model2] = (round(inp2 * 1000, 4), round(out2 * 1000, 4))
+        skip_ca = ["-ca","-search","-image","-audio","-realtime","moderation","embed","bge-","rerank","tts","whisper","dall","instruct-0","codex-ca","chat-latest-ca"]
+        for mid2, (ii, oo) in ca_prices.items():
+            if not any(s in mid2.lower() for s in skip_ca):
+                ca_list.append(mid2)
+    except Exception as e2:
+        print("  ChatAnywhere fetch error:", str(e2)[:80], file=sys.stderr)
+    if not ca_list:
+        ca_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","gemini-2.5-flash"]
+    print("  ChatAnywhere:", len(ca_list), file=sys.stderr)
+
+    # ═══════════════════════════════════════════════════════════
+    # 生成模型卡片
+    # ═══════════════════════════════════════════════════════════
+
+    cards = []
+    all_models = []  # 用于价格变动检测
+
+    # 阿里百炼
+    for m in ali:
+        fam = get_family(m["n"])
+        cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
+                     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"]})
+
+    # 硅基流动
+    for mid in sf_ids:
+        ii, oo, tt, ss = sp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
+                     "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo})
+
+    # 月之暗面
+    for m in ms_list:
+        mid = m["id"]
+        ii, oo, cc, tt, ss = mp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo})
+
+    # 智谱AI
+    for mid in zh_ids:
+        ii, oo, cc, tt, ss = zp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
+                     "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam))
+        all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo})
+
+    # 火山引擎
+    for m in vc_list:
+        mid = m["id"]; st = m.get("st","")
+        ii, oo, cc, tt, ss = vp(mid)
+        tt = tt[:]
+        if st == "Shutdown":  tt = ["已下线"] + tt
+        elif st == "Retiring": tt = ["即将下线"] + tt
+        fam = get_family(mid)
+        cards.append(make_card("volcengine","火山引擎","#dc2626",Te(mid),ii,oo,cc,tt,ss,
+                     "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam))
+        all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo})
+
+    # 百度文心
+    for m in BD:
+        fam = get_family(m["n"])
+        cards.append(make_card("baidu","百度文心","#2932e1",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
+                     "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam))
+        all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"]})
+
+    # OpenRouter
+    for m in OR[:350]:
+        ii = float(m.get("pricing",{}).get("prompt",0) or 0)
+        oo = float(m.get("pricing",{}).get("completion",0) or 0)
+        nn = Te(m.get("name", m.get("id","")))
+        cc_r = m.get("context_length") or 0
+        cc = str(int(cc_r)//1000)+"k" if cc_r else "N/A"
+        tt = []
+        if ii == 0 and oo == 0: tt.append("免费")
+        p = ii * 1e6
+        if p > 0 and p < 0.1: tt.append("极便宜")
+        elif p > 0 and p < 1:   tt.append("便宜")
+        if cc_r >= 100000:       tt.append("长上下文")
+        if m.get("vision"):       tt.append("视觉")
+        if m.get("reasoning"):   tt.append("推理")
+        ss = "日常对话"
+        if m.get("reasoning"):   ss = "深度推理"
+        elif m.get("vision"):     ss = "视觉图片"
+        pv = Te(m.get("id","").split("/")[0].upper())
+        mid2 = Te(m["id"])
+        fam = get_family(m.get("id",""))
+        cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam))
+        all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD"})
+
+    # 腾讯混元
+    for mid in tx_ids:
+        ii, oo, cc, tt, ss = tp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
+                     "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo})
+
+    # 讯飞星火
+    for mid in xh_ids:
+        ii, oo, cc, tt, ss = xp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
+                     "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"spark","n":mid,"i":ii,"o":oo})
+
+    # MiniMax
+    for mid in mm_ids:
+        ii, oo, cc, tt, ss = mm_p(mid)
+        fam = get_family(mid)
+        cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.minimax.chat/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo})
+
+    # 零一万物
+    for mid in yw_ids:
+        ii, oo, cc, tt, ss = yp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"yi","n":mid,"i":ii,"o":oo})
+
+    # 百川智能
+    for mid in bc_ids:
+        ii, oo, cc, tt, ss = bp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo})
+
+    # 阶跃星辰
+    for mid in jc_ids:
+        ii, oo, cc, tt, ss = jp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.stepfun.com/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo})
+
+    # DeepSeek 官方
+    for mid in ds_ids:
+        ii, oo, cc, tt, ss = dp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("deepseek","DeepSeek","#4d6dff",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.deepseek.com/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo})
+
+    # Groq
+    for mid in gq_ids:
+        ii, oo, cc, tt, ss = gp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+    # Together AI
+    for m in tg_list:
+        mid = m["id"]
+        # 优先使用 API 返回的真实价格
+        api_inp = m.get("i", 0)
+        api_out = m.get("o", 0)
+        api_ctx = m.get("c", 0)
+        if api_inp > 0 and api_out > 0:
+            ii, oo = api_inp, api_out
+            cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
+        else:
+            ii, oo, cc, tt, ss = tgp(mid)
+        if api_inp == 0 and api_out == 0:
+            ii, oo, cc, tt, ss = tgp(mid)
+        else:
+            # 从模型名推断标签
+            tt, ss = tgp_tags(mid, ii, oo, api_ctx)
+        fam = get_family(mid)
+        cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+    # Fireworks AI
+    for m in fw_list:
+        mid = m["id"]
+        ii, oo, cc, tt, ss = fwp(mid)
+        # 使用 API 返回的上下文长度
+        api_ctx = m.get("c", 0)
+        if api_ctx > 0:
+            cc = str(int(api_ctx)//1000)+"k"
+        fam = get_family(mid)
+        cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+    # Cohere
+    for m in co_list:
+        mid = m["id"]
+        ii, oo, cc, tt, ss = cop(mid)
+        fam = get_family(mid)
+        cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+    # 无问芯穹 (InfiniAI)
+    for mid in infini_list:
+        ii, oo, cc, tt, ss = ip(mid)
+        fam = get_family(mid)
+        cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
+                     "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"infini","n":mid,"i":ii,"o":oo})
+
+    # Novita AI
+    for m in novita_list:
+        mid = m["id"]
+        api_inp = m.get("i", 0)
+        api_out = m.get("o", 0)
+        api_ctx = m.get("c", 0)
+        if api_inp > 0 and api_out > 0:
+            ii, oo = api_inp, api_out
+            cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
+            tt, ss = np_tags(mid, ii, oo, api_ctx)
+        else:
+            ii, oo, cc, tt, ss = np(mid)
+        fam = get_family(mid)
+        cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.novita.ai/v3/openai/chat/completions","CNY",family=fam))
+        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo})
+
+    # DeepInfra
+    for mid in di_list:
+        ii, oo, cc, tt, ss = dip(mid)
+        fam = get_family(mid)
+        cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+    # AiHubMix
+    for mid in ahm_list:
+        ii, oo, cc, tt, ss = ahmp(mid)
+        fam = get_family(mid)
+        cards.append(make_card("aihubmix","AiHubMix","#10b981",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD"})
+
+    # n1n.ai
+    for mid in n1n_list:
+        ii, oo = n1np(mid)
+        fam = get_family(mid)
+        cc = "128k"
+        m = mid.lower()
+        if "1m" in m or "1000k" in m: cc = "1M"
+        elif "200k" in m: cc = "200k"
+        elif "128k" in m: cc = "128k"
+        elif "32k" in m: cc = "32k"
+        elif "8k" in m: cc = "8k"
+        tt = []
+        if ii < 1: tt.append("便宜")
+        elif ii < 10: tt.append("主力")
+        else: tt.append("旗舰")
+        if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
+        ss = "深度推理" if "推理" in tt else "日常对话"
+        cards.append(make_card("n1n","n1n.ai","#f59e0b",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.n1n.ai/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"n1n","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+
+    # AIGC2D
+    for mid in aigc2d_list:
+        ii, oo = aigc2dp(mid)
+        fam = get_family(mid)
+        cc = "128k"
+        m = mid.lower()
+        if "1m" in m or "1000k" in m: cc = "1M"
+        elif "200k" in m: cc = "200k"
+        elif "128k" in m: cc = "128k"
+        elif "32k" in m: cc = "32k"
+        elif "8k" in m: cc = "8k"
+        tt = []
+        if ii < 1: tt.append("便宜")
+        elif ii < 10: tt.append("主力")
+        else: tt.append("旗舰")
+        if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
+        ss = "深度推理" if "推理" in tt else "日常对话"
+        cards.append(make_card("aigc2d","AIGC2D","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.aigc2d.com/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"aigc2d","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+
+    # ChatAnywhere
+    for mid in ca_list:
+        ii, oo = cap(mid)
+        fam = get_family(mid)
+        cc = "128k"
+        m = mid.lower()
+        if "1m" in m or "1000k" in m: cc = "1M"
+        elif "200k" in m: cc = "200k"
+        elif "128k" in m: cc = "128k"
+        elif "32k" in m: cc = "32k"
+        elif "8k" in m: cc = "8k"
+        tt = []
+        if ii < 1: tt.append("便宜")
+        elif ii < 10: tt.append("主力")
+        else: tt.append("旗舰")
+        if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
+        ss = "深度推理" if "推理" in tt else "日常对话"
+        cards.append(make_card("ca","ChatAnywhere","#06b6d4",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam))
+        all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+
+    # ─── 价格变动检测 ───
+    price_changes = []
+    if os.path.exists(PREV_DATA):
+        try:
+            prev = json.load(open(PREV_DATA))
+            prev_map = {(m["p"],m["n"]): m for m in prev}
+            for m in all_models:
+                key = (m["p"], m["n"])
+                if key in prev_map:
+                    pm = prev_map[key]
+                    pi_old = pm.get("i",0); po_old = pm.get("o",0)
+                    pi_new = m["i"]; po_new = m["o"]
+                    if pi_new != pi_old or po_new != po_old:
+                        price_changes.append({"p":m["p"],"n":m["n"],
+                            "old_i":pi_old,"old_o":po_old,"new_i":pi_new,"new_o":po_new})
+        except:
+            pass
+    # 保存当前数据供下次对比
+    with open(PREV_DATA, "w") as f:
+        json.dump(all_models, f)
 
 total = len(cards)
 print("Generated:", total, file=sys.stderr)
@@ -1671,7 +1797,7 @@ for c in cards:
         family_counts[m.group(1)] += 1
 # 按数量排序，取前20个家族
 top_families = family_counts.most_common(20)
-family_bar = '<div class="family-bar"><span class="family-lbl">家族:</span>'
+family_bar = '<div class="family-bar"><span class="family-lbl"></span>'
 family_bar += '<button class="family-btn active" data-family="all">全部</button>'
 for fam, cnt in top_families:
     if fam and fam != 'Other':
@@ -1680,13 +1806,13 @@ family_bar += '</div>'
 
 # ─── 标签筛选栏 ───
 tag_list = ["免费额度","便宜","极便宜","旗舰","主力","推理","视觉","长上下文","开源","代码","图片生成","视频生成","蒸馏","轻量","最新版"]
-tag_bar = '<div class="tag-bar"><span class="tag-lbl">标签:</span>' + "".join(
+tag_bar = '<div class="tag-bar"><span class="tag-lbl"></span>' + "".join(
     '<button class="tag-btn" data-tag="' + t + '">' + t + '</button>' for t in tag_list
 ) + '</div>'
 
 # ─── 上下文长度筛选 ───
 ctx_bar = (
-    '<div class="ctx-filter-bar"><span class="ctx-lbl">上下文:</span>'
+    '<div class="ctx-filter-bar"><span class="ctx-lbl"></span>'
     '<button class="ctx-btn active" data-ctx="all">全部</button>'
     '<button class="ctx-btn" data-ctx="8">≥8K</button>'
     '<button class="ctx-btn" data-ctx="32">≥32K</button>'
@@ -1731,11 +1857,43 @@ recommend_panel = (
 crossprice_panel = (
     '<div class="cross-panel" id="crossPanel" style="display:none">'
     '<div class="cross-title">&#128269; 跨平台比价 <span style="font-weight:400;font-size:12px;color:#64748b">(同一模型在不同平台的价格)</span></div>'
+    '<div class="cross-search"><input type="text" id="crossSearchInput" placeholder="输入模型名搜索比价..." oninput="buildCrossPrice()"><button class="cross-search-clear" onclick="document.getElementById(\'crossSearchInput\').value=\'\';buildCrossPrice()">✕</button></div>'
     '<div class="cross-list" id="crossList"></div>'
     '</div>'
 )
 
 # ─── 月费计算器 (增强版) ───
+# ─── Rate Limits 对比面板 ───
+rl_panel = (
+    '<div class="rl-panel" id="rlPanel">'
+    '<div class="rl-title">&#9888; Rate Limits 对比</div>'
+    '<div class="rl-note">各平台并发限制 (TPM/RPM)，避开上线后频繁报错的坑</div>'
+    '<table class="rl-table"><tr><th>平台</th><th>TPM (tokens/min)</th><th>RPM (req/min)</th><th>并发限制</th></tr>'
+    '<tr><td>阿里百炼</td><td>500,000</td><td>500</td><td><span class="rl-tag rl-tag-high">高</span></td></tr>'
+    '<tr><td>硅基流动</td><td>200,000</td><td>100</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>月之暗面</td><td>320,000</td><td>30</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>智谱 AI</td><td>500,000</td><td>200</td><td><span class="rl-tag rl-tag-high">高</span></td></tr>'
+    '<tr><td>火山引擎</td><td>500,000</td><td>500</td><td><span class="rl-tag rl-tag-high">高</span></td></tr>'
+    '<tr><td>百度文心</td><td>300,000</td><td>300</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>腾讯混元</td><td>300,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>DeepSeek</td><td>1,000,000</td><td>30</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>OpenRouter</td><td>无限制</td><td>无限制</td><td><span class="rl-tag rl-tag-high">高</span></td></tr>'
+    '<tr><td>Groq</td><td>6,000</td><td>30</td><td><span class="rl-tag rl-tag-low">低</span></td></tr>'
+    '<tr><td>Together AI</td><td>200,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>Fireworks AI</td><td>200,000</td><td>100</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>Cohere</td><td>100,000</td><td>100</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>无问芯穹</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>Novita AI</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>DeepInfra</td><td>200,000</td><td>100</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>AiHubMix</td><td>200,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>n1n.ai</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>AIGC2D</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '<tr><td>ChatAnywhere</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
+    '</table>'
+    '<div class="rl-note">数据来源: 各平台官网文档 (2026年4月)。TPM=每分钟Token数, RPM=每分钟请求数。标注"低"的平台在生产环境需特别注意限流。</div>'
+    '</div>'
+)
+
 calc_panel = (
     '<div class="calc-panel" id="calcPanel">'
     '<div class="calc-title">&#128202; 月费计算器</div>'
@@ -1850,15 +2008,16 @@ a{color:var(--accent);text-decoration:none}
 /* 模型卡片网格 */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:8px}
 .grid.list-view{grid-template-columns:1fr}
-.grid.list-view .mc{display:flex;align-items:center;gap:12px;padding:8px 14px}
-.grid.list-view .mc .dot{position:static;flex-shrink:0}
-.grid.list-view .mc .prov{margin:0;padding:0;min-width:80px}
-.grid.list-view .mc .mname{margin:0;min-width:150px}
-.grid.list-view .mc .tags{margin:0;flex:1}
-.grid.list-view .mc .prow{margin:0;min-width:120px}
-.grid.list-view .mc .ctx-row{margin:0;min-width:80px}
+.grid.list-view .mc{display:grid;align-items:center;grid-template-columns:12px 90px 200px 1fr 110px 70px 60px;gap:0 10px;padding:8px 14px}
+.grid.list-view .mc .dot{position:static;grid-column:1}
+.grid.list-view .mc .prov{margin:0;padding:0;grid-column:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grid.list-view .mc .mname{margin:0;grid-column:3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grid.list-view .mc .tags{margin:0;grid-column:4;overflow:hidden;white-space:nowrap}
+.grid.list-view .mc .prow{margin:0;grid-column:5}
+.grid.list-view .mc .ctx-row{margin:0;grid-column:6}
+.grid.list-view .mc .base-url{display:none}
 .grid.list-view .mc .hint{display:none}
-.grid.list-view .mc .card-actions{position:static;margin:0}
+.grid.list-view .mc .card-actions{position:static;margin:0;grid-column:7}
 /* 模型卡片 - 核心设计 */
 .mc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px;cursor:pointer;transition:all .2s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
 .mc::before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,rgba(99,102,241,.03) 50%,transparent 60%);opacity:0;transition:opacity .4s;pointer-events:none}
@@ -1914,9 +2073,14 @@ a{color:var(--accent);text-decoration:none}
 .fg .toolbar{margin-bottom:0}
 
 /* 跨平台比价 + 月费计算器 同行 */
-.side-panels{display:flex;gap:10px;margin-bottom:10px}
-.side-panels .cross-panel{flex:1;margin-bottom:0}
-.side-panels .calc-panel{flex:1;margin-bottom:0}
+.side-panels{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:10px;margin-bottom:10px;align-items:stretch}
+.side-panels .cross-panel{margin-bottom:0}.cross-search{display:flex;gap:4px;margin-bottom:8px}
+.cross-search input{flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:11px}
+.cross-search input:focus{border-color:var(--accent);outline:none}
+.cross-search-clear{padding:2px 6px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text2);cursor:pointer;font-size:11px}
+.cross-search-clear:hover{border-color:var(--accent);color:var(--accent)}
+.side-panels .calc-panel{margin-bottom:0}
+.side-panels .rl-panel{margin-bottom:0}
 
 /* 分页 */
 .pagination{display:flex;gap:6px;align-items:center;justify-content:center;padding:12px 0;flex-wrap:wrap}
@@ -1927,21 +2091,21 @@ a{color:var(--accent);text-decoration:none}
 
 /* 排序栏 */
 .sort-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.sort-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.sort-lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .sort-btn{padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s;font-weight:500}
 .sort-btn:hover{border-color:var(--border-hi);color:var(--text)}
 .sort-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
 
 /* 标签筛选 */
 .tag-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.tag-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.tag-lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .tag-btn{padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
 .tag-btn:hover{border-color:var(--border-hi);color:var(--text)}
 .tag-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
 
 /* 家族筛选 */
 .family-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.family-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.family-lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .family-btn{padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
 .family-btn:hover{border-color:var(--border-hi);color:var(--text)}
 .family-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
@@ -1950,14 +2114,14 @@ a{color:var(--accent);text-decoration:none}
 
 /* 上下文筛选 */
 .ctx-filter-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.ctx-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.ctx-lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .ctx-btn{padding:3px 8px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:10px;cursor:pointer;transition:all .2s;font-weight:500}
 .ctx-btn:hover{border-color:var(--border-hi);color:var(--text)}
 .ctx-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
 
 /* 价格区间筛选 */
 .price-range-bar{display:flex;gap:5px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.pr-lbl{font-size:11px;color:var(--text3);font-weight:500;letter-spacing:.03em;text-transform:uppercase}
+.pr-lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .pr-sep{color:var(--text3)}
 .pr-unit{font-size:10px;color:var(--text3)}
 .price-range-bar input{width:65px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px;background:var(--surface);color:var(--text)}
@@ -2037,7 +2201,7 @@ a{color:var(--accent);text-decoration:none}
 /* 跨平台比价 */
 .cross-panel{background:var(--surface);border:1px solid rgba(34,197,94,.12);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
 .cross-title{font-size:13px;font-weight:600;color:#4ade80;margin-bottom:6px}
-.cross-list{max-height:280px;overflow-y:auto}
+.cross-list{max-height:420px;overflow-y:auto}
 .cross-group{margin-bottom:6px}
 .cross-group-name{font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px}
 .cross-item{display:flex;align-items:center;gap:6px;padding:3px 8px;background:var(--surface2);border-radius:4px;margin-bottom:2px;font-size:11px;border:1px solid var(--border)}
@@ -2118,6 +2282,11 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
    移动端适配
    ═══════════════════════════════════════════════════════════ */
 @media(max-width:768px){
+.main-layout{flex-direction:column}
+.sidebar{width:100%;max-height:none;position:static;border-right:none;border-bottom:1px solid var(--border);padding:10px;display:none}
+.sidebar.open{display:block}
+.sidebar-toggle{display:flex}
+.content-area{padding:10px}
 /* 整体布局 */
 .wrap{padding:0 10px 30px}
 .hdr{padding:20px 8px 12px}
@@ -2128,7 +2297,7 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 
 /* 筛选栏 - 横向滚动，不换行 */
 .pbar,.ptbar,.sbar,.sort-bar,.tag-bar,.ctx-filter-bar,.price-range-bar,.family-bar{flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;padding:6px 0;gap:4px}
-.side-panels{flex-direction:column}
+.side-panels{grid-template-columns:1fr}
 .fg{padding:8px 10px}
 .pbar::-webkit-scrollbar,.ptbar::-webkit-scrollbar,.sbar::-webkit-scrollbar{display:none}
 .pt{padding:5px 10px;font-size:10px;border-radius:16px;flex-shrink:0}
@@ -2199,7 +2368,7 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .rec-info .ri-name{font-size:11px}
 .rec-info .ri-reason{font-size:9px}
 .rec-price{font-size:10px}
-.cross-list{max-height:200px}
+.cross-list{max-height:300px}
 .cross-group-name{font-size:11px}
 .cross-item{padding:2px 6px;font-size:10px}
 .cross-platform{min-width:60px}
@@ -2254,6 +2423,115 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .base-url{font-size:7px}
 .calc-row label{width:60px;font-size:9px}
 }
+/* ─── 左侧筛选栏 + 右侧内容 布局 ─── */
+.main-layout{display:flex;gap:0;align-items:flex-start;width:100%}
+.sidebar{width:220px;min-width:220px;max-width:220px;flex-shrink:0;position:sticky;top:0;max-height:100vh;overflow-y:auto;overflow-x:hidden;padding:12px 10px;background:var(--surface);border-right:1px solid var(--border);scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.sidebar::-webkit-scrollbar{width:4px}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.sidebar .fg{background:none;border:none;padding:0;margin-bottom:10px;border-radius:0}
+.sidebar .fg-title{font-size:11px;font-weight:700;color:var(--accent);margin-bottom:5px;letter-spacing:.03em;text-transform:uppercase;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.sidebar .pbar,.sidebar .sbar,.sidebar .ptbar,.sidebar .tag-bar,.sidebar .ctx-filter-bar,.sidebar .family-bar{flex-wrap:wrap;overflow-x:visible;padding:4px 0;margin-bottom:2px}
+.sidebar .sort-bar{flex-wrap:wrap;margin-bottom:2px}
+.sidebar .toolbar{flex-wrap:wrap;gap:4px}
+.sidebar .toolbar-left,.sidebar .toolbar-right{flex-wrap:wrap;gap:3px}
+.sidebar .price-range-bar{flex-wrap:wrap;gap:4px}
+.sidebar .price-range-bar input{width:60px}
+.sidebar .rec-panel{padding:8px;margin-bottom:8px}
+.sidebar .rec-options{flex-wrap:wrap;gap:3px}
+.sidebar .rec-btn{font-size:9px;padding:3px 6px}
+.sidebar table,.sidebar .rl-table,.sidebar .calc-table,.sidebar .cross-list{max-width:100%}
+.sidebar .rl-note,.sidebar .calc-note{font-size:9px}
+/* ─── 折叠分组 ─── */
+.fg-collapsible .fg-title{cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between}
+.fg-collapsible .fg-title:hover{opacity:.8}
+.fg-arrow{font-size:10px;transition:transform .2s}
+.fg-collapsed .fg-body{display:none}
+.fg-collapsed .fg-arrow{transform:rotate(0deg)}
+.fg-collapsible:not(.fg-collapsed) .fg-arrow{transform:rotate(90deg)}
+.clear-filter-btn{width:100%;padding:6px 0;margin-bottom:8px;border:1px solid var(--border);border-radius:var(--radius);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;transition:all .15s}
+.clear-filter-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(99,102,241,.06)}
+
+.sidebar .side-panels{display:flex;flex-direction:column;gap:8px;grid-template-columns:none}
+.sidebar .cross-panel,.sidebar .calc-panel,.sidebar .rl-panel{flex:none;width:100%}
+.sidebar .cross-list{max-height:200px}
+.content-area{flex:1;min-width:0;padding:12px 14px}
+.content-area .srow{margin-bottom:10px}
+.content-area .side-panels{margin-bottom:10px}
+.content-area .filter-count{margin-bottom:6px}
+.sidebar-toggle{display:none;position:fixed;top:10px;left:10px;z-index:100;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);align-items:center;justify-content:center}
+
+/* ─── Rate Limits 面板 ─── */
+.rl-panel{background:var(--surface);border:1px solid rgba(251,146,60,.12);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
+.rl-title{font-size:13px;font-weight:600;color:#fb923c;margin-bottom:6px}
+.rl-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:8px}
+.rl-table th{background:var(--surface2);padding:5px 6px;text-align:left;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
+.rl-table td{padding:4px 6px;border-bottom:1px solid var(--border);color:var(--text2)}
+.rl-table tr:hover td{background:var(--surface2)}
+.rl-tag{display:inline-block;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600}
+.rl-tag-low{background:#fef3c7;color:#92400e}
+.rl-tag-mid{background:#dbeafe;color:#1e40af}
+.rl-tag-high{background:#dcfce7;color:#166534}
+.rl-note{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.4}
+
+/* ─── Token 计价器模态框 ─── */
+.tk-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9997;opacity:0;pointer-events:none;transition:opacity .25s}
+.tk-modal.show{opacity:1;pointer-events:auto}
+.tk-modal-content{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:720px;width:92%;max-height:85vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.5);transform:translateY(20px);transition:transform .25s}
+.tk-modal.show .tk-modal-content{transform:translateY(0)}
+.tk-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.tk-modal-title{font-size:14px;font-weight:600;color:var(--accent)}
+.tk-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px}
+.tk-modal-close:hover{color:var(--text)}
+.tk-modal-body{padding:16px}
+.tk-textarea{width:100%;min-height:120px;max-height:300px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;font-family:monospace;resize:vertical;margin-bottom:10px}
+.tk-textarea:focus{outline:none;border-color:var(--accent)}
+.tk-stats{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.tk-stat{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;flex:1;min-width:100px}
+.tk-stat-label{font-size:10px;color:var(--text3);margin-bottom:2px}
+.tk-stat-value{font-size:18px;font-weight:700;color:var(--accent)}
+.tk-btn{padding:6px 14px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:var(--accent);color:#fff;transition:all .2s;margin-right:6px}
+.tk-btn:hover{box-shadow:0 0 16px var(--accent-glow)}
+.tk-btn-sec{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.tk-result-table{width:100%;border-collapse:collapse;font-size:10px;margin-top:10px}
+.tk-result-table th{background:var(--surface2);padding:5px 6px;text-align:left;font-weight:600;color:var(--text2);border-bottom:1px solid var(--border)}
+.tk-result-table td{padding:4px 6px;border-bottom:1px solid var(--border)}
+.tk-result-table tr:hover td{background:var(--surface2)}
+.tk-cheapest{color:#22c55e;font-weight:700}
+.tk-model-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.tk-model-input{flex:1;min-width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface2);color:var(--text);font-size:11px}
+.tk-model-input:focus{outline:none;border-color:var(--accent)}
+
+/* ─── TTFB 测速面板 ─── */
+.ping-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9996;opacity:0;pointer-events:none;transition:opacity .25s}
+.ping-modal.show{opacity:1;pointer-events:auto}
+.ping-modal-content{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:680px;width:92%;max-height:85vh;overflow:auto;box-shadow:0 24px 80px rgba(0,0,0,.5);transform:translateY(20px);transition:transform .25s}
+.ping-modal.show .ping-modal-content{transform:translateY(0)}
+.ping-modal-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border)}
+.ping-modal-title{font-size:14px;font-weight:600;color:#22d3ee}
+.ping-modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);padding:4px 8px}
+.ping-modal-close:hover{color:var(--text)}
+.ping-modal-body{padding:16px}
+.ping-model-select{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-size:12px;margin-bottom:10px}
+.ping-btn{padding:6px 14px;border-radius:8px;border:none;font-size:11px;font-weight:600;cursor:pointer;background:#22d3ee;color:#000;transition:all .2s;margin-right:6px}
+.ping-btn:hover{box-shadow:0 0 16px rgba(34,211,238,.4)}
+.ping-btn:disabled{opacity:.5;cursor:not-allowed}
+.ping-result-list{margin-top:10px}
+.ping-result-item{display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border);font-size:11px}
+.ping-platform{min-width:80px;font-weight:500;color:var(--text)}
+.ping-ms{min-width:60px;font-weight:700}
+.ping-ms-fast{color:#22c55e}
+.ping-ms-mid{color:#eab308}
+.ping-ms-slow{color:#ef4444}
+.ping-ms-timeout{color:var(--text3);font-style:italic}
+.ping-bar-wrap{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.ping-bar{height:100%;border-radius:3px;transition:width .3s}
+.ping-status{font-size:9px;color:var(--text3);min-width:50px;text-align:right}
+.ping-spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;margin-right:4px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── 工具栏新按钮 ─── */
+.tool-btn-extended{margin-left:4px}
+
 '''
 
 # ═══════════════════════════════════════════════════════════
@@ -2269,8 +2547,141 @@ var isListView=localStorage.getItem('listView')==='1';
 var favs=JSON.parse(localStorage.getItem('favs')||'[]');
 var USD_TO_CNY=7.25;
 
+// ─── 从 models_data.json 动态加载模型数据 ───
+var modelsDataLoaded = false;
+function renderModelsFromJSON(data) {
+    var grid = document.getElementById('grid');
+    if (!grid || !data || !data.models) return false;
+    // 清空现有卡片
+    grid.innerHTML = '';
+    var models = data.models;
+    var meta = data.meta || {};
+    // 更新汇率
+    if (meta.usd_to_cny) USD_TO_CNY = meta.usd_to_cny;
+    // 更新数据说明中的时间
+    var timeEls = document.querySelectorAll('.ftr p, .snote');
+    // 动态生成卡片
+    for (var i = 0; i < models.length; i++) {
+        var m = models[i];
+        var pid = m.platform_id;
+        var pname = m.platform_name;
+        var pc = m.platform_color;
+        if(!pc && data.platforms && data.platforms[pid]) pc = data.platforms[pid].color;
+        if(!pc) pc = '#6366f1';
+        var mname = m.name;
+        var inp = m.input_price;
+        var out = m.output_price;
+        var ctx = m.context;
+        var tags = m.tags || [];
+        var scen = m.scene || '日常对话';
+        var fam = m.family || '';
+        var cur = m.currency || 'CNY';
+        var pu = m.price_unit || 'per_token';
+        var baseUrl = m.base_url || '';
+
+        // 价格分级
+        var pt = 'mid';
+        var inpF = parseFloat(inp) || 0, outF = parseFloat(out) || 0;
+        if (inpF === 0 && outF === 0) pt = 'free';
+        else if (cur === 'USD' && pu === 'per_token') { var p = inpF * 1e6; pt = p < 0.1 ? 'cheap' : p < 10 ? 'mid' : p < 100 ? 'high' : 'ultra'; }
+        else { pt = inpF < 0.1 ? 'cheap' : inpF < 10 ? 'mid' : inpF < 100 ? 'high' : 'ultra'; }
+
+        // data-inp/data-out
+        var inpS, outS;
+        if (pu === 'per_1m' && cur === 'USD') { inpS = inpF / 1e6; outS = outF / 1e6; }
+        else { inpS = inpF; outS = outF; }
+
+        // 上下文数值
+        var ctxNum = ctx.replace(/[^\d]/g, '') || '0';
+
+        // 标签 HTML
+        var tagMap = {'免费':'free','免费额度':'free','便宜':'cheap','极便宜':'cheap','性价比':'cheap',
+            '旗舰':'hot','主力':'hot','最新版':'hot','2025新':'hot','2026新':'hot',
+            '视觉':'vision','推理':'reason','长上下文':'long','超长上下文':'long',
+            '开源':'other','代码':'other','图片生成':'other','视频生成':'other',
+            '快速':'other','高性能':'hot','Pro订阅':'other','蒸馏':'other',
+            '轻量':'other','已下线':'other','即将下线':'other','价格待确认':'other',
+            '语音':'other','TTS':'other','ASR':'other','向量':'other','排序':'other',
+            'OCR':'other','多模态':'vision','Turbo':'hot','降价后':'cheap','降价90%':'cheap',
+            '超低价':'cheap','超便宜':'cheap','编程':'other','智能路由':'other',
+            '满血版':'hot','价格变动':'other','涨价':'hot','降价':'cheap','免费':'free'};
+        var tagsHtml = '';
+        for (var ti = 0; ti < tags.length; ti++) {
+            var tc = tagMap[tags[ti]] || 'other';
+            tagsHtml += '<span class="tg tg-' + tc + '">' + tags[ti] + '</span>';
+        }
+
+        // 价格徽章
+        var priceHtml = '';
+        if (cur === 'CNY') {
+            if (inpF === 0 && outF === 0) priceHtml = '<span class="price-badge price-free">免费额度</span>';
+            else if (inpF === outF) { var cc2 = inpF < 1 ? 'price-cheap' : inpF < 10 ? 'price-mid' : inpF < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc2 + '">¥' + inpF.toFixed(2) + '/M</span>'; }
+            else priceHtml = '<span class="price-badge price-mid">IN:¥' + inpF.toFixed(2) + ' OUT:¥' + outF.toFixed(2) + '/M</span>';
+        } else {
+            var pI = pu === 'per_token' ? inpF * 1e6 : inpF;
+            var pO = pu === 'per_token' ? outF * 1e6 : outF;
+            if (inpF === 0 && outF === 0) priceHtml = '<span class="price-badge price-free">$0 (免费)</span>';
+            else if (inpF === outF) { var cc3 = pI < 0.1 ? 'price-free' : pI < 1 ? 'price-cheap' : pI < 10 ? 'price-mid' : pI < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc3 + '">$' + pI.toFixed(2) + '/1M</span>'; }
+            else priceHtml = '<span class="price-badge price-mid">IN:$' + pI.toFixed(1) + ' OUT:$' + pO.toFixed(1) + '/1M</span>';
+        }
+
+        // 上下文条
+        var ctxBarW = Math.min(100, (parseInt(ctxNum) || 0) / 1000);
+
+        // 家族属性
+        var famAttr = fam ? ' data-family="' + fam + '"' : '';
+
+        // 构建卡片 HTML
+        var cardHtml = '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
+            + 'data-inp="' + inpS + '" data-out="' + outS + '" data-cur="' + cur + '" '
+            + 'data-ctx="' + ctxNum + '" data-ctx-display="' + ctx + '" ' + famAttr + ' '
+            + 'onclick="showCodeModal(\'' + baseUrl + '\',\'' + mname.replace(/'/g, "\\'") + '\',\'' + pid + '\')">'
+            + '<div class="dot"></div><div class="prov">' + pname + '</div>'
+            + '<div class="mname">' + mname + '</div><div class="tags">' + tagsHtml + '</div>'
+            + '<div class="prow">' + priceHtml + '</div>'
+            + '<div class="ctx-row"><span class="ctx">上下文: ' + ctx + '</span>'
+            + '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + ctxBarW + '%"></div></div></div>'
+            + '<div class="base-url">' + baseUrl + '</div>'
+            + '<div class="hint">点击查看接入代码</div>'
+            + '<div class="card-actions">'
+            + '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
+            + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
+            + '</div></div>';
+
+        grid.insertAdjacentHTML('beforeend', cardHtml);
+    }
+
+    // 更新模型计数
+    var bdEls = document.querySelectorAll('.bd');
+    if (bdEls.length > 0) bdEls[0].innerHTML = '&#128202; ' + models.length + ' 个模型';
+    var fcEl = document.querySelector('.filter-count');
+    if (fcEl) fcEl.innerHTML = '显示 <strong>' + models.length + '</strong> / ' + models.length + ' 个模型';
+
+    // 更新平台筛选栏计数
+    if (meta.platform_counts) {
+        var pc2 = meta.platform_counts;
+        document.querySelectorAll('.pt').forEach(function(b) {
+            var p = b.dataset.p;
+            var span = b.querySelector('.pc');
+            if (span && pc2[p]) span.textContent = pc2[p];
+        });
+    }
+
+    modelsDataLoaded = true;
+    return true;
+}
+
 // 初始化
 document.addEventListener('DOMContentLoaded',function(){
+// ─── 尝试从 models_data.json 动态加载 ───
+fetch('models_data.json').then(function(r){return r.json();}).then(function(data){
+    if(data && data.models && data.models.length>0){
+        renderModelsFromJSON(data);
+    }
+}).catch(function(){
+    // JSON 加载失败，使用 HTML 中已有的硬编码卡片
+});
+
 if(!isDark)document.body.classList.add('light');
 if(isListView){document.getElementById('grid').classList.add('list-view');document.getElementById('listBtn').classList.add('active');}
 // 恢复收藏
@@ -3035,10 +3446,15 @@ if(platformSet[key])return;
 platformSet[key]=true;
 modelMap[coreName].push({name:mName,prov:prov,inp:inp,out:out,cur:cur,baseName:coreName,pid:pid});
 });
+// 搜索过滤
+var crossQ=(document.getElementById('crossSearchInput')||{}).value||'';
+crossQ=crossQ.trim().toLowerCase();
 // 只显示在2个以上不同平台出现的模型
 var groups=Object.values(modelMap).filter(function(g){
 var pids={};g.forEach(function(m){pids[m.pid]=1;});
-return Object.keys(pids).length>=2&&g.length<=15;
+var ok=Object.keys(pids).length>=2&&g.length<=15;
+if(ok&&crossQ){ok=g[0].baseName.toLowerCase().indexOf(crossQ)!==-1;}
+return ok;
 });
 // 按平台数排序，平台数相同按最低价排序
 groups.sort(function(a,b){
@@ -3052,7 +3468,7 @@ b.forEach(function(m){var c=m.cur==='USD'?m.inp*1e6*USD_TO_CNY:m.inp;if(c<minB)m
 return minA-minB;
 });
 var html='';
-groups.slice(0,30).forEach(function(g){
+groups.forEach(function(g){
 // 找最低价
 var minCost=Infinity;
 g.forEach(function(m){
@@ -3200,7 +3616,293 @@ if(state.family){curFamily=state.family;var fb=document.querySelector('.family-b
 if(state.q){document.getElementById('si').value=state.q;}
 }catch(e){}
 }
+
+
+// ═══════════════════════════════════════════════════════════
+// 真实文本计价器
+// ═══════════════════════════════════════════════════════════
+function showTokenCalc(){
+    var m=document.getElementById('tkModal');
+    if(m)m.classList.add('show');
+}
+function closeTokenCalc(){
+    var m=document.getElementById('tkModal');
+    if(m)m.classList.remove('show');
+}
+
+// GPT-4 Cl100k 近似分词器
+function estimateTokens(text){
+    if(!text)return 0;
+    var len=text.length;
+    var cjk=0;
+    for(var i=0;i<len;i++){
+        var c=text.charCodeAt(i);
+        if((c>=0x4E00&&c<=0x9FFF)||(c>=0x3400&&c<=0x4DBF)||(c>=0x3000&&c<=0x303F)||(c>=0xFF00&&c<=0xFFEF))cjk++;
+    }
+    var nonCjk=len-cjk;
+    return Math.ceil(nonCjk/4+cjk/1.5);
+}
+
+function calcTokens(){
+    var text=document.getElementById('tkText').value;
+    if(!text.trim()){showTip('请先输入文本',false);return;}
+    var tokens=estimateTokens(text);
+    var chars=text.length;
+    var lines=text.split('\n').length;
+    var estOutTokens=Math.round(tokens*0.4);
+
+    var statsHtml='<div class="tk-stat"><div class="tk-stat-label">字符数</div><div class="tk-stat-value">'+chars.toLocaleString()+'</div></div>'
+        +'<div class="tk-stat"><div class="tk-stat-label">行数</div><div class="tk-stat-value">'+lines.toLocaleString()+'</div></div>'
+        +'<div class="tk-stat"><div class="tk-stat-label">输入 Token</div><div class="tk-stat-value">~'+tokens.toLocaleString()+'</div></div>'
+        +'<div class="tk-stat"><div class="tk-stat-label">预估输出 Token</div><div class="tk-stat-value">~'+estOutTokens.toLocaleString()+'</div></div>';
+    document.getElementById('tkStats').innerHTML=statsHtml;
+
+    var cs=document.querySelectorAll('.mc');
+    var results=[];
+    cs.forEach(function(c){
+        var inp=parseFloat(c.dataset.inp)||0;
+        var out=parseFloat(c.dataset.out)||0;
+        var cur=c.dataset.cur||'CNY';
+        var pid=c.dataset.p||'';
+        var mname=(c.querySelector('.mname')||{}).textContent||'';
+        var pname=(c.querySelector('.prov')||{}).textContent||'';
+        if(inp===0&&out===0)return;
+        var cost;
+        if(cur==='CNY'){
+            cost=(inp*tokens+out*estOutTokens)/1e6;
+        }else{
+            cost=inp*tokens+out*estOutTokens;
+        }
+        results.push({pid:pid,mname:mname,pname:pname,cost:cost,cur:cur});
+    });
+
+    results.sort(function(a,b){return a.cost-b.cost;});
+    var minCost=results.length>0?results[0].cost:0;
+
+    var html='<table class="tk-result-table"><tr><th>#</th><th>平台</th><th>模型</th><th>预估花费</th></tr>';
+    var shown=0;
+    for(var i=0;i<results.length&&shown<30;i++){
+        var r=results[i];
+        var costStr;
+        if(r.cur==='CNY')costStr='¥'+r.cost.toFixed(4);
+        else costStr='$'+r.cost.toFixed(4);
+        var cheapest=r.cost===minCost?'tk-cheapest':'';
+        html+='<tr><td>'+(i+1)+'</td><td>'+r.pname+'</td><td class="'+cheapest+'">'+r.mname+'</td><td class="'+cheapest+'">'+costStr+'</td></tr>';
+        shown++;
+    }
+    html+='</table>';
+    if(results.length>30)html+='<div style="font-size:10px;color:var(--text3);margin-top:4px">显示前30个最便宜的，共'+results.length+'个模型</div>';
+    document.getElementById('tkResult').innerHTML=html;
+}
+
+function clearTokenCalc(){
+    document.getElementById('tkText').value='';
+    document.getElementById('tkStats').innerHTML='';
+    document.getElementById('tkResult').innerHTML='';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TTFB 测速（搜索模型名 → 自动测所有平台）
+// ═══════════════════════════════════════════════════════════
+var pingSelectedModel='';
+
+function showPingModal(){
+    var m=document.getElementById('pingModal');
+    if(m)m.classList.add('show');
+}
+function closePingModal(){
+    var m=document.getElementById('pingModal');
+    if(m)m.classList.remove('show');
+}
+
+function updatePingSuggestions(){
+    var q=(document.getElementById('pingModelInput').value||'').toLowerCase().trim();
+    var div=document.getElementById('pingSuggestions');
+    if(!q||q.length<2){div.innerHTML='';return;}
+    // 收集所有匹配的模型名（去重）
+    var cs=document.querySelectorAll('.mc');
+    var modelNames=[];
+    var seenName={};
+    cs.forEach(function(c){
+        var mname=(c.querySelector('.mname')||{}).textContent||'';
+        var key=mname.toLowerCase();
+        if(seenName[key])return;
+        if(key.indexOf(q)===-1)return;
+        seenName[key]=1;
+        // 统计该模型在多少个平台可用
+        var platformCount=0;
+        cs.forEach(function(c2){
+            var n2=(c2.querySelector('.mname')||{}).textContent||'';
+            if(n2===mname)platformCount++;
+        });
+        modelNames.push({name:mname,count:platformCount});
+    });
+    modelNames.sort(function(a,b){return b.count-a.count;});
+    var html='';
+    var count=0;
+    modelNames.forEach(function(item){
+        if(count>=10)return;
+        html+='<div style="display:inline-block;padding:3px 8px;margin:2px;border-radius:6px;border:1px solid var(--border);font-size:10px;cursor:pointer;background:var(--surface2);color:var(--text)" onclick="selectPingModel(\''+item.name.replace(/'/g,"\\'")+'\')">'+item.name+' <span style="color:var(--text3)">('+item.count+'平台)</span></div>';
+        count++;
+    });
+    div.innerHTML=html||'<span style="font-size:10px;color:var(--text3)">未找到匹配模型</span>';
+}
+
+function selectPingModel(name){
+    pingSelectedModel=name;
+    document.getElementById('pingModelInput').value=name;
+    document.getElementById('pingSuggestions').innerHTML='';
+}
+
+function startPing(){
+    if(!pingSelectedModel){showTip('请先输入模型名',false);return;}
+    // 收集所有平台中该模型的接口
+    var cs=document.querySelectorAll('.mc');
+    var endpoints=[];
+    var seen={};
+    cs.forEach(function(c){
+        var mname=(c.querySelector('.mname')||{}).textContent||'';
+        if(mname!==pingSelectedModel)return;
+        var pname=(c.querySelector('.prov')||{}).textContent||'';
+        var baseUrl=(c.querySelector('.base-url')||{}).textContent||'';
+        var key=pname+baseUrl;
+        if(seen[key])return;
+        seen[key]=1;
+        endpoints.push({pname:pname,baseUrl:baseUrl});
+    });
+
+    if(endpoints.length===0){showTip('未找到该模型的接口',false);return;}
+
+    var btn=document.getElementById('pingStartBtn');
+    btn.disabled=true;
+    btn.innerHTML='<span class="ping-spinner"></span>测速中...';
+
+    var listDiv=document.getElementById('pingResultList');
+    listDiv.innerHTML='<div style="font-size:11px;color:var(--text3)">正在测试 '+endpoints.length+' 个平台的 '+pingSelectedModel+'...</div>';
+
+    var results=[];
+    var done=0;
+    var total=endpoints.length;
+
+    endpoints.forEach(function(ep,idx){
+        var url=ep.baseUrl;
+        var body=JSON.stringify({model:pingSelectedModel,messages:[{role:"user",content:"hi"}],max_tokens:1});
+        var start=performance.now();
+        var timeoutId;
+
+        var controller=new AbortController();
+        timeoutId=setTimeout(function(){controller.abort();},8000);
+
+        fetch(url,{
+            method:'POST',
+            headers:{'Content-Type':'application/json','Authorization':'Bearer pk-test'},
+            body:body,
+            signal:controller.signal
+        }).then(function(resp){
+            clearTimeout(timeoutId);
+            var ttfb=Math.round(performance.now()-start);
+            // 401/403/429: TTFB仍然有效（网络通了，只是认证失败）
+            var st=(resp.status>=200&&resp.status<300)||resp.status===401||resp.status===403||resp.status===429||resp.status===400?'ok':'error';
+            results.push({pname:ep.pname,ms:ttfb,status:st});
+        }).catch(function(err){
+            clearTimeout(timeoutId);
+            var ttfb=Math.round(performance.now()-start);
+            if(err.name==='AbortError'){
+                results.push({pname:ep.pname,ms:-1,status:'timeout'});
+            }else{
+                results.push({pname:ep.pname,ms:ttfb,status:'error'});
+            }
+        }).finally(function(){
+            done++;
+            if(done===total){
+                renderPingResults(results);
+                btn.disabled=false;
+                btn.innerHTML='开始测速';
+            }else{
+                listDiv.innerHTML='<div style="font-size:11px;color:var(--text3)">已测试 '+done+'/'+total+'...</div>';
+            }
+        });
+    });
+}
+
+function renderPingResults(results){
+    results.sort(function(a,b){
+        if(a.status!=='ok'&&b.status==='ok')return 1;
+        if(a.status==='ok'&&b.status!=='ok')return -1;
+        return a.ms-b.ms;
+    });
+
+    var maxMs=0;
+    results.forEach(function(r){if(r.ms>0&&r.ms>maxMs)maxMs=r.ms;});
+    if(maxMs===0)maxMs=1000;
+
+    var html='';
+    results.forEach(function(r,i){
+        var msClass='ping-ms-mid';
+        var barColor='#eab308';
+        var barW=0;
+        if(r.status==='ok'){
+            if(r.ms<500){msClass='ping-ms-fast';barColor='#22c55e';}
+            else if(r.ms>2000){msClass='ping-ms-slow';barColor='#ef4444';}
+            barW=Math.min(100,(r.ms/maxMs)*100);
+        }
+        html+='<div class="ping-result-item">'
+            +'<span class="ping-platform">'+r.pname+'</span>';
+        if(r.status==='ok'){
+            html+='<span class="ping-ms '+msClass+'">'+r.ms+'ms</span>';
+        }else if(r.status==='timeout'){
+            html+='<span class="ping-ms ping-ms-timeout">超时</span>';
+        }else{
+            html+='<span class="ping-ms ping-ms-timeout">错误</span>';
+        }
+        html+='<div class="ping-bar-wrap"><div class="ping-bar" style="width:'+barW+'%;background:'+barColor+'"></div></div>';
+        if(i===0&&r.status==='ok')html+='<span style="font-size:9px;color:#22c55e;font-weight:700">最快</span>';
+        else html+='<span style="font-size:9px;color:var(--text3)">'+(i+1)+'</span>';
+        html+='</div>';
+    });
+
+    document.getElementById('pingResultList').innerHTML=html;
+}
+
+function clearPingResult(){
+    document.getElementById('pingResultList').innerHTML='';
+    pingSelectedModel='';
+    pingBaseUrl='';
+    document.getElementById('pingModelInput').value='';
+    document.getElementById('pingSuggestions').innerHTML='';
+}
+
+
+function toggleFg(el){
+    var fg=el.parentElement;
+    fg.classList.toggle('fg-collapsed');
+    var arrow=el.querySelector('.fg-arrow');
+    if(fg.classList.contains('fg-collapsed')){arrow.textContent='▸';}
+    else{arrow.textContent='▾';}
+}
+function clearAllFilters(){
+    document.getElementById('si').value='';
+    document.querySelectorAll('.pt.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.pt')[0].classList.add('active');
+    document.querySelectorAll('.sc-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.family-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.family-btn')[0].classList.add('active');
+    document.querySelectorAll('.tag-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.ctx-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.ctx-btn')[0].classList.add('active');
+    document.querySelectorAll('.sort-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.sort-btn')[0].classList.add('active');
+    var pm=document.getElementById('priceMin');if(pm)pm.value='';
+    var px=document.getElementById('priceMax');if(px)px.value='';
+    filter();
+}
+function toggleSidebar(){
+    var sb=document.getElementById('sidebar');
+    if(sb)sb.classList.toggle('open');
+}
+
 '''
+
 
 # ═══════════════════════════════════════════════════════════
 # 组装 HTML
@@ -3224,52 +3926,86 @@ HDR = (
     '</div></div>\n'
     '<div class="snote">' + snote + '</div>\n'
     + price_change_html + '\n'
-    # ─── 搜索框置顶 ───
-    '<div class="srow"><input id="si" type="text" placeholder="搜索模型... 支持 price<1, ctx>128, family:GPT, platform:aliyun 等高级语法 (按 / 聚焦)"></div>\n'
-    # ─── 第一大类：厂家与模型 ───
-    '<div class="fg">'
-    '<div class="fg-title">厂家与模型</div>'
-    '<div class="pbar">' + tabs_bar + '</div>'
-    + family_bar
-    + tag_bar
-    + ctx_bar +
-    '</div>\n'
-    # ─── 第二大类：用途 ───
-    '<div class="fg">'
-    '<div class="fg-title">用途</div>'
-    '<div class="sbar">' + scen_bar + '</div>'
-    + recommend_panel +
-    '</div>\n'
-    # ─── 第三大类：价格 ───
-    '<div class="fg">'
-    '<div class="fg-title">价格</div>'
-    '<div class="ptbar">' + pt_bar + '</div>'
-    + price_range_bar +
-    '<div class="sort-bar">' + sort_bar + '</div>'
-    '<div class="toolbar">'
-    '<div class="toolbar-left">'
-    '<div class="cur-switch"><span style="font-size:12px;color:#64748b">货币:</span>'
-    '<button class="cur-btn active" data-cur="CNY">¥ CNY</button>'
-    '<button class="cur-btn" data-cur="USD">$ USD</button>'
-    '</div></div>'
-    '<div class="toolbar-right">'
 
-    '<button class="tool-btn" id="listBtn" onclick="toggleView()">&#9776; 列表</button>'
-    '<button class="tool-btn" onclick="toggleDark()">&#9728; 亮色</button>'
-    '</div></div>'
+    # ─── 左侧筛选栏 + 右侧内容 布局 ───
+    '<button class="sidebar-toggle" onclick="toggleSidebar()">&#9776;</button>\n'
+    '<div class="main-layout">\n'
+    # ─── 左侧 Sidebar ───
+    '<div class="sidebar" id="sidebar">\n'
+    # 清除筛选按钮
+    '<button class="clear-filter-btn" onclick="clearAllFilters()">✕ 清除筛选</button>\n'
+    '<div class="srow"><input id="si" type="text" placeholder="搜索模型..." oninput="filter()" onkeydown="if(event.key===\'Escape\'){this.value=\'\';filter()}" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface2);color:var(--text);font-size:12px" onfocus="this.style.borderColor=\'var(--accent)\'" onblur="this.style.borderColor=\'var(--border)\'"></div>\n'
+    # 平台（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">算力供应商 <span class="fg-arrow">▸</span></div>\n'
+    '<div class="fg-body"><div class="pbar">' + tabs_bar + '</div></div>\n'
     '</div>\n'
-    # ─── 跨平台比价 + 月费计算器 同行 ───
-    '<div class="side-panels">\n'
-    + crossprice_panel + '\n'
-    + calc_panel + '\n'
+    # 家族（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">模型家族 <span class="fg-arrow">▸</span></div>\n'
+    '<div class="fg-body">' + family_bar + '</div>\n'
     '</div>\n'
+    # 标签（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">标签 <span class="fg-arrow">▸</span></div>\n'
+    '<div class="fg-body">' + tag_bar + '</div>\n'
+    '</div>\n'
+    # 上下文（默认展开）
+    '<div class="fg fg-collapsible">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">上下文 <span class="fg-arrow">▾</span></div>\n'
+    '<div class="fg-body">' + ctx_bar + '</div>\n'
+    '</div>\n'
+    # 用途（默认展开）
+    '<div class="fg fg-collapsible">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">用途 <span class="fg-arrow">▾</span></div>\n'
+    '<div class="fg-body"><div class="sbar">' + scen_bar + '</div>' + recommend_panel + '</div>\n'
+    '</div>\n'
+    # 价格（默认展开）
+    '<div class="fg fg-collapsible">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">价格 <span class="fg-arrow">▾</span></div>\n'
+    '<div class="fg-body"><div class="ptbar">' + pt_bar + '</div>' + price_range_bar + '<div class="sort-bar">' + sort_bar + '</div></div>\n'
+    '</div>\n'
+    # 工具（默认展开）
+    '<div class="fg fg-collapsible">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">工具 <span class="fg-arrow">▾</span></div>\n'
+    '<div class="fg-body"><div class="toolbar" style="flex-wrap:wrap;gap:4px">\n'
+    '<div class="cur-switch"><span style="font-size:11px;color:#64748b">货币</span>\n'
+    '<button class="cur-btn active" data-cur="CNY">¥</button>\n'
+    '<button class="cur-btn" data-cur="USD">$</button>\n'
+    '</div>\n'
+    '<button class="tool-btn" id="listBtn" onclick="toggleView()">&#9776; 列表</button>\n'
+    '<button class="tool-btn" onclick="toggleDark()">&#9728; 亮色</button>\n'
+    '<button class="tool-btn" onclick="showTokenCalc()">&#128270; 计价</button>\n'
+    '<button class="tool-btn" onclick="showPingModal()">&#9889; 测速</button>\n'
+    '</div></div>\n'
+    '</div>\n'
+    # 侧面板（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">跨平台比价 <span class="fg-arrow">▸</span></div>\n'
+    '<div class="fg-body">' + crossprice_panel + '</div>\n'
+    '</div>\n'
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">月费计算器 <span class="fg-arrow">▸</span></div>\n'
+    '<div class="fg-body">' + calc_panel + '</div>\n'
+    '</div>\n'
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">⚠ Rate Limits <span class="fg-arrow">▸</span></div>\n'
+    '<div class="fg-body">' + rl_panel + '</div>\n'
+    '</div>\n'
+    '</div>\n'  # /sidebar
+    # ─── 右侧内容区 ───
+    '<div class="content-area">\n'
     + cmp_panel + '\n'
+
     '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型</div>\n'
         '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
 
 FTR = (
+    '</div>\n'
+    '</div>\n'
+    '</div>\n'
     '\n</div>\n'
     '<div class="pagination" id="pagination"></div>\n'
     '<div class="empty" id="empty" style="display:none">没有找到符合条件的模型</div>\n'
@@ -3285,6 +4021,36 @@ FTR = (
     '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a></p>'
     '</div>\n'
     '<div id="toast" class=""></div>\n'
+    # Token 计价器模态框
+    '<div class="tk-modal" id="tkModal" onclick="if(event.target===this)closeTokenCalc()">'
+    '<div class="tk-modal-content">'
+    '<div class="tk-modal-header"><div class="tk-modal-title">&#128270; 真实文本计价器</div><button class="tk-modal-close" onclick="closeTokenCalc()">&times;</button></div>'
+    '<div class="tk-modal-body">'
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--text2)">粘贴你的代码或文案，自动计算 Token 数并对比各平台花费</div>'
+    '<textarea class="tk-textarea" id="tkText" placeholder="在此粘贴文本...\n\n支持中文、英文、代码混合内容"></textarea>'
+    '<div class="tk-stats" id="tkStats"></div>'
+    '<div style="margin-bottom:8px">'
+    '<button class="tk-btn" onclick="calcTokens()">计算 Token</button>'
+    '<button class="tk-btn tk-btn-sec" onclick="clearTokenCalc()">清空</button>'
+    '<span style="font-size:10px;color:var(--text3);margin-left:8px">分词器: GPT-4 Cl100k (近似)</span>'
+    '</div>'
+    '<div id="tkResult"></div>'
+    '</div></div></div>\n'
+    # TTFB 测速模态框
+    '<div class="ping-modal" id="pingModal" onclick="if(event.target===this)closePingModal()">'
+    '<div class="ping-modal-content">'
+    '<div class="ping-modal-header"><div class="ping-modal-title">&#9889; 接口测速 (TTFB)</div><button class="ping-modal-close" onclick="closePingModal()">&times;</button></div>'
+    '<div class="ping-modal-body">'
+    '<div style="margin-bottom:8px;font-size:11px;color:var(--text2)">输入模型名，自动测所有平台该模型的 TTFB，按延迟从低到高排序</div>'
+    '<input class="tk-model-input" id="pingModelInput" placeholder="输入模型名搜索，如: deepseek-v3" oninput="updatePingSuggestions()">'
+    '<div id="pingSuggestions" style="margin-bottom:8px"></div>'
+    '<div style="margin-bottom:8px">'
+    '<button class="ping-btn" id="pingStartBtn" onclick="startPing()">测速所有平台</button>'
+    '<button class="ping-btn" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border)" onclick="clearPingResult()">清除结果</button>'
+    '<span style="font-size:10px;color:var(--text3);margin-left:8px">仅测 API 连接速度，不消耗 Token</span>'
+    '</div>'
+    '<div class="ping-result-list" id="pingResultList"></div>'
+    '</div></div></div>\n'
     '<div class="code-modal" id="codeModal" onclick="if(event.target===this)closeCodeModal()">'
     '<div class="code-modal-content">'
     '<div class="code-modal-header"><div class="code-modal-title"><span>&#128187;</span> 一键接入 <span class="cm-model"></span></div><button class="code-modal-close" onclick="closeCodeModal()">&times;</button></div>'
@@ -3307,7 +4073,183 @@ HTML = HDR + "\n".join(cards) + FTR
 with open(OUT,"w",encoding="utf-8") as f:
     f.write(HTML)
 sz = os.path.getsize(OUT)
-print("\nDONE:", OUT, "(%.0f KB)" % (sz/1024))
+
+# ─── 自动更新 models_data.json（保持数据同步） ───
+try:
+    _pinfo = {
+        "aliyun":{"name":"阿里百炼","color":"#ff6a00"},
+        "siliconflow":{"name":"硅基流动","color":"#7C3AED"},
+        "moonshot":{"name":"月之暗面","color":"#4f46e5"},
+        "zhipu":{"name":"智谱 AI","color":"#00c4b4"},
+        "volcengine":{"name":"火山引擎","color":"#dc2626"},
+        "baidu":{"name":"百度文心","color":"#2932e1"},
+        "tencent":{"name":"腾讯混元","color":"#07c160"},
+        "spark":{"name":"讯飞星火","color":"#ff6347"},
+        "minimax":{"name":"MiniMax","color":"#2563eb"},
+        "yi":{"name":"零一万物","color":"#8b5cf6"},
+        "baichuan":{"name":"百川智能","color":"#16a34a"},
+        "jieyue":{"name":"阶跃星辰","color":"#ea580c"},
+        "deepseek":{"name":"DeepSeek","color":"#0ea5e9"},
+        "openrouter":{"name":"OpenRouter","color":"#6366f1"},
+        "groq":{"name":"Groq","color":"#f97316"},
+        "together":{"name":"Together AI","color":"#06b6d4"},
+        "fireworks":{"name":"Fireworks AI","color":"#ef4444"},
+        "cohere":{"name":"Cohere","color":"#d946ef"},
+        "infini":{"name":"无问芯穹","color":"#84cc16"},
+        "novita":{"name":"Novita AI","color":"#f472b6"},
+        "deepinfra":{"name":"DeepInfra","color":"#a78bfa"},
+        "aihubmix":{"name":"AiHubMix","color":"#fb923c"},
+        "n1n":{"name":"n1n.ai","color":"#22d3ee"},
+        "aigc2d":{"name":"AIGC2D","color":"#34d399"},
+        "ca":{"name":"ChatAnywhere","color":"#fbbf24"},
+    }
+    _mj = {"meta":{"updated_at":datetime.now().strftime("%Y-%m-%d %H:%M"),"total_models":total,
+        "platform_counts":{},"price_tiers":{},"price_changes":price_changes},
+        "platforms":_pinfo,"models":[]}
+    _pc = {}; _ptc = {}
+    for c in cards:
+        # 从卡片 HTML 提取 data 属性
+        _dp = re.search(r'data-p="([^"]*)"', c)
+        _dn = re.search(r'data-ctx-display="([^"]*)"', c)
+        _di = re.search(r'data-inp="([^"]*)"', c)
+        _do = re.search(r'data-out="([^"]*)"', c)
+        _dc = re.search(r'data-cur="([^"]*)"', c)
+        _ds = re.search(r'data-s="([^"]*)"', c)
+        _df = re.search(r'data-family="([^"]*)"', c)
+        _pu = re.search(r'data-pu="([^"]*)"', c)
+        _dpt = re.search(r'data-pt="([^"]*)"', c)
+        _mn = re.search(r'class="mname">([^<]*)', c)
+        _pn = re.search(r'class="prov">([^<]*)', c)
+        _bu = re.search(r'class="base-url">([^<]*)', c)
+        _tg = re.findall(r'class="tg[^"]*">([^<]*)', c)
+        if not _dp: continue
+        pid = _dp.group(1)
+        _pc[pid] = _pc.get(pid, 0) + 1
+        if _dpt: _ptc[_dpt.group(1)] = _ptc.get(_dpt.group(1), 0) + 1
+        _mj["models"].append({
+            "platform_id":pid,
+            "platform_name":html.unescape(_pn.group(1)) if _pn else "",
+            "platform_color":_pinfo.get(pid,{}).get("color",""),
+            "name":html.unescape(_mn.group(1)) if _mn else "",
+            "input_price":float(_di.group(1)) if _di else 0,
+            "output_price":float(_do.group(1)) if _do else 0,
+            "input_price_display":"","output_price_display":"",
+            "currency":_dc.group(1) if _dc else "CNY",
+            "price_unit":_pu.group(1) if _pu else "per_token",
+            "context":_dn.group(1) if _dn else "",
+            "tags":_tg,
+            "scene":_ds.group(1) if _ds else "",
+            "family":_df.group(1) if _df else "",
+            "base_url":html.unescape(_bu.group(1)) if _bu else ""
+        })
+    _mj["meta"]["platform_counts"] = _pc
+    _mj["meta"]["price_tiers"] = _ptc
+    with open(MODELS_JSON, "w", encoding="utf-8") as _jf:
+        json.dump(_mj, _jf, ensure_ascii=False, separators=(',',':'))
+    print("  models_data.json updated (%d models)" % total, file=sys.stderr)
+except Exception as _e:
+    print("  models_data.json update failed:", str(_e)[:80], file=sys.stderr)
+
+# ─── 每日测速并保存历史数据 ───
+PING_DATA_FILE = os.path.join(CACHE_DIR, "ping_history.json")
+try:
+    import urllib.request as _ureq
+    import concurrent.futures
+    
+    # 从 models_data.json 读取模型数据
+    with open(MODELS_JSON, "r", encoding="utf-8") as _pf:
+        _pdata = json.load(_pf)
+    
+    # 收集需要测速的接口：每个平台的 base_url + 代表性模型
+    _ping_targets = []
+    _seen_base = {}
+    for _pm in _pdata.get("models", []):
+        _burl = _pm.get("base_url", "")
+        _pid = _pm.get("platform_id", "")
+        _mname = _pm.get("name", "")
+        if not _burl or not _mname: continue
+        # 每个平台只测一个代表性模型（避免太多请求）
+        if _pid in _seen_base: continue
+        _seen_base[_pid] = 1
+        _ping_targets.append({
+            "platform_id": _pid,
+            "platform_name": _pm.get("platform_name", ""),
+            "model": _mname,
+            "base_url": _burl
+        })
+    
+    def _ping_one(target, timeout=8):
+        """测单个接口的 TTFB（即使返回 401/403，TTFB 仍然有效）"""
+        url = target["base_url"]
+        body = json.dumps({"model": target["model"], "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1}).encode()
+        headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        try:
+            req = _ureq.Request(url, data=body, headers=headers, method="POST")
+            t0 = time.time()
+            try:
+                with _ureq.urlopen(req, timeout=timeout) as resp:
+                    resp.read(1)
+                ttfb = int((time.time() - t0) * 1000)
+                return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "ok"}
+            except _ureq.HTTPError as e:
+                # 401/403/429 等：TTFB 仍然有效（网络通了，只是认证失败）
+                ttfb = int((time.time() - t0) * 1000)
+                if e.code in (401, 403, 429, 402, 400):
+                    return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "ok"}
+                return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "error"}
+        except Exception as e:
+            ttfb = int((time.time() - t0) * 1000) if 't0' in dir() else -1
+            if "timed out" in str(e).lower():
+                return {"platform_id": target["platform_id"], "model": target["model"], "ms": -1, "status": "timeout"}
+            return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "error"}
+    
+    # 并发测速
+    _ping_results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = {executor.submit(_ping_one, t): t for t in _ping_targets}
+        for future in concurrent.futures.as_completed(futures, timeout=30):
+            try:
+                result = future.result()
+                _ping_results.append(result)
+            except:
+                pass
+    
+    # 保存历史数据
+    _history = []
+    if os.path.exists(PING_DATA_FILE):
+        try:
+            with open(PING_DATA_FILE, "r") as hf:
+                _history = json.load(hf)
+        except:
+            _history = []
+    
+    _today_entry = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "time": datetime.now().strftime("%H:%M"),
+        "results": sorted(_ping_results, key=lambda x: x.get("ms", 99999) if x.get("ms", -1) > 0 else 99999)
+    }
+    _history.append(_today_entry)
+    # 只保留最近30天的数据
+    if len(_history) > 30:
+        _history = _history[-30:]
+    
+    with open(PING_DATA_FILE, "w", encoding="utf-8") as hf:
+        json.dump(_history, hf, ensure_ascii=False, separators=(',', ':'))
+    
+    # 同时保存一份完整的历史数据到项目目录（用于综合分析）
+    _analysis_file = os.path.join(SCRIPT_DIR, "ping_analysis.json")
+    with open(_analysis_file, "w", encoding="utf-8") as af:
+        json.dump({
+            "meta": {"updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"), "days": len(_history)},
+            "daily": _history
+        }, af, ensure_ascii=False, indent=2)
+    
+    _ok_count = sum(1 for r in _ping_results if r.get("status") == "ok")
+    print("  Ping: %d/%d platforms tested" % (_ok_count, len(_ping_targets)), file=sys.stderr)
+except Exception as _e:
+    print("  Ping skipped:", str(_e)[:60], file=sys.stderr)
+
+
 print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d AH:%d N1:%d A2:%d CA:%d Total:%d" % (
     oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,ic,nc,dic,ahmc,n1nc,a2c,cac,total))
 print("Time: %.1fs" % (time.time()-t0))

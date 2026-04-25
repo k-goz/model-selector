@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Generate index.html
+      - name: Generate data + ping test
         env:
           OUTPUT_FILE: index.html
           CACHE_DIR: .cache
@@ -40,7 +40,7 @@ jobs:
           DEEPSEEK_KEY: ${{ secrets.DEEPSEEK_KEY }}
           GROQ_KEY: ${{ secrets.GROQ_KEY }}
           BAIDU_KEY: ${{ secrets.BAIDU_KEY }}
-          TOGETHER_KEY: ${{ secrets.TOGETHER_KEY }}
+          TOGETHER_KEY: ${{ secrets.TOGATHER_KEY }}
           FIREWORKS_KEY: ${{ secrets.FIREWORKS_KEY }}
           COHERE_KEY: ${{ secrets.COHERE_KEY }}
           INFINI_KEY: ${{ secrets.INFINI_KEY }}
@@ -51,13 +51,13 @@ jobs:
       - name: Check for changes
         id: check
         run: |
-          git diff --quiet index.html && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          git diff --quiet index.html models_data.json ping_analysis.json && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Commit and push
         if: steps.check.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.html
-          git commit -m "auto: update model data $(date +%Y-%m-%d)"
+          git add index.html models_data.json ping_analysis.json
+          git commit -m "auto: update model data + ping $(date +%Y-%m-%d)"
           git push

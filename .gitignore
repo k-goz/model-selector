@@ -2,3 +2,4 @@
 .cache/
 .arts/
 .codeartsdoer/
+# models_data.json is now tracked for data sync

@@ -6,16 +6,16 @@
 
 ---
 
-## 支持平台（25 家，3113 个模型）
+## 支持平台（25 家，3127 个模型）
 
 ### 国内官方平台
 
 | 平台 | 模型数 | 价格来源 | 货币 |
 |------|--------|----------|------|
-| 阿里百炼 | 465 | API 实时获取 | CNY |
-| 百度文心 | 194 | API 实时获取 | CNY |
+| 阿里百炼 | 468 | API 实时获取 | CNY |
+| 百度文心 | 181 | API 实时获取 | CNY |
 | 火山引擎 | 115 | API 实时获取 | CNY |
-| 硅基流动 | 109 | API 实时获取 | CNY |
+| 硅基流动 | 110 | API 实时获取 | CNY |
 | 月之暗面 | 9 | API 实时获取 | CNY |
 | 腾讯混元 | 11 | API 实时获取 | CNY |
 | 智谱 AI | 7 | API 实时获取 | CNY |
@@ -32,28 +32,28 @@
 |------|--------|----------|------|------|
 | 无问芯穹 | 51 | API 实时获取 | CNY | 国产模型聚合 |
 | Novita AI | 95 | API 实时获取 | CNY | GPU云+模型聚合 |
-| n1n.ai | 561 | 公开价格API | CNY | 闭源模型折扣代理 |
-| AIGC2D | 561 | 公开价格API | CNY | OneAPI系统 |
+| n1n.ai | 571 | 公开价格API | CNY | 闭源模型折扣代理 |
+| AIGC2D | 571 | 公开价格API | CNY | OneAPI系统 |
 | ChatAnywhere | 93 | 网页抓取 | CNY | GPT/Claude中转 |
 
 ### 国外平台
 
 | 平台 | 模型数 | 价格来源 | 货币 |
 |------|--------|----------|------|
-| OpenRouter | 349 | API 实时获取 | USD |
-| Together AI | 68 | API 实时获取 | USD |
+| OpenRouter | 350 | API 实时获取 | USD |
+| Together AI | 69 | API 实时获取 | USD |
 | DeepInfra | 132 | API 实时获取 | USD |
-| Groq | 11 | API 实时获取 | USD |
-| Fireworks AI | 10 | API 实时获取 | USD |
+| Groq | 16 | API 实时获取 | USD |
+| Fireworks AI | 9 | API 实时获取 | USD |
 | Cohere | 8 | API 实时获取 | USD |
-| AiHubMix | 226 | API 实时获取 | USD |
+| AiHubMix | 223 | API 实时获取 | USD |
 
 ---
 
 ## 功能
 
 ### 核心功能
-- **多平台聚合** — 25 家平台 3113 个模型统一呈现
+- **多平台聚合** — 25 家平台 3127 个模型统一呈现
 - **实时价格对比** — 支持 CNY / USD 双货币切换
 - **一键接入** — 点击卡片弹出代码片段（Python / Node.js / cURL / Stream）
 - **Base URL 显示** — 每个卡片直接展示 API 接入地址
@@ -76,6 +76,9 @@
 - **月费计算器** — 输入对话次数 / Token 数 / 输出输入比，计算各模型月费排名
 - **预算反推** — 输入月预算，反推每个模型可用对话次数
 - **模型对比** — 最多勾选 3 个模型并排对比
+- **Rate Limits 对比** — 各平台并发限制 (TPM/RPM) 一目了然
+- **真实文本计价器** — 粘贴代码/文案，自动估算 Token 数并对比各平台花费
+- **接口测速 (TTFB)** — 选择模型，测各平台首字响应时间，找最快接口
 
 ### 体验
 - **暗色模式** — 默认 Linear Aesthetic 暗色精度美学，可切换亮色
@@ -95,10 +98,50 @@
 - ChatAnywhere 价格从官方文档网页抓取
 - 标注「价格待确认」的模型请至平台控制台核实
 
+## 数据同步机制
+
+本项目采用 **"JSON 优先 + API 回退 + 硬编码兜底"** 三层数据架构：
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  第1层: models_data.json (静态数据文件)                    │
+│  - 存在 → 直接加载，跳过所有 API 调用 (0.1s)              │
+│  - 不存在 → 进入第2层                                     │
+├─────────────────────────────────────────────────────────┤
+│  第2层: 各平台 API 实时拉取                                │
+│  - 有 API Key → 调用 API 获取最新模型列表和价格            │
+│  - 无 API Key → 进入第3层                                 │
+├─────────────────────────────────────────────────────────┤
+│  第3层: 硬编码回退数据                                     │
+│  - 每个国内平台都有预置的模型列表和价格映射                  │
+│  - 保证即使没有 API Key 也能显示基本数据                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+**关键保证**：无论走哪一层，`generate.py` 运行结束后都会**自动更新 `models_data.json`**，确保下次运行时数据不丢失。
+
+### 本地操作流程
+
+1. **首次运行 / 更新数据**：`rm models_data.json && python3 generate.py`
+   - 删除旧 JSON → 强制从 API 拉取最新数据 → 生成 HTML + 更新 JSON
+
+2. **只改页面样式/功能**：`python3 generate.py`
+   - 从 JSON 加载（0.1s）→ 生成 HTML + 更新 JSON → 数据不丢
+
+3. **添加新平台/模型**：修改 `generate.py` → `rm models_data.json && python3 generate.py`
+
+### CI/CD 自动更新
+
+- GitHub Actions 每天北京时间 06:00 自动运行
+- 从 GitHub Secrets 读取 API Key，调用各平台 API
+- 自动 commit `index.html` + `models_data.json`
+- 部署到 Vercel（静态站点）
+
 ## 技术架构
 
 - 纯 HTML + CSS + JS，零依赖，单文件可离线使用
 - Python 数据抓取脚本（`generate.py`），从各平台 API 拉取模型数据生成静态 HTML
+- `models_data.json` 作为数据中间层，保证页面修改不丢数据
 - CSS 变量体系 + Linear Aesthetic 设计风格（shimmer / glow / micro-border / glassmorphism）
 - API Key 通过环境变量注入，支持本地缓存和重试
 - GitHub Actions 每日自动更新（北京时间 06:00）
@@ -106,6 +149,7 @@
 
 ## 更新日志
 
+- **v6.0** (2026-04-24): 修复数据同步链路 — models_data.json 自动更新；5个国内平台硬编码回退；添加 Rate Limits 对比 / 真实文本计价器 / TTFB 接口测速；修复 price_unit/platform_color 同步 bug；25 平台 3127 模型
 - **v5.0** (2026-04-23): 添加 n1n.ai / AIGC2D / ChatAnywhere 国内聚合平台；添加微信二维码；移除导出功能；25 平台 3113 模型
 - **v4.0** (2026-04-22): 添加 AiHubMix / 无问芯穹 / DeepInfra / Novita AI；API Key 实时抓取；22 平台 1895 模型
 - **v3.5** (2026-04-20): 添加 Together AI / Fireworks AI / Cohere；修复 USD 价格显示；分页功能；筛选区重构
