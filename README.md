@@ -134,7 +134,7 @@
 
 - GitHub Actions 每天北京时间 06:00 自动运行
 - 从 GitHub Secrets 读取 API Key，调用各平台 API
-- 自动 commit `index.html` + `models_data.json`
+- 自动 commit `index.html` + `models_data.json` + `ping_analysis.json`
 - 部署到 Vercel（静态站点）
 
 ## 技术架构
@@ -149,6 +149,7 @@
 
 ## 更新日志
 
+- **v6.1** (2026-04-25): 修复6个 bug — clearAllFilters 场景筛选器类名(.sc-btn→.sc) + 缺少重置价格分级/货币切换；updatePrices/calcTokens/价格筛选正确处理 per_1m price_unit；JS 动态卡片添加 data-pu 属性；GitHub Actions 密钥名拼写修正(TOGATHER→TOGETHER)
 - **v6.0** (2026-04-24): 修复数据同步链路 — models_data.json 自动更新；5个国内平台硬编码回退；添加 Rate Limits 对比 / 真实文本计价器 / TTFB 接口测速；修复 price_unit/platform_color 同步 bug；25 平台 3127 模型
 - **v5.0** (2026-04-23): 添加 n1n.ai / AIGC2D / ChatAnywhere 国内聚合平台；添加微信二维码；移除导出功能；25 平台 3113 模型
 - **v4.0** (2026-04-22): 添加 AiHubMix / 无问芯穹 / DeepInfra / Novita AI；API Key 实时抓取；22 平台 1895 模型
