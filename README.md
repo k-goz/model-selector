@@ -2,7 +2,7 @@
 
 一键对比全网 AI 模型价格，快速选择、跨平台比价、月费估算。
 
-**https://ms-v62.vercel.app**
+**https://ms-fix.vercel.app**
 
 ---
 
