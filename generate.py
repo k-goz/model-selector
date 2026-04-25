@@ -3511,7 +3511,8 @@ if(html){
 document.getElementById("crossPanel").style.display="block";
 document.getElementById("crossList").innerHTML=html;
 }else{
-document.getElementById("crossPanel").style.display="none";
+document.getElementById("crossPanel").style.display="block";
+document.getElementById("crossList").innerHTML='<div style="padding:8px;font-size:12px;color:var(--text3)">未找到匹配的跨平台模型</div>';
 }
 }
 
