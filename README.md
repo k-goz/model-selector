@@ -2,7 +2,7 @@
 
 一键对比全网 AI 模型价格，快速选择、跨平台比价、月费估算。
 
-**https://model-selector-deploy.vercel.app**
+**https://ms-final-iota.vercel.app**
 
 ---
 
