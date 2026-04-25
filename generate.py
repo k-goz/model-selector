@@ -2633,7 +2633,7 @@ function renderModelsFromJSON(data) {
 
         // 构建卡片 HTML
         var cardHtml = '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
-            + 'data-inp="' + inpS + '" data-out="' + outS + '" data-cur="' + cur + '" '
+            + 'data-inp="' + inpS + '" data-out="' + outS + '" data-cur="' + cur + '" data-pu="' + pu + '" '
             + 'data-ctx="' + ctxNum + '" data-ctx-display="' + ctx + '" ' + famAttr + ' '
             + 'onclick="showCodeModal(\'' + baseUrl + '\',\'' + mname.replace(/'/g, "\\'") + '\',\'' + pid + '\')">'
             + '<div class="dot"></div><div class="prov">' + pname + '</div>'
@@ -2840,7 +2840,9 @@ if(fam!==curFamily)sh=false;
 if(priceMin!==null||priceMax!==null){
 var inp=parseFloat(c.dataset.inp||0);
 var cur=c.dataset.cur||'CNY';
-var cnyInp=cur==='USD'?inp*1e6*USD_TO_CNY:inp;
+var pu2=c.dataset.pu||'per_token';
+var mul=cur==='USD'?(pu2==='per_1m'?1:1e6):1;
+var cnyInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
 if(priceMin!==null&&cnyInp<priceMin)sh=false;
 if(priceMax!==null&&cnyInp>priceMax)sh=false;
 }
@@ -2851,11 +2853,11 @@ var adv=parseAdvancedSearch(q);
 if(adv.text&&mn.toLowerCase().indexOf(adv.text)===-1&&pn.toLowerCase().indexOf(adv.text)===-1)sh=false;
 // 高级价格筛选
 if(adv.priceMin!==null){
-var cInp=cur==='USD'?inp*1e6*USD_TO_CNY:inp;
+var cInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
 if(cInp<adv.priceMin)sh=false;
 }
 if(adv.priceMax!==null){
-var cInp2=cur==='USD'?inp*1e6*USD_TO_CNY:inp;
+var cInp2=cur==='USD'?inp*mul*USD_TO_CNY:inp;
 if(cInp2>adv.priceMax)sh=false;
 }
 // 高级上下文筛选
@@ -2988,21 +2990,24 @@ var out=parseFloat(c.dataset.out)||0;
 var cur=c.dataset.cur||'CNY';
 var prow=c.querySelector('.prow');
 if(!prow)return;
+var pu=c.dataset.pu||'per_token';
 if(curCur==='CNY'){
 if(cur==='USD'){
-var cnyInp=inp*1e6*USD_TO_CNY;
-var cnyOut=out*1e6*USD_TO_CNY;
+var mul=pu==='per_1m'?1:1e6;
+var cnyInp=inp*mul*USD_TO_CNY;
+var cnyOut=out*mul*USD_TO_CNY;
 prow.innerHTML=makeCNYBadge(cnyInp,cnyOut);
 }else{
 prow.innerHTML=makeCNYBadge(inp,out);
 }
 }else{
 if(cur==='CNY'){
-var usdInp=inp/USD_TO_CNY;
-var usdOut=out/USD_TO_CNY;
+var usdInp=inp/USD_TO_CNY/1e6;
+var usdOut=out/USD_TO_CNY/1e6;
 prow.innerHTML=makeUSDBadge(usdInp,usdOut);
 }else{
-prow.innerHTML=makeUSDBadge(inp*1e6,out*1e6);
+var mul2=pu==='per_1m'?1:1e6;
+prow.innerHTML=makeUSDBadge(inp*mul2,out*mul2);
 }
 }
 });
@@ -3667,11 +3672,13 @@ function calcTokens(){
         var mname=(c.querySelector('.mname')||{}).textContent||'';
         var pname=(c.querySelector('.prov')||{}).textContent||'';
         if(inp===0&&out===0)return;
+        var pu=c.dataset.pu||'per_token';
         var cost;
         if(cur==='CNY'){
             cost=(inp*tokens+out*estOutTokens)/1e6;
         }else{
-            cost=inp*tokens+out*estOutTokens;
+            var mul=pu==='per_1m'?1e-6:1;
+            cost=(inp*tokens+out*estOutTokens)*mul;
         }
         results.push({pid:pid,mname:mname,pname:pname,cost:cost,cur:cur});
     });
@@ -3884,7 +3891,10 @@ function clearAllFilters(){
     document.getElementById('si').value='';
     document.querySelectorAll('.pt.active').forEach(function(b){b.classList.remove('active')});
     document.querySelectorAll('.pt')[0].classList.add('active');
-    document.querySelectorAll('.sc-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.pt-filter.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.pt-filter')[0].classList.add('active');
+    document.querySelectorAll('.sc.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.sc')[0].classList.add('active');
     document.querySelectorAll('.family-btn.active').forEach(function(b){b.classList.remove('active')});
     document.querySelectorAll('.family-btn')[0].classList.add('active');
     document.querySelectorAll('.tag-btn.active').forEach(function(b){b.classList.remove('active')});
@@ -3892,9 +3902,12 @@ function clearAllFilters(){
     document.querySelectorAll('.ctx-btn')[0].classList.add('active');
     document.querySelectorAll('.sort-btn.active').forEach(function(b){b.classList.remove('active')});
     document.querySelectorAll('.sort-btn')[0].classList.add('active');
+    document.querySelectorAll('.cur-btn.active').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.cur-btn')[0].classList.add('active');
+    curP='all';curPT='all';curS='all';curFamily='all';curCtx='all';curSort='default';curTags=[];curCur='CNY';
     var pm=document.getElementById('priceMin');if(pm)pm.value='';
     var px=document.getElementById('priceMax');if(px)px.value='';
-    filter();
+    filter();updatePrices();
 }
 function toggleSidebar(){
     var sb=document.getElementById('sidebar');
