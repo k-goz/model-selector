@@ -2677,6 +2677,7 @@ document.addEventListener('DOMContentLoaded',function(){
 fetch('models_data.json').then(function(r){return r.json();}).then(function(data){
     if(data && data.models && data.models.length>0){
         renderModelsFromJSON(data);
+        filter();
     }
 }).catch(function(){
     // JSON 加载失败，使用 HTML 中已有的硬编码卡片
@@ -2901,7 +2902,7 @@ renderPagination();
 }
 
 // ─── 分页 ───
-var PAGE_SIZE=60;
+var PAGE_SIZE=66;
 var currentPage=1;
 var totalFiltered=0;
 
@@ -3963,24 +3964,24 @@ HDR = (
     '<div class="fg-title" onclick="toggleFg(this)">标签 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body">' + tag_bar + '</div>\n'
     '</div>\n'
-    # 上下文（默认展开）
-    '<div class="fg fg-collapsible">\n'
-    '<div class="fg-title" onclick="toggleFg(this)">上下文 <span class="fg-arrow">▾</span></div>\n'
+    # 上下文（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">上下文 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body">' + ctx_bar + '</div>\n'
     '</div>\n'
-    # 用途（默认展开）
-    '<div class="fg fg-collapsible">\n'
-    '<div class="fg-title" onclick="toggleFg(this)">用途 <span class="fg-arrow">▾</span></div>\n'
+    # 用途（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">用途 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body"><div class="sbar">' + scen_bar + '</div>' + recommend_panel + '</div>\n'
     '</div>\n'
-    # 价格（默认展开）
-    '<div class="fg fg-collapsible">\n'
-    '<div class="fg-title" onclick="toggleFg(this)">价格 <span class="fg-arrow">▾</span></div>\n'
+    # 价格（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">价格 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body"><div class="ptbar">' + pt_bar + '</div>' + price_range_bar + '<div class="sort-bar">' + sort_bar + '</div></div>\n'
     '</div>\n'
-    # 工具（默认展开）
-    '<div class="fg fg-collapsible">\n'
-    '<div class="fg-title" onclick="toggleFg(this)">工具 <span class="fg-arrow">▾</span></div>\n'
+    # 工具（默认折叠）
+    '<div class="fg fg-collapsible fg-collapsed">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">工具 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body"><div class="toolbar" style="flex-wrap:wrap;gap:4px">\n'
     '<div class="cur-switch"><span style="font-size:11px;color:#64748b">货币</span>\n'
     '<button class="cur-btn active" data-cur="CNY">¥</button>\n'
