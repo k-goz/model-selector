@@ -1705,44 +1705,47 @@ def send_telegram_notification(total_models, changes):
     
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    lines = ["✅ *模型数据每日更新*\\n"]
-    lines.append(f"⏰ {now_str}\\n")
-    lines.append(f"📊 模型总数: *{total_models}*\\n")
+    # 构建纯文本消息（不用MarkdownV2，避免转义问题）
+    lines = []
+    lines.append("✅ 模型数据每日更新")
+    lines.append(f"⏰ {now_str}")
+    lines.append(f"📊 模型总数: {total_models}")
+    lines.append("")
     
     if changes:
-        lines.append(f"🔔 价格变动: *{len(changes)}* 个模型\\n")
+        lines.append(f"🔔 价格变动: {len(changes)} 个模型")
         for c in changes[:5]:  # 最多显示5个
             platform = c["p"]
-            model = c["n"].replace("_", "\\_").replace("*", "\\*").replace("-", "\\-")
-            old_i = c.get("old_i", 0); old_o = c.get("old_o", 0)
-            new_i = c.get("new_i", 0); new_o = c.get("new_o", 0)
+            model = c["n"]
+            old_i = c.get("old_i", 0); new_i = c.get("new_i", 0)
             
-            def trend(old, new):
-                if old == 0: return "🆕 新增"
-                change = ((new - old) / old) * 100 if old > 0 else 0
-                if change > 0:
-                    return f"📈 \+{change:.1f}%"
+            if old_i == 0:
+                trend_str = "🆕 新增"
+            else:
+                change_pct = ((new_i - old_i) / old_i) * 100
+                if change_pct > 0:
+                    trend_str = f"📈 +{change_pct:.1f}%"
                 else:
-                    return f"📉 {change:.1f}%"
+                    trend_str = f"📉 {change_pct:.1f}%"
             
-            lines.append(f"• *{model}* \({platform}\)")
-            lines.append(f"  输入: ¥{old_i:.4f} → ¥{new_i:.4f} {trend(old_i, new_i)}")
+            lines.append(f"  • {model} ({platform})")
+            lines.append(f"    ¥{old_i:.4f} → ¥{new_i:.4f} {trend_str}")
         
         if len(changes) > 5:
-            lines.append(f"\.\.\. 还有 {len(changes) - 5} 个模型价格变化")
+            lines.append(f"  ... 还有 {len(changes) - 5} 个")
     else:
         lines.append("✨ 价格无变动")
     
-    lines.append("\\n🌐 https://model\.ai\-selector\.top")
+    lines.append("")
+    lines.append("🌐 https://model.ai-selector.top")
     
-    message = "\\n".join(lines)
+    message = "\n".join(lines)
     
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
         data = json.dumps({
             "chat_id": chat_id,
             "text": message,
-            "parse_mode": "MarkdownV2",
             "disable_web_page_preview": True
         }).encode()
         req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
