@@ -1695,40 +1695,45 @@ print("Generated:", total, file=sys.stderr)
 if price_changes:
     print("  Price changes detected:", len(price_changes), file=sys.stderr)
 
-# ─── Telegram 通知 ───
-def send_telegram_notification(changes):
-    """发送价格变动通知到 Telegram"""
+# ─── Telegram 通知（每次运行都发送）───
+def send_telegram_notification(total_models, changes):
+    """发送每日更新通知到 Telegram（无论是否有价格变动）"""
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     if not bot_token or not chat_id:
         return
     
-    lines = ["🔔 *AI模型价格变动通知*\\n"]
-    lines.append(f"检测到 {len(changes)} 个模型价格变化:\\n")
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M")
     
-    for c in changes[:10]:
-        platform = c["p"]
-        model = c["n"].replace("_", "\\_").replace("*", "\\*").replace("-", "\\-")
-        old_i = c.get("old_i", 0); old_o = c.get("old_o", 0)
-        new_i = c.get("new_i", 0); new_o = c.get("new_o", 0)
+    lines = ["✅ *模型数据每日更新*\\n"]
+    lines.append(f"⏰ {now_str}\\n")
+    lines.append(f"📊 模型总数: *{total_models}*\\n")
+    
+    if changes:
+        lines.append(f"🔔 价格变动: *{len(changes)}* 个模型\\n")
+        for c in changes[:5]:  # 最多显示5个
+            platform = c["p"]
+            model = c["n"].replace("_", "\\_").replace("*", "\\*").replace("-", "\\-")
+            old_i = c.get("old_i", 0); old_o = c.get("old_o", 0)
+            new_i = c.get("new_i", 0); new_o = c.get("new_o", 0)
+            
+            def trend(old, new):
+                if old == 0: return "🆕 新增"
+                change = ((new - old) / old) * 100 if old > 0 else 0
+                if change > 0:
+                    return f"📈 \+{change:.1f}%"
+                else:
+                    return f"📉 {change:.1f}%"
+            
+            lines.append(f"• *{model}* \({platform}\)")
+            lines.append(f"  输入: ¥{old_i:.4f} → ¥{new_i:.4f} {trend(old_i, new_i)}")
         
-        def trend(old, new):
-            if old == 0: return "🆕 新增"
-            change = ((new - old) / old) * 100 if old > 0 else 0
-            if change > 0:
-                return f"📈 \+{change:.1f}%"
-            else:
-                return f"📉 {change:.1f}%"
-        
-        lines.append(f"*{model}* \({platform}\)")
-        lines.append(f"  输入: ¥{old_i:.4f} → ¥{new_i:.4f} {trend(old_i, new_i)}")
-        lines.append(f"  输出: ¥{old_o:.4f} → ¥{new_o:.4f} {trend(old_o, new_o)}")
-        lines.append("")
+        if len(changes) > 5:
+            lines.append(f"\.\.\. 还有 {len(changes) - 5} 个模型价格变化")
+    else:
+        lines.append("✨ 价格无变动")
     
-    if len(changes) > 10:
-        lines.append(f"\.\.\. 还有 {len(changes) - 10} 个模型价格变化")
-    
-    lines.append("\\n🌐 查看: https://model\.ai\-selector\.top")
+    lines.append("\\n🌐 https://model\.ai\-selector\.top")
     
     message = "\\n".join(lines)
     
@@ -1746,8 +1751,8 @@ def send_telegram_notification(changes):
     except Exception as e:
         print("  Telegram notification failed:", e, file=sys.stderr)
 
-if price_changes:
-    send_telegram_notification(price_changes)
+# 每次运行都发送通知
+send_telegram_notification(total, price_changes)
 
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
 ac = cn("aliyun"); sc2 = cn("siliconflow"); mc2 = cn("moonshot")
