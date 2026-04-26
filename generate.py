@@ -1695,6 +1695,60 @@ print("Generated:", total, file=sys.stderr)
 if price_changes:
     print("  Price changes detected:", len(price_changes), file=sys.stderr)
 
+# ─── Telegram 通知 ───
+def send_telegram_notification(changes):
+    """发送价格变动通知到 Telegram"""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not bot_token or not chat_id:
+        return
+    
+    lines = ["🔔 *AI模型价格变动通知*\\n"]
+    lines.append(f"检测到 {len(changes)} 个模型价格变化:\\n")
+    
+    for c in changes[:10]:
+        platform = c["p"]
+        model = c["n"].replace("_", "\\_").replace("*", "\\*").replace("-", "\\-")
+        old_i = c.get("old_i", 0); old_o = c.get("old_o", 0)
+        new_i = c.get("new_i", 0); new_o = c.get("new_o", 0)
+        
+        def trend(old, new):
+            if old == 0: return "🆕 新增"
+            change = ((new - old) / old) * 100 if old > 0 else 0
+            if change > 0:
+                return f"📈 \+{change:.1f}%"
+            else:
+                return f"📉 {change:.1f}%"
+        
+        lines.append(f"*{model}* \({platform}\)")
+        lines.append(f"  输入: ¥{old_i:.4f} → ¥{new_i:.4f} {trend(old_i, new_i)}")
+        lines.append(f"  输出: ¥{old_o:.4f} → ¥{new_o:.4f} {trend(old_o, new_o)}")
+        lines.append("")
+    
+    if len(changes) > 10:
+        lines.append(f"\.\.\. 还有 {len(changes) - 10} 个模型价格变化")
+    
+    lines.append("\\n🌐 查看: https://model\.ai\-selector\.top")
+    
+    message = "\\n".join(lines)
+    
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = json.dumps({
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "MarkdownV2",
+            "disable_web_page_preview": True
+        }).encode()
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=10)
+        print("  Telegram notification sent", file=sys.stderr)
+    except Exception as e:
+        print("  Telegram notification failed:", e, file=sys.stderr)
+
+if price_changes:
+    send_telegram_notification(price_changes)
+
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
 ac = cn("aliyun"); sc2 = cn("siliconflow"); mc2 = cn("moonshot")
 zc = cn("zhipu"); vc2 = cn("volcengine"); bc2 = cn("baidu"); oc = cn("openrouter")

@@ -46,6 +46,8 @@ jobs:
           INFINI_KEY: ${{ secrets.INFINI_KEY }}
           NOVITA_KEY: ${{ secrets.NOVITA_KEY }}
           DEEPINFRA_KEY: ${{ secrets.DEEPINFRA_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python3 generate.py
 
       - name: Check for changes
