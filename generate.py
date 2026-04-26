@@ -18,10 +18,11 @@ MM  = os.environ.get("MINIMAX_KEY", "")
 YW  = os.environ.get("YI_KEY", "")
 BC  = os.environ.get("BAICHUAN_KEY", "")
 JC  = os.environ.get("JIEYUE_KEY", "")
+DS  = os.environ.get("DEEPSEEK_KEY", "")
 
-OUT = os.path.expanduser("~/.qclaw/model-selector-v2.html")
-CACHE_DIR = os.path.expanduser("~/.qclaw/cache")
-PREV_DATA = os.path.expanduser("~/.qclaw/prev_models.json")
+OUT = "index.html"
+CACHE_DIR = ".cache"
+PREV_DATA = ".cache/prev_models.json"
 os.makedirs(CACHE_DIR, exist_ok=True)
 
 # ─── 汇率 ───
@@ -81,8 +82,9 @@ def th(tags):
          "轻量":"other","已下线":"other","即将下线":"other","价格待确认":"other",
          "语音":"other","TTS":"other","ASR":"other","向量":"other","排序":"other",
          "OCR":"other","多模态":"vision","Turbo":"hot","降价后":"cheap","降价90%":"cheap",
-         "超低价":"cheap","编程":"other","智能路由":"other","免费":"free",
-         "满血版":"hot","价格变动":"other","涨价":"hot","降价":"cheap"}
+         "超低价":"cheap","编程":"other","智能路由":"other","满血版":"hot",
+         "价格变动":"other","涨价":"hot","降价":"cheap",
+         "GPT":"other","Claude":"other","Llama":"other","Gemini":"other","Mistral":"other","Qwen":"other","DeepSeek":"other"}
     return "".join('<span class="tg tg-' + m.get(x,"other") + '">' + x + '</span>' for x in (tags or []))
 
 # ─── 价格徽章 (CNY) ───
@@ -119,14 +121,14 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
         '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="' + cur + '" '
         'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" ' + extra_attrs + ' '
-        'onclick="copyCmd(\'' + cmd_base + '\',\'' + mname + '\')">'
+        'onclick="showSnippet(\'' + cmd_base + '\',\'' + mname + '\')">'
         '<div class="dot"></div><div class="prov">' + pname + '</div>'
         '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>'
         '<div class="prow">' + bg + '</div>'
         '<div class="ctx-row"><span class="ctx">上下文: ' + ctx + '</span>'
         '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + str(min(100, int(ctx_num or 0) / 1000)) + '%"></div></div></div>'
         '<div class="base-url">' + cmd_base + '</div>'
-        '<div class="hint">点击复制 API 接入方式</div>'
+        '<div class="hint">点击生成 API 接入代码</div>'
         '<div class="card-actions">'
         '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
         '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
@@ -146,14 +148,14 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2):
         '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="USD" '
         'data-ctx="' + ctx_num + '" data-ctx-display="' + cc + '" '
-        'onclick="copyCmd(\'' + cmd + '\',\'' + nn + '\')">'
+        'onclick="showSnippet(\'' + cmd + '\',\'' + nn + '\')">'
         '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>'
         '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>'
         '<div class="prow">' + bg + '</div>'
         '<div class="ctx-row"><span class="ctx">上下文: ' + cc + '</span>'
         '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + str(min(100, int(ctx_num or 0) / 1000)) + '%"></div></div></div>'
         '<div class="base-url">' + or_base + '</div>'
-        '<div class="hint">点击复制 API 接入方式</div>'
+        '<div class="hint">点击生成 API 接入代码</div>'
         '<div class="card-actions">'
         '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
         '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
@@ -425,6 +427,17 @@ def jp(mid):
         if k in m2: return ii, oo, cc, tt, ss
     return 2, 8, "8k", ["价格待确认"], "日常对话"
 
+def dsp(mid):
+    """DeepSeek价格映射"""
+    m = {
+        "deepseek-chat":      (1, 2, "64k", ["主力", "性价比"], "日常对话"),
+        "deepseek-reasoner":  (4, 16, "64k", ["推理", "旗舰"], "深度推理")
+    }
+    m2 = mid.lower()
+    for k, (ii, oo, cc, tt, ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    return 1, 2, "64k", ["价格待确认"], "日常对话"
+
 # ═══════════════════════════════════════════════════════════
 # 数据抓取
 # ═══════════════════════════════════════════════════════════
@@ -570,6 +583,16 @@ if not jc_ids:
     jc_ids = ["step-1-8k","step-1-32k","step-1-128k","step-1-flash","step-1v-8k","step-1v-32k","step-2-16k","step-2-mini","step-r1"]
 print("  Jieyue:", len(jc_ids), file=sys.stderr)
 
+# ─── DeepSeek ───
+ds_ids = []
+if DS:
+    d = fj("https://api.deepseek.com/models", DS)
+    if d:
+        ds_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
+if not ds_ids:
+    ds_ids = ["deepseek-chat", "deepseek-reasoner"]
+print("  DeepSeek:", len(ds_ids), file=sys.stderr)
+
 # ═══════════════════════════════════════════════════════════
 # 生成模型卡片
 # ═══════════════════════════════════════════════════════════
@@ -637,6 +660,17 @@ for m in OR[:350]:
     if cc_r >= 100000:       tt.append("长上下文")
     if m.get("vision"):       tt.append("视觉")
     if m.get("reasoning"):   tt.append("推理")
+    
+    # 自动识别家族标签
+    nn_lower = nn.lower()
+    if "gpt" in nn_lower: tt.append("GPT")
+    if "claude" in nn_lower: tt.append("Claude")
+    if "llama" in nn_lower: tt.append("Llama")
+    if "gemini" in nn_lower: tt.append("Gemini")
+    if "mistral" in nn_lower or "mixtral" in nn_lower: tt.append("Mistral")
+    if "qwen" in nn_lower or "qwq" in nn_lower: tt.append("Qwen")
+    if "deepseek" in nn_lower: tt.append("DeepSeek")
+    
     ss = "日常对话"
     if m.get("reasoning"):   ss = "深度推理"
     elif m.get("vision"):     ss = "视觉图片"
@@ -687,6 +721,13 @@ for mid in jc_ids:
                  "https://api.stepfun.com/v1/chat/completions","CNY"))
     all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo})
 
+# DeepSeek
+for mid in ds_ids:
+    ii, oo, cc, tt, ss = dsp(mid)
+    cards.append(make_card("deepseek","DeepSeek","#1d4ed8",Te(mid),ii,oo,cc,tt,ss,
+                 "https://api.deepseek.com/chat/completions","CNY"))
+    all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo})
+
 # ─── 价格变动检测 ───
 price_changes = []
 if os.path.exists(PREV_DATA):
@@ -708,16 +749,79 @@ if os.path.exists(PREV_DATA):
 with open(PREV_DATA, "w") as f:
     json.dump(all_models, f)
 
+# 保存价格变动到JSON文件（供GitHub Actions读取）
+if price_changes:
+    with open(".cache/price_changes.json", "w") as f:
+        json.dump(price_changes, f, ensure_ascii=False, indent=2)
+
 total = len(cards)
 print("Generated:", total, file=sys.stderr)
 if price_changes:
     print("  Price changes detected:", len(price_changes), file=sys.stderr)
 
+# ─── Telegram 通知 ───
+def send_telegram_notification(changes):
+    """发送价格变动通知到 Telegram"""
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not bot_token or not chat_id:
+        return
+    
+    # 构建消息内容
+    lines = ["🔔 *AI模型价格变动通知*\n"]
+    lines.append(f"检测到 {len(changes)} 个模型价格变化:\n")
+    
+    for c in changes[:10]:  # 最多显示10条
+        platform = c["p"]
+        model = c["n"]
+        old_i = c.get("old_i", 0)
+        old_o = c.get("old_o", 0)
+        new_i = c.get("new_i", 0)
+        new_o = c.get("new_o", 0)
+        
+        # 计算变化趋势
+        def trend(old, new):
+            if old == 0: return "🆕 新增"
+            change = ((new - old) / old) * 100
+            if change > 0:
+                return f"📈 +{change:.1f}%"
+            else:
+                return f"📉 {change:.1f}%"
+        
+        lines.append(f"*{model}* ({platform})")
+        lines.append(f"  输入: ¥{old_i:.4f} → ¥{new_i:.4f} {trend(old_i, new_i)}")
+        lines.append(f"  输出: ¥{old_o:.4f} → ¥{new_o:.4f} {trend(old_o, new_o)}")
+        lines.append("")
+    
+    if len(changes) > 10:
+        lines.append(f"... 还有 {len(changes) - 10} 个模型价格变化")
+    
+    lines.append("\n🌐 查看: https://model.ai-selector.top")
+    
+    message = "\n".join(lines)
+    
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+        data = json.dumps({
+            "chat_id": chat_id,
+            "text": message,
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": True
+        }).encode()
+        req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+        urllib.request.urlopen(req, timeout=10)
+        print("  Telegram notification sent", file=sys.stderr)
+    except Exception as e:
+        print("  Telegram notification failed:", e, file=sys.stderr)
+
+if price_changes:
+    send_telegram_notification(price_changes)
+
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
 ac = cn("aliyun"); sc2 = cn("siliconflow"); mc2 = cn("moonshot")
 zc = cn("zhipu"); vc2 = cn("volcengine"); bc2 = cn("baidu"); oc = cn("openrouter")
 tc2 = cn("tencent"); xc = cn("spark"); mmc = cn("minimax")
-yc = cn("yi"); bcc = cn("baichuan"); jcc = cn("jieyue")
+yc = cn("yi"); bcc = cn("baichuan"); jcc = cn("jieyue"); dsc = cn("deepseek")
 
 def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
 print("  Tier free:%d cheap:%d mid:%d high:%d ultra:%d" % (
@@ -751,6 +855,7 @@ tabs_bar = (
     '<button class="pt" data-p="openrouter" style="--c:#6366f1;--bg:#eef2ff">OpenRouter <span class="pc">' + str(oc) + '</span></button>'
     '<button class="pt" data-p="aliyun" style="--c:#ff6a00;--bg:#fff5ee">阿里百炼 <span class="pc">' + str(ac) + '</span></button>'
     '<button class="pt" data-p="siliconflow" style="--c:#7C3AED;--bg:#f5f0ff">硅基流动 <span class="pc">' + str(sc2) + '</span></button>'
+    '<button class="pt" data-p="deepseek" style="--c:#1d4ed8;--bg:#eff6ff">DeepSeek <span class="pc">' + str(dsc) + '</span></button>'
     '<button class="pt" data-p="moonshot" style="--c:#4f46e5;--bg:#f0f0ff">月之暗面 <span class="pc">' + str(mc2) + '</span></button>'
     '<button class="pt" data-p="zhipu" style="--c:#00c4b4;--bg:#f0fffe">智谱 AI <span class="pc">' + str(zc) + '</span></button>'
     '<button class="pt" data-p="volcengine" style="--c:#dc2626;--bg:#fff0f0">火山引擎 <span class="pc">' + str(vc2) + '</span></button>'
@@ -786,7 +891,7 @@ sort_bar = (
 )
 
 # ─── 标签筛选栏 ───
-tag_list = ["免费额度","便宜","极便宜","旗舰","主力","推理","视觉","长上下文","开源","代码","图片生成","视频生成","蒸馏","轻量","最新版"]
+tag_list = ["免费额度","便宜","极便宜","旗舰","主力","推理","视觉","长上下文","开源","代码","图片生成","视频生成","蒸馏","轻量","最新版","GPT","Claude","Llama","Gemini","Mistral","Qwen","DeepSeek"]
 tag_bar = '<div class="tag-bar"><span class="tag-lbl">标签:</span>' + "".join(
     '<button class="tag-btn" data-tag="' + t + '">' + t + '</button>' for t in tag_list
 ) + '</div>'
@@ -889,6 +994,18 @@ cmp_panel = (
     '<div class="cmp-modal-header"><span>模型对比详情</span><button class="cmp-close" onclick="closeCmpModal()">&times;</button></div>'
     '<div class="cmp-modal-body" id="cmpModalBody"></div>'
     '</div></div>'
+)
+
+# ─── 代码片段弹窗面板 ───
+snippet_panel = (
+    '<div class="snippet-modal" id="snippetModal" style="display:none">'
+    '<div class="snippet-modal-content">'
+    '<div class="snippet-modal-header"><span>接入代码 <span id="snipModelName" style="color:var(--accent);font-size:12px;margin-left:8px"></span></span><button class="cmp-close" onclick="closeSnippet()">&times;</button></div>'
+    '<div class="snippet-modal-body">'
+    '<div class="snip-tabs"><button class="snip-tab active" data-lang="py" onclick="switchSnip(\'py\')">Python (OpenAI SDK)</button><button class="snip-tab" data-lang="js" onclick="switchSnip(\'js\')">Node.js (OpenAI SDK)</button><button class="snip-tab" data-lang="curl" onclick="switchSnip(\'curl\')">cURL</button></div>'
+    '<pre id="snipCode"></pre>'
+    '<button class="calc-btn" style="margin-top:10px" onclick="copySnipCode()">复制全部代码</button>'
+    '</div></div></div>'
 )
 
 # ─── 价格变动提示 ───
@@ -1094,6 +1211,17 @@ a{color:var(--accent);text-decoration:none}
 .cb-lbl{font-size:9px;color:var(--accent);cursor:pointer;font-weight:500}
 .mc-cb{width:12px;height:12px;cursor:pointer;accent-color:var(--accent)}
 
+/* Snippet Modal */
+.snippet-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9999}
+.snippet-modal-content{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);max-width:700px;width:90%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.snippet-modal-header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border);font-size:14px;font-weight:600}
+.snippet-modal-body{padding:18px;overflow-y:auto}
+.snip-tabs{display:flex;gap:6px;margin-bottom:10px}
+.snip-tab{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:500;transition:all .2s}
+.snip-tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+#snipCode{background:#0d1117;color:#c9d1d9;padding:14px;border-radius:8px;font-family:"SF Mono",monospace;font-size:12px;line-height:1.5;overflow-x:auto;border:1px solid var(--border);white-space:pre-wrap}
+
+
 /* 智能推荐 */
 .rec-panel{background:var(--surface);border:1px solid rgba(99,102,241,.12);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
 .rec-title{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:3px}
@@ -1132,6 +1260,8 @@ a{color:var(--accent);text-decoration:none}
 .tool-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:11px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:4px;font-weight:500}
 .tool-btn:hover{border-color:var(--border-hi);color:var(--text)}
 .tool-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 0 12px var(--accent-glow)}
+.tool-btn-export{color:#10b981;border-color:rgba(16,185,129,.3)}
+.tool-btn-export:hover{color:#fff;background:#10b981;border-color:#10b981;box-shadow:0 0 12px rgba(16,185,129,.3)}
 
 /* 筛选结果计数 */
 .filter-count{font-size:11px;color:var(--text2);padding:3px 0;margin-bottom:6px;font-weight:500}
@@ -1264,6 +1394,13 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .cmp-table th,.cmp-table td{padding:5px 6px}
 .cmp-close{font-size:18px}
 
+.snippet-modal-content{width:95%;max-height:90vh;border-radius:12px}
+.snippet-modal-header{padding:10px 14px;font-size:13px}
+.snippet-modal-body{padding:12px}
+.snip-tabs{flex-wrap:wrap}
+.snip-tab{padding:4px 8px;font-size:10px}
+#snipCode{font-size:10px;padding:10px}
+
 /* Toast */
 #toast{bottom:16px;padding:8px 14px;font-size:11px;border-radius:8px;max-width:85vw}
 
@@ -1301,6 +1438,11 @@ var isDark=localStorage.getItem('dark')!=='0';
 var isListView=localStorage.getItem('listView')==='1';
 var favs=JSON.parse(localStorage.getItem('favs')||'[]');
 var USD_TO_CNY=7.25;
+
+// Code Snippet Variables
+var currentSnipBaseUrl = '';
+var currentSnipModel = '';
+var currentSnipLang = 'py';
 
 // 初始化
 document.addEventListener('DOMContentLoaded',function(){
@@ -1358,8 +1500,8 @@ if(e.key==='/'&&document.activeElement.tagName!=='INPUT'){e.preventDefault();doc
 if(e.key==='Escape'){document.getElementById('si').blur();document.getElementById('si').value='';filter();}
 if(e.key==='d'&&!e.ctrlKey&&document.activeElement.tagName!=='INPUT'){toggleDark();}
 if(e.key==='v'&&!e.ctrlKey&&document.activeElement.tagName!=='INPUT'){toggleView();}
-// 数字键1-9快速切换平台
-var platforms=['all','openrouter','aliyun','siliconflow','moonshot','zhipu','volcengine','baidu','tencent'];
+// 数字键快速切换平台
+var platforms=['all','openrouter','aliyun','siliconflow','moonshot','zhipu','volcengine','baidu','tencent','spark','minimax','yi','baichuan','jieyue','deepseek'];
 var num=parseInt(e.key);
 if(num>=1&&num<=9&&document.activeElement.tagName!=='INPUT'){
 var pb=document.querySelector('.pt[data-p="'+platforms[num-1]+'"]');
@@ -1414,8 +1556,27 @@ var cnyInp=cur==='USD'?inp*1e6*USD_TO_CNY:inp;
 if(priceMin!==null&&cnyInp<priceMin)sh=false;
 if(priceMax!==null&&cnyInp>priceMax)sh=false;
 }
-// 搜索
-if(q&&mn.toLowerCase().indexOf(q)===-1&&pn.toLowerCase().indexOf(q)===-1)sh=false;
+
+// 搜索支持高级语法
+var textQuery=q;
+var advPrice=null, advCtx=null;
+var m=q.match(/price<(\d+(\.\d+)?)/);
+if(m){ advPrice=parseFloat(m[1]); textQuery=textQuery.replace(m[0],'').trim(); }
+var m2=q.match(/ctx>(\d+)/);
+if(m2){ advCtx=parseInt(m2[1]); textQuery=textQuery.replace(m2[0],'').trim(); }
+
+if(advPrice!==null){
+  var inp2=parseFloat(c.dataset.inp||0);
+  var cur2=c.dataset.cur||'CNY';
+  var cnyInp2=cur2==='USD'?inp2*1e6*USD_TO_CNY:inp2;
+  if(cnyInp2>=advPrice)sh=false;
+}
+if(advCtx!==null){
+  var ctxVal2=parseInt(c.dataset.ctx||0);
+  if(ctxVal2<advCtx*1000)sh=false;
+}
+
+if(textQuery&&mn.toLowerCase().indexOf(textQuery)===-1&&pn.toLowerCase().indexOf(textQuery)===-1)sh=false;
 c.style.display=sh?'block':'none';if(sh)n++;
 });
 document.getElementById('empty').style.display=n===0?'block':'none';
@@ -2004,6 +2165,76 @@ try{document.execCommand("copy");}catch(e){}
 document.body.removeChild(ta);
 }
 
+// ─── 导出 CSV ───
+function exportCSV(){
+var rows = [["Platform", "Model", "Context", "Input_Price", "Output_Price", "Currency", "Tags"]];
+document.querySelectorAll('.mc').forEach(function(c){
+if(c.style.display==='none') return;
+var prov=(c.querySelector('.prov')||{}).textContent||'';
+var mname=(c.querySelector('.mname')||{}).textContent||'';
+var ctx=c.dataset.ctxDisplay||'';
+var inp=c.dataset.inp||'0';
+var out=c.dataset.out||'0';
+var cur=c.dataset.cur||'CNY';
+var tags=Array.from(c.querySelectorAll('.tg')).map(function(t){return t.textContent}).join('|');
+rows.push([prov, mname, ctx, inp, out, cur, tags]);
+});
+var csvContent = "data:text/csv;charset=utf-8,\uFEFF" + rows.map(e => e.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(",")).join("\n");
+var encodedUri = encodeURI(csvContent);
+var link = document.createElement("a");
+link.setAttribute("href", encodedUri);
+link.setAttribute("download", "ai_models_export.csv");
+document.body.appendChild(link);
+link.click();
+document.body.removeChild(link);
+}
+
+// ─── 代码片段 ───
+function showSnippet(url, model){
+currentSnipBaseUrl = url;
+currentSnipModel = model;
+document.getElementById('snippetModal').style.display = 'flex';
+document.getElementById('snipModelName').textContent = model;
+updateSnipCode();
+}
+function closeSnippet(){
+document.getElementById('snippetModal').style.display = 'none';
+}
+function switchSnip(lang){
+currentSnipLang = lang;
+document.querySelectorAll('.snip-tab').forEach(function(t){t.classList.remove('active')});
+document.querySelector('.snip-tab[data-lang="'+lang+'"]').classList.add('active');
+updateSnipCode();
+}
+function updateSnipCode(){
+var code = '';
+var domain = new URL(currentSnipBaseUrl).hostname;
+var isAliyun = domain.indexOf('aliyuncs.com') !== -1;
+var apiEnv = isAliyun ? 'DASHSCOPE_API_KEY' : 'API_KEY';
+
+if(currentSnipLang === 'py'){
+code = "import os\nfrom openai import OpenAI\n\nclient = OpenAI(\n    api_key=os.environ.get(\""+apiEnv+"\"),\n    base_url=\""+currentSnipBaseUrl+"\"\n)\n\ncompletion = client.chat.completions.create(\n    model=\""+currentSnipModel+"\",\n    messages=[\n        {\"role\": \"system\", \"content\": \"You are a helpful assistant.\"},\n        {\"role\": \"user\", \"content\": \"Hello!\"}\n    ]\n)\n\nprint(completion.choices[0].message.content)";
+} else if(currentSnipLang === 'js'){
+code = "import OpenAI from 'openai';\n\nconst openai = new OpenAI({\n  apiKey: process.env."+apiEnv+",\n  baseURL: '"+currentSnipBaseUrl+"',\n});\n\nasync function main() {\n  const completion = await openai.chat.completions.create({\n    model: '"+currentSnipModel+"',\n    messages: [\n      { role: 'system', content: 'You are a helpful assistant.' },\n      { role: 'user', content: 'Hello!' },\n    ],\n  });\n\n  console.log(completion.choices[0].message.content);\n}\n\nmain();";
+} else if(currentSnipLang === 'curl'){
+code = "curl "+currentSnipBaseUrl+" \\\n  -H \"Content-Type: application/json\" \\\n  -H \"Authorization: Bearer $"+apiEnv+"\" \\\n  -d '{\n    \"model\": \""+currentSnipModel+"\",\n    \"messages\": [\n      {\n        \"role\": \"system\",\n        \"content\": \"You are a helpful assistant.\"\n      },\n      {\n        \"role\": \"user\",\n        \"content\": \"Hello!\"\n      }\n    ]\n  }'";
+}
+document.getElementById('snipCode').textContent = code;
+}
+function copySnipCode(){
+var code = document.getElementById('snipCode').textContent;
+if(navigator.clipboard && navigator.clipboard.writeText){
+navigator.clipboard.writeText(code).then(function(){
+var t=document.getElementById("toast");
+t.innerHTML="<span style=\"margin-right:6px\">\u2713</span>代码片段已复制";
+t.className="toast-show toast-ok";
+setTimeout(function(){t.className="";},2000);
+});
+} else {
+fallbackCopy(code);
+}
+}
+
 // ─── 状态持久化 ───
 function saveState(){
 var state={p:curP,s:curS,pt:curPT,sort:curSort,tags:curTags,ctx:curCtx,
@@ -2062,15 +2293,17 @@ HDR = (
     '<button class="cur-btn" data-cur="USD">$ USD</button>'
     '</div></div>'
     '<div class="toolbar-right">'
+    '<button class="tool-btn tool-btn-export" onclick="exportCSV()">&#128190; 导出CSV</button>'
     '<button class="tool-btn" id="listBtn" onclick="toggleView()">&#9776; 列表</button>'
     '<button class="tool-btn" onclick="toggleDark()">&#9728; 亮色</button>'
     '</div></div>\n'
-    '<div class="srow"><input id="si" type="text" placeholder="搜索模型...  (按 / 快速聚焦, Esc 清空)"></div>\n'
+    '<div class="srow"><input id="si" type="text" placeholder="搜索模型...  (高级语法: price<1 ctx>32，按 / 快速聚焦, Esc 清空)"></div>\n'
     '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型</div>\n'
     + recommend_panel + '\n'
     + crossprice_panel + '\n'
     + calc_panel + '\n'
     + cmp_panel + '\n'
+    + snippet_panel + '\n'
     '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
