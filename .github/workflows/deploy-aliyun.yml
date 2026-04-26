@@ -1,0 +1,31 @@
+name: Deploy to Aliyun
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ALIYUN_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.ALIYUN_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Aliyun
+        run: |
+          scp -o StrictHostKeyChecking=no index.html ${{ secrets.ALIYUN_USER }}@${{ secrets.ALIYUN_HOST }}:/www/wwwroot/model.ai-selector.top/index.html
+          echo "✅ Deployed to model.ai-selector.top"
+
+      - name: Verify deployment
+        run: |
+          curl -sSf https://model.ai-selector.top > /dev/null && echo "✅ Website is accessible" || echo "⚠️ Website check failed"
