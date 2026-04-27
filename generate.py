@@ -1664,8 +1664,8 @@ if not USE_JSON_DATA:
             ii, oo, cc, tt, ss = np(mid)
         fam = get_family(mid)
         cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.novita.ai/v3/openai/chat/completions","CNY",family=fam))
-        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo})
+                     "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
+        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # DeepInfra
     for mid in di_list:
