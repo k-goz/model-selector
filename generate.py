@@ -273,11 +273,14 @@ def sp(mid):
                 i = {"7B":0.1,"14B":0.4,"32B":1.0}[sz]; o = i * 4
             else:
                 i, o = 4.0, 16.0; t = ["推理","旗舰"]
+        elif "V4" in mid:
+            if "Flash" in mid: i, o = 1.0, 4.0; t = ["快速","旗舰"]
+            else: i, o = 2.0, 8.0; t = ["旗舰","最新版"]
         elif "V3.2" in mid: i, o = 2.0, 8.0; t = ["满血版","旗舰"]
         elif "V3.1" in mid: i, o = 4.0, 12.0; t = ["深度推理"]
         elif "V3" in mid:   i, o = 2.0, 8.0; t = ["满血版","旗舰"]
         elif "OCR" in mid:  i, o = 0.3, 0; t = ["OCR"]; s = "其他"
-        else: i, o = 0, 0
+        else: i, o = 0, 0; t = ["价格待确认"]
     elif mid.startswith("Qwen/"):
         b = mid.split("/",1)[1]; t = []
         if "Image" in b:         i, o = 0.5, 0; t = ["图片生成"]; s = "图片生成"
@@ -292,6 +295,11 @@ def sp(mid):
         elif "Embedding" in b:    i, o = 0.1, 0; t = ["向量"]; s = "其他"
         elif "Reranker" in b:    i, o = 0.1, 0; t = ["排序"]; s = "其他"
         elif "Omni" in b:        i, o = 0.4, 3.2; t = ["多模态"]
+        elif "3.6" in b:
+            t = ["最新版"]
+            i, o = (0.2,2.0) if any(x in b for x in ["4B","9B"]) else \
+                    (0.4,3.2) if "27B" in b else \
+                    (0.5,2.0) if any(x in b for x in ["35B","30B"]) else (0.4,3.2)
         elif "3.5" in b:
             t = ["最新版"]
             i, o = (0.2,2.0) if any(x in b for x in ["4B","9B"]) else \
@@ -345,7 +353,17 @@ def sp(mid):
     elif "Wan-AI/Wan" in mid:               i, o = 0.5, 0; t = ["视频生成","开源"]; s = "视频生成"
     elif "ByteDance-Seed" in mid:            i, o = 1.0, 4.0; t = ["开源","旗舰"]
     elif "internlm" in mid:                 i, o = 0, 0; t = ["开源","免费额度"]
-    else:                                     i, o = 0, 0
+    elif "MiniMaxAI/MiniMax" in mid:         i, o = 1.0, 4.0; t = ["主力"]; s = "日常对话"
+    elif "stepfun-ai/Step" in mid:           i, o = 0.5, 2.0; t = ["主力"]; s = "日常对话"
+    elif "Kwaipilot/KAT" in mid:            i, o = 0.5, 2.0; t = ["代码"]; s = "编程代码"
+    elif "tencent/Hunyuan" in mid:
+        if "MT" in mid:                     i, o = 0, 0; t = ["免费额度"]
+        elif "A13B" in mid:                 i, o = 0.5, 2.0; t = ["便宜"]
+        else:                               i, o = 1.0, 4.0; t = ["主力"]
+    elif "PaddlePaddle" in mid:             i, o = 0, 0; t = ["OCR","免费额度"]; s = "其他"
+    elif "TeleAI" in mid:                   i, o = 0, 0; t = ["语音","免费额度"]; s = "其他"
+    elif "LoRA/" in mid:                    ii2, oo2, tt2, ss2 = sp(mid.split("/",1)[1]); return ii2, oo2, tt2+["微调"], ss2
+    else:                                     i, o = 0, 0; t = ["价格待确认"]
     if not t: t = ["免费额度"]
     return i, o, t, s
 
@@ -411,38 +429,70 @@ def vp(mid):
         if k in mid: return ii, oo, cc, tt, ss
     return 0.8, 2, "32k", ["价格待确认"], "日常对话"
 
-# ─── 百度文心 (从 API 拉取 + 硬编码回退) ───
+# ─── 百度文心 (从 API 拉取 + 硬编码价格映射) ───
+def bp(mid):
+    """百度文心价格映射 (¥/M tokens)"""
+    m = {
+        "ernie-4.0-8k": (120,120,"8k",["旗舰"],"深度推理"),
+        "ernie-4.0-turbo-8k": (120,120,"8k",["旗舰"],"深度推理"),
+        "ernie-4.0-8k-preview": (120,120,"8k",["旗舰"],"深度推理"),
+        "ernie-4.0-turbo-8k-latest": (120,120,"8k",["旗舰"],"深度推理"),
+        "ernie-4.0-turbo-8k-preview": (120,120,"8k",["旗舰"],"深度推理"),
+        "ernie-4.0-32k": (120,120,"32k",["旗舰","长上下文"],"深度推理"),
+        "ernie-4.0-8k-0613": (120,120,"8k",["旗舰"],"深度推理"),
+        "ernie-3.5-8k": (12,12,"8k",["主力"],"日常对话"),
+        "ernie-3.5-8k-preview": (12,12,"8k",["主力"],"日常对话"),
+        "ernie-3.5-128k": (12,12,"128k",["主力","长上下文"],"日常对话"),
+        "ernie-3.5-8k-0613": (12,12,"8k",["主力"],"日常对话"),
+        "ernie-speed-pro-128k": (12,12,"128k",["快速","长上下文"],"日常对话"),
+        "ernie-speed-128k": (8,8,"128k",["快速","长上下文"],"日常对话"),
+        "ernie-speed-8k": (8,8,"8k",["快速","便宜"],"日常对话"),
+        "ernie-lite-pro-128k": (8,8,"128k",["便宜","长上下文"],"日常对话"),
+        "ernie-lite-8k": (4,4,"8k",["极便宜"],"日常对话"),
+        "ernie-lite-128k": (4,4,"128k",["极便宜","长上下文"],"日常对话"),
+        "ernie-bot-8k": (12,12,"8k",["主力"],"日常对话"),
+        "ernie-bot-4k": (12,12,"4k",["主力"],"日常对话"),
+        "ernie-bot-turbo-8k": (8,8,"8k",["快速"],"日常对话"),
+        "ernie-char-fiction-8k": (12,12,"8k",["创作"],"其他"),
+        "ernie-text-embedding": (0,0,"8k",["向量"],"其他"),
+    }
+    m2 = mid.lower()
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2: return ii, oo, cc, tt, ss
+    if "4.0" in m2 or "4u" in m2: return 120, 120, "8k", ["旗舰"], "深度推理"
+    if "3.5" in m2: return 12, 12, "8k", ["主力"], "日常对话"
+    if "speed" in m2 and "128" in m2: return 8, 8, "128k", ["快速","长上下文"], "日常对话"
+    if "speed" in m2: return 8, 8, "8k", ["快速"], "日常对话"
+    if "lite" in m2 and "128" in m2: return 4, 4, "128k", ["极便宜","长上下文"], "日常对话"
+    if "lite" in m2: return 4, 4, "8k", ["极便宜"], "日常对话"
+    if "bot" in m2: return 12, 12, "8k", ["主力"], "日常对话"
+    if "novel" in m2 or "char" in m2 or "fiction" in m2: return 12, 12, "8k", ["创作"], "其他"
+    if "irag" in m2: return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
+    if "deepseek" in m2 or "llama" in m2 or "qwen" in m2 or "yi-" in m2 or "gemma" in m2 or "chatglm" in m2 or "mixtral" in m2 or "bloomz" in m2 or "codellama" in m2:
+        return 0, 0, "8k", ["免费额度"], "日常对话"
+    return 0, 0, "8k", ["免费额度"], "日常对话"
+
 BD = []
 if BDK:
-    # 百度千帆 V2 OpenAI兼容接口
     d = fj("https://qianfan.baidubce.com/v2/models", BDK)
     if d:
         for m in (d.get("data", []) if d else []):
             mid = m.get("id", "")
             nn = m.get("name", mid)
-            # 尝试从 pricing 获取价格
-            pricing = m.get("pricing", {})
-            ii = float(pricing.get("input", 0) or 0)
-            oo = float(pricing.get("output", 0) or 0)
             cc_r = m.get("context_length", 0) or 0
-            cc = str(int(cc_r)//1000)+"k" if cc_r else "8k"
-            tt = []
-            ss = "日常对话"
-            if ii == 0 and oo == 0: tt.append("免费额度")
-            if cc_r >= 100000: tt.append("长上下文")
-            n_lower = mid.lower()
-            if "4.0" in n_lower or "4u" in n_lower: tt.append("旗舰"); ss = "深度推理"
-            elif "3.5" in n_lower: tt.append("主力")
-            elif "lite" in n_lower or "speed" in n_lower: tt.append("轻量")
+            # 用硬编码价格映射，API不返回价格
+            ii, oo, cc, tt, ss = bp(mid)
+            if cc_r > 0: cc = str(int(cc_r)//1000)+"k"
+            if cc_r >= 100000 and "长上下文" not in tt: tt.append("长上下文")
             BD.append({"n": nn, "c": cc, "i": ii, "o": oo, "t": tt, "s": ss})
 if not BD:
     BD = [
         {"n":"文心一言 4.0","c":"8k","i":120,"o":120,"t":["旗舰"],"s":"深度推理"},
         {"n":"文心一言 4.0-32K","c":"32k","i":120,"o":120,"t":["旗舰","长上下文"],"s":"深度推理"},
-        {"n":"文心一言 3.5","c":"8k","i":20,"o":20,"t":["主力"],"s":"日常对话"},
-        {"n":"文心速度 128K","c":"128k","i":12,"o":12,"t":["长上下文"],"s":"日常对话"},
-        {"n":"文心 Lite","c":"8k","i":8,"o":8,"t":["轻量","免费额度"],"s":"日常对话"},
-        {"n":"文心Bot 8K","c":"8k","i":20,"o":20,"t":["主力"],"s":"日常对话"},
+        {"n":"文心一言 3.5","c":"8k","i":12,"o":12,"t":["主力"],"s":"日常对话"},
+        {"n":"文心速度 128K","c":"128k","i":8,"o":8,"t":["快速","长上下文"],"s":"日常对话"},
+        {"n":"文心 Lite","c":"8k","i":4,"o":4,"t":["极便宜"],"s":"日常对话"},
+        {"n":"文心Bot 8K","c":"8k","i":12,"o":12,"t":["主力"],"s":"日常对话"},
     ]
 
 # ─── 腾讯混元价格映射 ───
