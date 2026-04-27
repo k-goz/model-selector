@@ -27,11 +27,10 @@ TG  = os.environ.get("TOGETHER_KEY", "tgp_v1_yz89M-nyIWNcC00hgZkAYZxEhslQC6T6AoB
 FW  = os.environ.get("FIREWORKS_KEY", "fw_54N6JXjHHKPrCH9SahRDDB")
 CO  = os.environ.get("COHERE_KEY", "")
 INFINI = os.environ.get("INFINI_KEY", "sk-dpkybedmc3yih33b")
-NOVITA = os.environ.get("NOVITA_KEY", "")
+NOVITA = os.environ.get("NOVITA_KEY", "sk_RV_Ef_cKS3h8aIlkTlothOgRu44IMbd0TkbVOjezk")
 DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "moYWp7VPn3bHfETA8eU9eMGIw3zNN3b0")
 AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "")
 N1N = os.environ.get("N1N_KEY", "")
-AIGC2D = os.environ.get("AIGC2D_KEY", "")
 CA = os.environ.get("CA_KEY", "")
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
@@ -43,6 +42,153 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 
 # ─── 汇率 ───
 USD_TO_CNY = 7.25
+
+# ─── 从官方定价页爬取价格 ───
+def fetch_official_prices():
+    """从官方定价页爬取价格，返回 {model_name: {"input": float, "output": float, "currency": str, "source": str}}"""
+    prices = {}
+
+    def _fh(url, timeout=20):
+        h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+        for attempt in range(2):
+            try:
+                req = urllib.request.Request(url, headers=h)
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    return r.read().decode("utf-8", errors="ignore")
+            except Exception as e:
+                if attempt == 0:
+                    time.sleep(1)
+                else:
+                    print("  fetch_official_prices fetch error: %s [%s]" % (str(e)[:60], url), file=sys.stderr)
+                    return None
+
+    # 1. DeepSeek - 静态 HTML，表格列为 [label, sub-label, flash-value, pro-value]
+    try:
+        h = _fh("https://api-docs.deepseek.com/zh-cn/quick_start/pricing")
+        if h:
+            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
+            fi = fo = pi = po = None
+            for i, cell in enumerate(tds):
+                txt = re.sub(r'<[^>]+>', '', cell).strip()
+                if '缓存未命中' in txt and i + 2 < len(tds):
+                    m1 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 1]))
+                    m2 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 2]))
+                    if m1: fi = float(m1.group(1))
+                    if m2: pi = float(m2.group(1))
+                if '输出' in txt and '百万' in txt and i + 2 < len(tds):
+                    m1 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 1]))
+                    m2 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 2]))
+                    if m1: fo = float(m1.group(1))
+                    if m2: po = float(m2.group(1))
+            src = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
+            if fi and fo:
+                prices["deepseek-v4-flash"] = {"input": fi, "output": fo, "currency": "CNY", "source": src}
+            if pi and po:
+                prices["deepseek-v4-pro"] = {"input": pi, "output": po, "currency": "CNY", "source": src}
+            print("  fetch_official_prices: DeepSeek %d models" % sum(1 for k in prices if k.startswith("deepseek")), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: DeepSeek error:", str(e)[:80], file=sys.stderr)
+
+    # 2. 月之暗面 - Mintlify SSR，价格在 JS rows 数据中
+    try:
+        h = _fh("https://platform.moonshot.cn/docs/pricing/chat-v1")
+        if h:
+            m = re.search(r'rows:\s*\[\[(.*?)\]\]', h, re.DOTALL)
+            if m:
+                rows_str = '[[' + m.group(1) + ']]'
+                rows_str = rows_str.replace('\\"', '"')
+                row_items = re.findall(r'\[([^\]]+)\]', rows_str)
+                for row in row_items:
+                    fields = re.findall(r'"([^"]*)"', row)
+                    if len(fields) >= 3:
+                        mn = fields[0].lower().strip()
+                        inp_m = re.search(r'[\d.]+', fields[2])
+                        out_m = re.search(r'[\d.]+', fields[3]) if len(fields) > 3 else None
+                        if inp_m and out_m:
+                            iv = float(inp_m.group())
+                            ov = float(out_m.group())
+                            if iv > 0 and ov > 0:
+                                prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
+                                             "source": "https://platform.moonshot.cn/docs/pricing/chat-v1"}
+            print("  fetch_official_prices: Moonshot %d models" % sum(1 for k in prices if k.startswith("moonshot")), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: Moonshot error:", str(e)[:80], file=sys.stderr)
+
+    # 3. 腾讯混元 - 腾讯云文档为 SPA，纯 HTTP 爬取不到表格数据，跳过
+    # 如需爬取，需使用 headless browser（selenium/playwright）
+    # try:
+    #     h = _fh("https://cloud.tencent.com/document/product/1729/97731")
+    #     ...
+    # except Exception as e:
+    #     print("  fetch_official_prices: Tencent error:", str(e)[:80], file=sys.stderr)
+
+    # 4. MiniMax - Mintlify SSR，表格含 model / input / output / cache_read / cache_write
+    try:
+        h = _fh("https://platform.minimaxi.com/docs/guides/pricing-paygo")
+        if h:
+            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
+            for i in range(len(tds) - 2):
+                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip()
+                ml = model_txt.lower()
+                if not model_txt or not ('minimax' in ml or 'abab' in ml or 'm2' in ml):
+                    continue
+                mn = ml.replace(' ', '-').strip()
+                if mn in prices:
+                    continue
+                for j in range(i + 1, min(i + 3, len(tds))):
+                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
+                    inp_m = re.search(r'^([\d.]+)', inp_txt)
+                    if inp_m and float(inp_m.group(1)) > 0:
+                        iv = float(inp_m.group(1))
+                        for k in range(j + 1, min(j + 3, len(tds))):
+                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
+                            out_m = re.search(r'^([\d.]+)', out_txt)
+                            if out_m and float(out_m.group(1)) > 0:
+                                ov = float(out_m.group(1))
+                                if ov >= iv:
+                                    prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
+                                                 "source": "https://platform.minimaxi.com/docs/guides/pricing-paygo"}
+                                    break
+                        break
+            print("  fetch_official_prices: MiniMax %d models" % sum(1 for k in prices if "minimax" in k or "abab" in k or "m2" in k), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: MiniMax error:", str(e)[:80], file=sys.stderr)
+
+    # 5. 阿里百炼 - 阿里云帮助文档
+    try:
+        h = _fh("https://help.aliyun.com/zh/model-studio/getting-started/models")
+        if h:
+            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
+            for i in range(len(tds) - 2):
+                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip().lower()
+                if not model_txt or not ('qwen' in model_txt or 'qwq' in model_txt):
+                    continue
+                mn = model_txt.strip()
+                if mn in prices:
+                    continue
+                for j in range(i + 1, min(i + 4, len(tds))):
+                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
+                    inp_m = re.search(r'^([\d.]+)', inp_txt)
+                    if inp_m and float(inp_m.group(1)) > 0:
+                        iv = float(inp_m.group(1))
+                        for k in range(j + 1, min(j + 3, len(tds))):
+                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
+                            out_m = re.search(r'^([\d.]+)', out_txt)
+                            if out_m and float(out_m.group(1)) > 0:
+                                ov = float(out_m.group(1))
+                                if ov >= iv:
+                                    prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
+                                                 "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"}
+                                    break
+                        break
+            print("  fetch_official_prices: Aliyun %d models" % sum(1 for k in prices if "qwen" in k or "qwq" in k), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: Aliyun error:", str(e)[:80], file=sys.stderr)
+
+    print("  fetch_official_prices: total %d models" % len(prices), file=sys.stderr)
+    return prices
+
+OFFICIAL_PRICES = {}
 
 # ─── 通用请求函数 (带重试和缓存) ───
 def fj(url, tok="", to=20, retries=3):
@@ -131,10 +277,13 @@ def bo(inp, out, price_unit="per_token"):
     return '<span class="price-badge price-mid">IN:$' + ("%.1f" % p) + ' OUT:$' + ("%.1f" % q) + '/1M</span>'
 
 # ─── 模型卡片生成 ───
-def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="CNY", extra_attrs="", family="", price_unit="per_token"):
+def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="CNY", extra_attrs="", family="", price_unit="per_token", price_src=""):
     pt = PT(inp, out, cur, price_unit)
     ts = th(tags)
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out, price_unit)
+    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价"}
+    src_title = src_map.get(price_src, price_src or "硬编码")
+    src_tag = '<span class="price-src" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
     # data-inp/data-out: unified to $/token (consistent with OpenRouter), per_1m needs /1e6
     if price_unit == "per_1m" and cur == "USD":
         inp_s = str(inp / 1e6) if inp else "0"
@@ -152,7 +301,7 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
         'onclick="showCodeModal(\'' + cmd_base + '\',\'' + mname + '\',\'' + pid + '\')">'
         '<div class="dot"></div><div class="prov">' + pname + '</div>'
         '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>'
-        '<div class="prow">' + bg + '</div>'
+        '<div class="prow">' + bg + src_tag + '</div>'
         '<div class="ctx-row"><span class="ctx">上下文: ' + ctx + '</span>'
         '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + str(min(100, int(ctx_num or 0) / 1000)) + '%"></div></div></div>'
         '<div class="base-url">' + cmd_base + '</div>'
@@ -163,10 +312,13 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
         '</div></div>'
     )
 
-def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_token"):
+def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_token", price_src=""):
     pp = PT(inp, out, "USD", price_unit)
     tts = th(tt)
     bg = bo(inp, out, price_unit)
+    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价"}
+    src_title = src_map.get(price_src, price_src or "硬编码")
+    src_tag = '<span class="price-src" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
     # data-inp/data-out: unified to $/token, per_1m needs /1e6
     if price_unit == "per_1m":
         inp_s = str(inp / 1e6) if inp else "0"
@@ -185,7 +337,7 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
         'onclick="showCodeModal(\'' + cmd + '\',\'' + nn + '\',\'openrouter\')">'
         '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>'
         '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>'
-        '<div class="prow">' + bg + '</div>'
+        '<div class="prow">' + bg + src_tag + '</div>'
         '<div class="ctx-row"><span class="ctx">上下文: ' + cc + '</span>'
         '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + str(min(100, int(ctx_num or 0) / 1000)) + '%"></div></div></div>'
         '<div class="base-url">' + or_base + '</div>'
@@ -272,13 +424,13 @@ def sp(mid):
                 sz = next((x for x in ["7B","14B","32B"] if x in mid), "7B")
                 i = {"7B":0.1,"14B":0.4,"32B":1.0}[sz]; o = i * 4
             else:
-                i, o = 4.0, 16.0; t = ["推理","旗舰"]
+                i, o = 1.0, 2.0; t = ["推理","旗舰"]
         elif "V4" in mid:
-            if "Flash" in mid: i, o = 1.0, 4.0; t = ["快速","旗舰"]
+            if "Flash" in mid: i, o = 1.0, 2.0; t = ["快速","旗舰"]
             else: i, o = 2.0, 8.0; t = ["旗舰","最新版"]
-        elif "V3.2" in mid: i, o = 2.0, 8.0; t = ["满血版","旗舰"]
-        elif "V3.1" in mid: i, o = 4.0, 12.0; t = ["深度推理"]
-        elif "V3" in mid:   i, o = 2.0, 8.0; t = ["满血版","旗舰"]
+        elif "V3.2" in mid: i, o = 1.0, 2.0; t = ["满血版","主力"]
+        elif "V3.1" in mid: i, o = 1.0, 2.0; t = ["主力"]
+        elif "V3" in mid:   i, o = 1.0, 2.0; t = ["满血版","主力"]
         elif "OCR" in mid:  i, o = 0.3, 0; t = ["OCR"]; s = "其他"
         else: i, o = 0, 0; t = ["价格待确认"]
     elif mid.startswith("Qwen/"):
@@ -371,8 +523,8 @@ def mp(mid):
     """月之暗面价格映射"""
     m = {
         "moonshot-v1-8k":         (2,10,"8k",["主力","降价后"],"日常对话"),
-        "moonshot-v1-32k":        (12,24,"32k",["长上下文"],"日常对话"),
-        "moonshot-v1-128k":       (12,24,"128k",["超长上下文","旗舰"],"深度推理"),
+        "moonshot-v1-32k":        (5,20,"32k",["长上下文"],"日常对话"),
+        "moonshot-v1-128k":       (10,30,"128k",["超长上下文","旗舰"],"深度推理"),
         "kimi-k2":                  (4,16,"262k",["旗舰","2025新"],"深度推理"),
         "kimi-k2.5":                (4,16,"262k",["旗舰","最新版"],"深度推理"),
         "kimi-k2-turbo":            (4,16,"262k",["旗舰","Turbo"],"深度推理"),
@@ -411,10 +563,10 @@ def vp(mid):
     """火山引擎价格映射"""
     m = {
         "doubao-1.6-pro-32k":    (0.8,8,"32k",["旗舰","2025新"],"日常对话"),
-        "doubao-1.5-pro-32k":   (0.8,2,"32k",["主力","性价比"],"日常对话"),
+        "doubao-1.5-pro-32k":   (0.5,2,"32k",["主力","性价比"],"日常对话"),
         "doubao-1.5-pro-128k":  (5,5,"128k",["长上下文"],"深度推理"),
-        "doubao-lite-32k":        (0.8,0.8,"32k",["极便宜","免费额度"],"日常对话"),
-        "doubao-1.5-lite-32k":  (0.8,0.8,"32k",["极便宜"],"日常对话"),
+        "doubao-lite-32k":        (0.15,0.6,"32k",["极便宜","免费额度"],"日常对话"),
+        "doubao-1.5-lite-32k":  (0.15,0.6,"32k",["极便宜"],"日常对话"),
         "doubao-vision":            (3,3,"64k",["视觉","超低价"],"视觉图片"),
         "doubao-coder":            (2,8,"32k",["代码","编程"],"编程代码"),
         "doubao-seed-1.6":         (0.8,8,"32k",["旗舰","2025新"],"日常对话"),
@@ -428,13 +580,13 @@ def vp(mid):
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k in mid: return ii, oo, cc, tt, ss
     m2 = mid.lower()
-    if "pro" in m2: return 0.8, 2, "32k", ["主力"], "日常对话"
-    if "lite" in m2: return 0.8, 0.8, "32k", ["极便宜"], "日常对话"
+    if "pro" in m2: return 0.5, 2, "32k", ["主力"], "日常对话"
+    if "lite" in m2: return 0.15, 0.6, "32k", ["极便宜"], "日常对话"
     if "vision" in m2: return 3, 3, "64k", ["视觉"], "视觉图片"
     if "coder" in m2: return 2, 8, "32k", ["代码"], "编程代码"
     if "embedding" in m2: return 0.1, 0, "4k", ["向量"], "其他"
     if "thinking" in m2 or "reason" in m2: return 4, 16, "262k", ["推理"], "深度推理"
-    return 0.8, 2, "32k", ["价格待确认"], "日常对话"
+    return 0.5, 2, "32k", ["价格待确认"], "日常对话"
 
 # ─── 百度文心 (从 API 拉取 + 硬编码价格映射) ───
 def bp(mid):
@@ -473,13 +625,15 @@ def bp(mid):
         return 0, 0, "8k", ["视频生成","免费额度"], "视频生成"
     # ── DeepSeek 系列（千帆收费部署） ──
     if "deepseek" in m2:
-        if "r1" in m2: return 4, 16, "64k", ["推理","旗舰"], "深度推理"
-        if "v4" in m2: return 2, 8, "64k", ["旗舰"], "深度推理"
-        if "v3.2" in m2: return 2, 8, "64k", ["主力"], "日常对话"
-        if "v3.1" in m2: return 2, 8, "64k", ["主力"], "日常对话"
-        if "v3" in m2: return 2, 2, "64k", ["主力"], "日常对话"
+        if "r1" in m2: return 1, 2, "1M", ["推理","旗舰"], "深度推理"
+        if "v4" in m2:
+            if "flash" in m2: return 1, 2, "1M", ["主力"], "日常对话"
+            return 3, 6, "1M", ["旗舰"], "深度推理"
+        if "v3.2" in m2: return 1, 2, "1M", ["主力"], "日常对话"
+        if "v3.1" in m2: return 1, 2, "1M", ["主力"], "日常对话"
+        if "v3" in m2: return 1, 2, "1M", ["主力"], "日常对话"
         if "ocr" in m2: return 0.3, 0, "8k", ["OCR"], "其他"
-        return 2, 2, "64k", ["主力"], "日常对话"
+        return 1, 2, "1M", ["主力"], "日常对话"
     # ── GLM 系列（千帆收费部署） ──
     if "glm" in m2:
         if "5.1" in m2: return 8, 24, "1M", ["旗舰"], "深度推理"
@@ -546,7 +700,7 @@ if not BD:
 # ─── 腾讯混元价格映射 ───
 def tp(mid):
     m = {
-        "hunyuan-turbos":      (0.5,1.5,"32k",["快速","便宜"],"日常对话"),
+        "hunyuan-turbos":      (0.8,2,"32k",["快速","便宜"],"日常对话"),
         "hunyuan-turbo":       (1,4,"32k",["主力"],"日常对话"),
         "hunyuan-pro":         (4,16,"32k",["旗舰"],"深度推理"),
         "hunyuan-large":       (4,16,"256k",["旗舰","长上下文"],"深度推理"),
@@ -555,7 +709,7 @@ def tp(mid):
         "hunyuan-standard-vision": (2,2,"32k",["视觉"],"视觉图片"),
         "hunyuan-vision":      (4,4,"32k",["视觉","旗舰"],"视觉图片"),
         "hunyuan-coder":       (2,8,"32k",["代码"],"编程代码"),
-        "hunyuan-t1":          (4,16,"256k",["推理","旗舰"],"深度推理"),
+        "hunyuan-t1":          (1,4,"256k",["推理","旗舰"],"深度推理"),
         "hunyuan-turbos-vision": (1,1,"32k",["视觉","便宜"],"视觉图片"),
     }
     m2 = mid.lower()
@@ -589,6 +743,10 @@ def mm_p(mid):
         "abab6.5s-vision":    (0.5,1.5,"32k",["视觉","便宜"],"视觉图片"),
         "abab6.5-vision":     (2,8,"32k",["视觉"],"视觉图片"),
         "minimax-m1":         (4,16,"1M",["推理","旗舰","长上下文"],"深度推理"),
+        "minimax-m2.7":       (2.1,8.4,"196k",["主力","长上下文"],"日常对话"),
+        "minimax-m2.7-highspeed": (4.2,16.8,"196k",["快速","旗舰"],"深度推理"),
+        "minimax-m2.5":       (2.1,8.4,"196k",["主力"],"日常对话"),
+        "minimax-m2.5-highspeed": (4.2,16.8,"196k",["快速"],"深度推理"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
@@ -646,19 +804,21 @@ def jp(mid):
 
 # ─── DeepSeek 官方价格映射 ───
 def dp(mid):
-    """DeepSeek 官方（¥/M tokens，2026年4月官网定价）"""
+    """DeepSeek 官方（¥/M tokens，2026年4月官网定价 — V4-Flash ¥1/¥2）"""
     m = {
-        "deepseek-chat":     (1,4,"64k",["主力","满血版"],"日常对话"),
-        "deepseek-reasoner": (4,16,"64k",["推理","旗舰"],"深度推理"),
-        "deepseek-v3":       (1,4,"64k",["主力","满血版"],"日常对话"),
-        "deepseek-r1":       (4,16,"64k",["推理","旗舰"],"深度推理"),
-        "deepseek-v3.1":     (1,4,"128k",["主力","满血版"],"日常对话"),
-        "deepseek-prover-v2":(4,16,"64k",["推理"],"深度推理"),
+        "deepseek-chat":     (1,2,"1M",["主力","满血版"],"日常对话"),
+        "deepseek-reasoner": (1,2,"1M",["推理","旗舰"],"深度推理"),
+        "deepseek-v3":       (1,2,"1M",["主力","满血版"],"日常对话"),
+        "deepseek-r1":       (1,2,"1M",["推理","旗舰"],"深度推理"),
+        "deepseek-v3.1":     (1,2,"1M",["主力","满血版"],"日常对话"),
+        "deepseek-prover-v2":(1,2,"1M",["推理"],"深度推理"),
+        "deepseek-v4-flash": (1,2,"1M",["主力","最新版"],"日常对话"),
+        "deepseek-v4-pro":   (3,6,"1M",["旗舰","最新版"],"深度推理"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k in m2: return ii, oo, cc, tt, ss
-    return 1, 4, "64k", ["价格待确认"], "日常对话"
+    return 1, 2, "1M", ["价格待确认"], "日常对话"
 
 # ─── Groq 价格映射 ───
 def gp(mid):
@@ -778,8 +938,10 @@ def ip(mid):
         "qwen2.5-7b-instruct":  (0.4,0.4,"32k",["极便宜"],"日常对话"),
         "qwen2.5-coder-32b-instruct": (1.5,1.5,"32k",["代码","便宜"],"编程代码"),
         "qwq-32b":              (1.5,1.5,"128k",["推理","便宜"],"深度推理"),
-        "deepseek-v3":          (2,8,"64k",["主力","满血版"],"日常对话"),
-        "deepseek-r1":          (4,16,"64k",["推理","旗舰"],"深度推理"),
+        "deepseek-v3":          (1,2,"1M",["主力","满血版"],"日常对话"),
+        "deepseek-r1":          (1,2,"1M",["推理","旗舰"],"深度推理"),
+        "deepseek-v4-flash":    (1,2,"1M",["主力","最新版"],"日常对话"),
+        "deepseek-v4-pro":      (12,24,"1M",["旗舰","最新版"],"深度推理"),
         "glm-5.1":              (8,24,"1M",["旗舰"],"深度推理"),
         "glm-5":                (6,22,"1M",["旗舰"],"深度推理"),
         "glm-4.7":              (2,8,"1M",["主力"],"日常对话"),
@@ -795,6 +957,10 @@ def ip(mid):
     if "glm-5.1" in m2: return 8, 24, "1M", ["旗舰"], "深度推理"
     if "glm-5" in m2: return 6, 22, "1M", ["旗舰"], "深度推理"
     if "glm-4.7" in m2: return 2, 8, "1M", ["主力"], "日常对话"
+    if "deepseek-v4-pro" in m2: return 12, 24, "1M", ["旗舰"], "深度推理"
+    if "deepseek-v4" in m2: return 1, 2, "1M", ["主力"], "日常对话"
+    if "deepseek-r1" in m2: return 1, 2, "1M", ["推理"], "深度推理"
+    if "deepseek" in m2: return 1, 2, "1M", ["主力"], "日常对话"
     if "72b" in m2: return 4, 4, "128k", ["主力"], "日常对话"
     if "32b" in m2: return 1.5, 1.5, "32k", ["便宜"], "日常对话"
     if "14b" in m2: return 0.8, 0.8, "32k", ["便宜"], "日常对话"
@@ -938,7 +1104,9 @@ def n1np(mid):
     if "gemini" in m and "pro" in m: return 7.0, 40.0
     if "gemini" in m and "flash" in m: return 1.2, 10.0
     if "deepseek-r1" in m: return 2.0, 8.0
-    if "deepseek" in m: return 1.0, 1.5
+    if "deepseek-v4-pro" in m: return 6.0, 24.0
+    if "deepseek-v4" in m or "deepseek-chat" in m or "deepseek-reasoner" in m: return 1.0, 2.0
+    if "deepseek" in m: return 1.0, 2.0
     if "qwen" in m and "72b" in m: return 1.4, 5.6
     if "qwen" in m: return 1.4, 5.6
     if "glm-5.1" in m: return 8.0, 24.0
@@ -947,14 +1115,6 @@ def n1np(mid):
     if "glm" in m: return 2.4, 9.6
     if "kimi" in m: return 2.0, 8.0
     return 1.0, 5.0
-
-# ─── AIGC2D 价格映射 ───
-def aigc2dp(mid):
-    """AIGC2D - 国内聚合平台（¥/M tokens，从API获取真实价格）"""
-    if mid in aigc2d_prices:
-        ii, oo = aigc2d_prices[mid]
-        return ii, oo
-    return n1np(mid)  # fallback to n1n prices
 
 # ─── ChatAnywhere 价格映射 ───
 def cap(mid):
@@ -973,8 +1133,10 @@ def cap(mid):
     if "gpt-4o" in m and "mini" in m: return 1.05, 4.2
     if "gpt-4o" in m: return 17.5, 70.0
     if "sonnet" in m: return 15.0, 75.0
-    if "deepseek-r1" in m: return 2.4, 9.6
-    if "deepseek" in m: return 1.2, 1.8
+    if "deepseek-r1" in m: return 2.0, 8.0
+    if "deepseek-v4-pro" in m: return 6.0, 24.0
+    if "deepseek-v4" in m or "deepseek-chat" in m or "deepseek-reasoner" in m: return 1.2, 2.4
+    if "deepseek" in m: return 1.2, 2.4
     if "gemini" in m and "pro" in m: return 7.0, 40.0
     if "gemini" in m and "flash" in m: return 1.2, 10.0
     if "glm-5.1" in m: return 8.0, 24.0
@@ -1045,9 +1207,9 @@ if os.path.exists(MODELS_JSON):
             or_provider = ""
             if pid == "openrouter":
                 pv = pname.replace("OPENROUTER:", "") if pname.startswith("OPENROUTER:") else pname
-                cards.append(make_or_card(pv, Te(mname), inp_orig, out_orig, ctx, tags, scen, Te(mname), family=fam, price_unit=pu))
+                cards.append(make_or_card(pv, Te(mname), inp_orig, out_orig, ctx, tags, scen, Te(mname), family=fam, price_unit=pu, price_src=m.get("price_src","")))
             else:
-                cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu))
+                cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=m.get("price_src","")))
             all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur})
         price_changes = jmeta.get("price_changes", [])
         USE_JSON_DATA = True
@@ -1103,8 +1265,8 @@ if not USE_JSON_DATA:
             {"n":"qwen3-8b","i":0.2,"o":2,"c":"128k","t":["轻量","免费额度"],"s":"日常对话"},
             {"n":"qwen3-4b","i":0.2,"o":2,"c":"128k","t":["轻量","免费额度"],"s":"日常对话"},
             {"n":"qwq-32b","i":0.7,"o":2,"c":"128k","t":["推理"],"s":"深度推理"},
-            {"n":"deepseek-v3","i":2,"o":8,"c":"64k","t":["满血版","旗舰"],"s":"深度推理"},
-            {"n":"deepseek-r1","i":4,"o":16,"c":"64k","t":["推理","旗舰"],"s":"深度推理"},
+            {"n":"deepseek-v3","i":1,"o":2,"c":"1M","t":["满血版","主力"],"s":"日常对话"},
+            {"n":"deepseek-r1","i":1,"o":2,"c":"1M","t":["推理","旗舰"],"s":"深度推理"},
         ]
     print("  Aliyun:", len(ali), file=sys.stderr)
 
@@ -1436,29 +1598,6 @@ if not USE_JSON_DATA:
         n1n_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","qwen-plus"]
     print("  n1n.ai:", len(n1n_list), file=sys.stderr)
 
-    # AIGC2D
-    aigc2d_list = []
-    aigc2d_prices = {}
-    d = fj("https://next.aigc2d.com/api/pricing", "")
-    if d and isinstance(d, dict):
-        dd = d.get("data", {})
-        mcr = dd.get("model_completion_ratio", {})
-        groups = dd.get("model_group", {})
-        mi = dd.get("model_info", {})
-        for gname, gdata in groups.items():
-            mp2 = gdata.get("ModelPrice", {})
-            for mid2, pinfo in mp2.items():
-                if mid2 not in aigc2d_prices:
-                    price = pinfo.get("price", 0)
-                    cr = mcr.get(mid2, 1)
-                    aigc2d_prices[mid2] = (price, round(price * cr, 4))
-        for mid2, (ii, oo) in aigc2d_prices.items():
-            if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
-                aigc2d_list.append(mid2)
-    if not aigc2d_list:
-        aigc2d_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5"]
-    print("  AIGC2D:", len(aigc2d_list), file=sys.stderr)
-
     # ChatAnywhere
     ca_list = []
     ca_prices = {}
@@ -1492,6 +1631,11 @@ if not USE_JSON_DATA:
     print("  ChatAnywhere:", len(ca_list), file=sys.stderr)
 
     # ═══════════════════════════════════════════════════════════
+    # 从官方定价页爬取价格
+    # ═══════════════════════════════════════════════════════════
+    OFFICIAL_PRICES.update(fetch_official_prices())
+
+    # ═══════════════════════════════════════════════════════════
     # 生成模型卡片
     # ═══════════════════════════════════════════════════════════
 
@@ -1502,7 +1646,7 @@ if not USE_JSON_DATA:
     for m in ali:
         fam = get_family(m["n"])
         cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
-                     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam))
+                     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src="A"))
         all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"]})
 
     # 硅基流动
@@ -1510,7 +1654,7 @@ if not USE_JSON_DATA:
         ii, oo, tt, ss = sp(mid)
         fam = get_family(mid)
         cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
-                     "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam))
+                     "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo})
 
     # 月之暗面
@@ -1519,7 +1663,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = mp(mid)
         fam = get_family(mid)
         cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam))
+                     "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo})
 
     # 智谱AI
@@ -1527,7 +1671,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = zp(mid)
         fam = get_family(mid)
         cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
-                     "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam))
+                     "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo})
 
     # 火山引擎
@@ -1539,14 +1683,14 @@ if not USE_JSON_DATA:
         elif st == "Retiring": tt = ["即将下线"] + tt
         fam = get_family(mid)
         cards.append(make_card("volcengine","火山引擎","#dc2626",Te(mid),ii,oo,cc,tt,ss,
-                     "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam))
+                     "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo})
 
     # 百度文心
     for m in BD:
         fam = get_family(m["n"])
         cards.append(make_card("baidu","百度文心","#2932e1",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
-                     "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam))
+                     "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"]})
 
     # OpenRouter
@@ -1572,7 +1716,7 @@ if not USE_JSON_DATA:
         pv = Te(m.get("id","").split("/")[0].upper())
         mid2 = Te(m["id"])
         fam = get_family(m.get("id",""))
-        cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam))
+        cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam, price_src="A"))
         all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD"})
 
     # 腾讯混元
@@ -1580,7 +1724,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = tp(mid)
         fam = get_family(mid)
         cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
-                     "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam))
+                     "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo})
 
     # 讯飞星火
@@ -1588,7 +1732,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = xp(mid)
         fam = get_family(mid)
         cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
-                     "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam))
+                     "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"spark","n":mid,"i":ii,"o":oo})
 
     # MiniMax
@@ -1596,7 +1740,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = mm_p(mid)
         fam = get_family(mid)
         cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.minimax.chat/v1/chat/completions","CNY",family=fam))
+                     "https://api.minimax.chat/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo})
 
     # 零一万物
@@ -1604,7 +1748,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = yp(mid)
         fam = get_family(mid)
         cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam))
+                     "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"yi","n":mid,"i":ii,"o":oo})
 
     # 百川智能
@@ -1612,7 +1756,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = bp(mid)
         fam = get_family(mid)
         cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam))
+                     "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo})
 
     # 阶跃星辰
@@ -1620,7 +1764,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = jp(mid)
         fam = get_family(mid)
         cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.stepfun.com/v1/chat/completions","CNY",family=fam))
+                     "https://api.stepfun.com/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo})
 
     # DeepSeek 官方
@@ -1628,7 +1772,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = dp(mid)
         fam = get_family(mid)
         cards.append(make_card("deepseek","DeepSeek","#4d6dff",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.deepseek.com/v1/chat/completions","CNY",family=fam))
+                     "https://api.deepseek.com/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo})
 
     # Groq
@@ -1636,7 +1780,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = gp(mid)
         fam = get_family(mid)
         cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
         all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # Together AI
@@ -1658,7 +1802,7 @@ if not USE_JSON_DATA:
             tt, ss = tgp_tags(mid, ii, oo, api_ctx)
         fam = get_family(mid)
         cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
         all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # Fireworks AI
@@ -1671,7 +1815,7 @@ if not USE_JSON_DATA:
             cc = str(int(api_ctx)//1000)+"k"
         fam = get_family(mid)
         cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
         all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # Cohere
@@ -1680,7 +1824,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = cop(mid)
         fam = get_family(mid)
         cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
         all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # 无问芯穹 (InfiniAI)
@@ -1688,7 +1832,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = ip(mid)
         fam = get_family(mid)
         cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
-                     "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam))
+                     "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam,price_src="H"))
         all_models.append({"p":"infini","n":mid,"i":ii,"o":oo})
 
     # Novita AI
@@ -1705,7 +1849,7 @@ if not USE_JSON_DATA:
             ii, oo, cc, tt, ss = np(mid)
         fam = get_family(mid)
         cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
         all_models.append({"p":"novita","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # DeepInfra
@@ -1723,7 +1867,7 @@ if not USE_JSON_DATA:
             ii, oo, cc, tt, ss = dip(mid)
         fam = get_family(mid)
         cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
         all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # AiHubMix
@@ -1731,7 +1875,7 @@ if not USE_JSON_DATA:
         ii, oo, cc, tt, ss = ahmp(mid)
         fam = get_family(mid)
         cards.append(make_card("aihubmix","AiHubMix","#10b981",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m"))
+                     "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
         all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD"})
 
     # n1n.ai
@@ -1752,29 +1896,8 @@ if not USE_JSON_DATA:
         if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
         ss = "深度推理" if "推理" in tt else "日常对话"
         cards.append(make_card("n1n","n1n.ai","#f59e0b",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.n1n.ai/v1/chat/completions","CNY",family=fam))
+                     "https://api.n1n.ai/v1/chat/completions","CNY",family=fam,price_src="P"))
         all_models.append({"p":"n1n","n":mid,"i":ii,"o":oo,"cur":"CNY"})
-
-    # AIGC2D
-    for mid in aigc2d_list:
-        ii, oo = aigc2dp(mid)
-        fam = get_family(mid)
-        cc = "128k"
-        m = mid.lower()
-        if "1m" in m or "1000k" in m: cc = "1M"
-        elif "200k" in m: cc = "200k"
-        elif "128k" in m: cc = "128k"
-        elif "32k" in m: cc = "32k"
-        elif "8k" in m: cc = "8k"
-        tt = []
-        if ii < 1: tt.append("便宜")
-        elif ii < 10: tt.append("主力")
-        else: tt.append("旗舰")
-        if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
-        ss = "深度推理" if "推理" in tt else "日常对话"
-        cards.append(make_card("aigc2d","AIGC2D","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.aigc2d.com/v1/chat/completions","CNY",family=fam))
-        all_models.append({"p":"aigc2d","n":mid,"i":ii,"o":oo,"cur":"CNY"})
 
     # ChatAnywhere
     for mid in ca_list:
@@ -1794,7 +1917,7 @@ if not USE_JSON_DATA:
         if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
         ss = "深度推理" if "推理" in tt else "日常对话"
         cards.append(make_card("ca","ChatAnywhere","#06b6d4",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam))
+                     "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam,price_src="P"))
         all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY"})
 
     # ─── 价格变动检测 ───
@@ -1897,7 +2020,6 @@ nc = cn("novita")
 dic = cn("deepinfra")
 ahmc = cn("aihubmix")
 n1nc = cn("n1n")
-a2c = cn("aigc2d")
 cac = cn("ca")
 
 def tc(p): return sum(1 for c in cards if 'data-pt="' + p + '"' in c)
@@ -1953,7 +2075,6 @@ tabs_bar = (
     '<button class="pt" data-p="deepinfra" style="--c:#7!c3aed;--bg:#f5f0ff">DeepInfra <span class="pc">' + str(dic) + '</span></button>'
     '<button class="pt" data-p="aihubmix" style="--c:#10b981;--bg:#ecfdf5">AiHubMix <span class="pc">' + str(ahmc) + '</span></button>'
     '<button class="pt" data-p="n1n" style="--c:#f59e0b;--bg:#fffbeb">n1n.ai <span class="pc">' + str(n1nc) + '</span></button>'
-    '<button class="pt" data-p="aigc2d" style="--c:#8b5cf6;--bg:#f5f3ff">AIGC2D <span class="pc">' + str(a2c) + '</span></button>'
     '<button class="pt" data-p="ca" style="--c:#06b6d4;--bg:#ecfeff">ChatAnywhere <span class="pc">' + str(cac) + '</span></button>'
 )
 
@@ -2045,7 +2166,7 @@ recommend_panel = (
 
 # ─── 跨平台比价面板 ───
 crossprice_panel = (
-    '<div class="cross-panel" id="crossPanel" style="display:none">'
+    '<div class="cross-panel" id="crossPanel" style="display:block">'
     '<div class="cross-title">&#128269; 跨平台比价 <span style="font-weight:400;font-size:12px;color:#64748b">(同一模型在不同平台的价格)</span></div>'
     '<div class="cross-search"><input type="text" id="crossSearchInput" placeholder="输入模型名搜索比价..." oninput="buildCrossPrice()"><button class="cross-search-clear" onclick="document.getElementById(\'crossSearchInput\').value=\'\';buildCrossPrice()">✕</button></div>'
     '<div class="cross-list" id="crossList"></div>'
@@ -2077,7 +2198,6 @@ rl_panel = (
     '<tr><td>DeepInfra</td><td>200,000</td><td>100</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
     '<tr><td>AiHubMix</td><td>200,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
     '<tr><td>n1n.ai</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
-    '<tr><td>AIGC2D</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
     '<tr><td>ChatAnywhere</td><td>100,000</td><td>60</td><td><span class="rl-tag rl-tag-mid">中</span></td></tr>'
     '</table>'
     '<div class="rl-note">数据来源: 各平台官网文档 (2026年4月)。TPM=每分钟Token数, RPM=每分钟请求数。标注"低"的平台在生产环境需特别注意限流。</div>'
@@ -2232,6 +2352,7 @@ a{color:var(--accent);text-decoration:none}
 .tg-other{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
 .prow{display:flex;align-items:center;gap:5px;margin-bottom:3px;min-height:20px}
 .price-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap;letter-spacing:.01em}
+.price-src{display:inline-block;font-size:9px;font-weight:500;padding:1px 4px;border-radius:4px;background:rgba(100,116,139,.08);color:#94a3b8;margin-left:3px;vertical-align:middle;cursor:help}
 .price-free{background:rgba(34,197,94,.1);color:#4ade80}
 .price-cheap{background:rgba(59,130,246,.1);color:#60a5fa}
 .price-mid{background:rgba(245,158,11,.1);color:#fbbf24}
@@ -3507,14 +3628,22 @@ var lower=n.toLowerCase();
 if(lower.indexOf('deepseek')!==-1){
 var v='';
 if(/r1/i.test(n))v='R1';
+else if(/v4/i.test(n)){
+    if(/pro/i.test(n))v='V4-Pro';
+    else if(/flash/i.test(n))v='V4-Flash';
+    else v='V4';
+}
 else if(/v3\.2/i.test(n))v='V3.2';
 else if(/v3\.1/i.test(n))v='V3.1';
 else if(/v3/i.test(n))v='V3';
 else if(/ocr/i.test(n))v='OCR';
+else if(/chat/i.test(n))v='V4-Flash';
+else if(/reasoner/i.test(n))v='V4-Flash';
+else if(/prover/i.test(n))v='V4-Flash';
 var sz=(n.match(/(\d+b)/i)||['',''])[1].toUpperCase();
 var distill=/distill/i.test(n)?'-Distill':'';
-var chat=/chat/i.test(n)?'-Chat':'';
-return 'DeepSeek-'+v+distill+chat+(sz?'-'+sz:'');
+var prover=/prover/i.test(n)?'-Prover':'';
+return 'DeepSeek-'+v+distill+prover+(sz?'-'+sz:'');
 }
 // Qwen 系列
 if(lower.indexOf('qwen')!==-1||lower.indexOf('qwq')!==-1){
@@ -4152,6 +4281,11 @@ HDR = (
     '<div class="fg-title" onclick="toggleFg(this)">模型家族 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body">' + family_bar + '</div>\n'
     '</div>\n'
+    # 跨平台比价（默认展开）
+    '<div class="fg fg-collapsible">\n'
+    '<div class="fg-title" onclick="toggleFg(this)">跨平台比价 <span class="fg-arrow">▾</span></div>\n'
+    '<div class="fg-body">' + crossprice_panel + '</div>\n'
+    '</div>\n'
     # 标签（默认折叠）
     '<div class="fg fg-collapsible fg-collapsed">\n'
     '<div class="fg-title" onclick="toggleFg(this)">标签 <span class="fg-arrow">▸</span></div>\n'
@@ -4188,10 +4322,6 @@ HDR = (
     '</div>\n'
     # 侧面板（默认折叠）
     '<div class="fg fg-collapsible fg-collapsed">\n'
-    '<div class="fg-title" onclick="toggleFg(this)">跨平台比价 <span class="fg-arrow">▸</span></div>\n'
-    '<div class="fg-body">' + crossprice_panel + '</div>\n'
-    '</div>\n'
-    '<div class="fg fg-collapsible fg-collapsed">\n'
     '<div class="fg-title" onclick="toggleFg(this)">月费计算器 <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body">' + calc_panel + '</div>\n'
     '</div>\n'
@@ -4204,7 +4334,7 @@ HDR = (
     '<div class="content-area">\n'
     + cmp_panel + '\n'
 
-    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型</div>\n'
+    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型 <span style="font-weight:400;color:#94a3b8;font-size:10px;margin-left:8px">价格来源: <span class="price-src" title="API实时返回">A</span>=API实时 <span class="price-src" title="硬编码,可能过时">H</span>=硬编码 <span class="price-src" title="代理平台自营价">P</span>=代理自营</span></div>\n'
         '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
@@ -4307,7 +4437,6 @@ try:
         "deepinfra":{"name":"DeepInfra","color":"#a78bfa"},
         "aihubmix":{"name":"AiHubMix","color":"#fb923c"},
         "n1n":{"name":"n1n.ai","color":"#22d3ee"},
-        "aigc2d":{"name":"AIGC2D","color":"#34d399"},
         "ca":{"name":"ChatAnywhere","color":"#fbbf24"},
     }
     _mj = {"meta":{"updated_at":datetime.now().strftime("%Y-%m-%d %H:%M"),"total_models":total,
@@ -4457,6 +4586,6 @@ except Exception as _e:
     print("  Ping skipped:", str(_e)[:60], file=sys.stderr)
 
 
-print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d AH:%d N1:%d A2:%d CA:%d Total:%d" % (
-    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,ic,nc,dic,ahmc,n1nc,a2c,cac,total))
+print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d AH:%d N1:%d CA:%d Total:%d" % (
+    oc,ac,sc2,mc2,zc,vc2,bc2,tc2,xc,mmc,yc,bcc,jcc,dc,gc,tgc,fwc,coc,ic,nc,dic,ahmc,n1nc,cac,total))
 print("Time: %.1fs" % (time.time()-t0))
