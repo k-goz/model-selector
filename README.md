@@ -150,6 +150,7 @@
 
 ## 更新日志
 
+- **v6.3** (2026-04-27): 全平台价格检查修复 — 百度文心添加bp()映射；硅基流动补充新模型价格；DeepInfra从API提取真实价格；修复JSON加载双重除法bug；修复OpenRouter负价格；修复上下文格式；价格待确认从358降至279
 - **v6.2** (2026-04-26): 修复分页bug(JSON加载后未重新filter导致每页显示全部模型)；每页66个模型；左侧筛选栏默认全部折叠
 - **v6.1** (2026-04-25): 修复6个 bug — clearAllFilters 场景筛选器类名(.sc-btn→.sc) + 缺少重置价格分级/货币切换；updatePrices/calcTokens/价格筛选正确处理 per_1m price_unit；JS 动态卡片添加 data-pu 属性；GitHub Actions 密钥名拼写修正(TOGATHER→TOGETHER)
 - **v6.0** (2026-04-24): 修复数据同步链路 — models_data.json 自动更新；5个国内平台硬编码回退；添加 Rate Limits 对比 / 真实文本计价器 / TTFB 接口测速；修复 price_unit/platform_color 同步 bug；25 平台 3127 模型

@@ -427,6 +427,13 @@ def vp(mid):
     }
     for k,(ii,oo,cc,tt,ss) in m.items():
         if k in mid: return ii, oo, cc, tt, ss
+    m2 = mid.lower()
+    if "pro" in m2: return 0.8, 2, "32k", ["主力"], "日常对话"
+    if "lite" in m2: return 0.8, 0.8, "32k", ["极便宜"], "日常对话"
+    if "vision" in m2: return 3, 3, "64k", ["视觉"], "视觉图片"
+    if "coder" in m2: return 2, 8, "32k", ["代码"], "编程代码"
+    if "embedding" in m2: return 0.1, 0, "4k", ["向量"], "其他"
+    if "thinking" in m2 or "reason" in m2: return 4, 16, "262k", ["推理"], "深度推理"
     return 0.8, 2, "32k", ["价格待确认"], "日常对话"
 
 # ─── 百度文心 (从 API 拉取 + 硬编码价格映射) ───
@@ -860,6 +867,11 @@ def ahmp(mid):
     if "kimi" in m2: return 0.95, 4.00, "256k", ["旗舰"], "深度推理"
     if "qwen" in m2 and "72b" in m2: return 0.40, 0.40, "128k", ["主力"], "日常对话"
     if "minimax" in m2: return 0.30, 1.20, "200k", ["主力"], "日常对话"
+    if "mimo" in m2: return 1.00, 4.00, "128k", ["主力"], "日常对话"
+    if "qwen3" in m2 and "235" in m2: return 0.80, 6.40, "128k", ["旗舰"], "深度推理"
+    if "qwen" in m2 and "coder" in m2: return 0.40, 3.20, "128k", ["代码"], "编程代码"
+    if "glm" in m2: return 0.83, 3.03, "1M", ["主力"], "日常对话"
+    if "claude" in m2: return 3.00, 15.00, "200k", ["旗舰"], "深度推理"
     return 1.00, 5.00, "128k", ["价格待确认"], "日常对话"
 
 # ─── n1n.ai 价格映射 ───
@@ -940,8 +952,8 @@ def cop(mid):
         "command-a":        (0.15,0.60,"256k",["便宜","长上下文"],"日常对话"),
         "c4ai-aya-expanse-8b": (0.15,0.15,"8k",["便宜"],"日常对话"),
         "c4ai-aya-expanse-32b":(0.50,1.50,"128k",["主力"],"日常对话"),
-        "embed-v3":         (0.10,0,"512",["向量"],"其他"),
-        "rerank-v3":        (0.10,0,"512",["排序"],"其他"),
+        "embed-v3":         (0.10,0,"0.5k",["向量"],"其他"),
+        "rerank-v3":        (0.10,0,"0.5k",["排序"],"其他"),
     }
     m2 = mid.lower()
     for k,(ii,oo,cc,tt,ss) in m.items():
@@ -1500,6 +1512,8 @@ if not USE_JSON_DATA:
     for m in OR[:350]:
         ii = float(m.get("pricing",{}).get("prompt",0) or 0)
         oo = float(m.get("pricing",{}).get("completion",0) or 0)
+        if ii < 0: ii = 0
+        if oo < 0: oo = 0
         nn = Te(m.get("name", m.get("id","")))
         cc_r = m.get("context_length") or 0
         cc = str(int(cc_r)//1000)+"k" if cc_r else "N/A"
@@ -1657,6 +1671,12 @@ if not USE_JSON_DATA:
     for mid in di_list:
         if mid in di_prices:
             ii, oo, cc = di_prices[mid]
+            # Convert numeric context to "k" format
+            try:
+                cc_int = int(cc)
+                cc = str(cc_int // 1000) + "k" if cc_int >= 1000 else str(cc_int)
+            except (ValueError, TypeError):
+                pass
             _, _, _, tt, ss = dip(mid)
         else:
             ii, oo, cc, tt, ss = dip(mid)
