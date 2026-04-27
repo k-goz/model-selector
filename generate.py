@@ -475,8 +475,21 @@ def bp(mid):
     if "bot" in m2: return 12, 12, "8k", ["主力"], "日常对话"
     if "novel" in m2 or "char" in m2 or "fiction" in m2: return 12, 12, "8k", ["创作"], "其他"
     if "irag" in m2: return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
-    if "deepseek" in m2 or "llama" in m2 or "qwen" in m2 or "yi-" in m2 or "gemma" in m2 or "chatglm" in m2 or "mixtral" in m2 or "bloomz" in m2 or "codellama" in m2:
+    if "deepseek" in m2:
+        if "r1" in m2: return 4, 16, "64k", ["推理","旗舰"], "深度推理"
+        if "v4" in m2: return 2, 8, "64k", ["旗舰"], "深度推理"
+        if "v3.2" in m2: return 2, 8, "64k", ["主力"], "日常对话"
+        if "v3.1" in m2: return 2, 8, "64k", ["主力"], "日常对话"
+        if "v3" in m2: return 2, 2, "64k", ["主力"], "日常对话"
+        if "ocr" in m2: return 0.3, 0, "8k", ["OCR"], "其他"
+        return 2, 2, "64k", ["主力"], "日常对话"
+    if "qwen" in m2:
+        if "72b" in m2: return 4, 4, "32k", ["主力"], "日常对话"
+        if "32b" in m2 or "14b" in m2: return 1, 1, "32k", ["便宜"], "日常对话"
         return 0, 0, "8k", ["免费额度"], "日常对话"
+    if "llama" in m2 or "gemma" in m2 or "chatglm" in m2 or "mixtral" in m2 or "bloomz" in m2 or "codellama" in m2:
+        return 0, 0, "8k", ["免费额度"], "日常对话"
+    if "yi-" in m2: return 0, 0, "8k", ["免费额度"], "日常对话"
     return 0, 0, "8k", ["免费额度"], "日常对话"
 
 BD = []
