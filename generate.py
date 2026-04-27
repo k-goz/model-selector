@@ -438,43 +438,40 @@ def vp(mid):
 
 # ─── 百度文心 (从 API 拉取 + 硬编码价格映射) ───
 def bp(mid):
-    """百度文心价格映射 (¥/M tokens)"""
-    m = {
-        "ernie-4.0-8k": (120,120,"8k",["旗舰"],"深度推理"),
-        "ernie-4.0-turbo-8k": (120,120,"8k",["旗舰"],"深度推理"),
-        "ernie-4.0-8k-preview": (120,120,"8k",["旗舰"],"深度推理"),
-        "ernie-4.0-turbo-8k-latest": (120,120,"8k",["旗舰"],"深度推理"),
-        "ernie-4.0-turbo-8k-preview": (120,120,"8k",["旗舰"],"深度推理"),
-        "ernie-4.0-32k": (120,120,"32k",["旗舰","长上下文"],"深度推理"),
-        "ernie-4.0-8k-0613": (120,120,"8k",["旗舰"],"深度推理"),
-        "ernie-3.5-8k": (12,12,"8k",["主力"],"日常对话"),
-        "ernie-3.5-8k-preview": (12,12,"8k",["主力"],"日常对话"),
-        "ernie-3.5-128k": (12,12,"128k",["主力","长上下文"],"日常对话"),
-        "ernie-3.5-8k-0613": (12,12,"8k",["主力"],"日常对话"),
-        "ernie-speed-pro-128k": (12,12,"128k",["快速","长上下文"],"日常对话"),
-        "ernie-speed-128k": (8,8,"128k",["快速","长上下文"],"日常对话"),
-        "ernie-speed-8k": (8,8,"8k",["快速","便宜"],"日常对话"),
-        "ernie-lite-pro-128k": (8,8,"128k",["便宜","长上下文"],"日常对话"),
-        "ernie-lite-8k": (4,4,"8k",["极便宜"],"日常对话"),
-        "ernie-lite-128k": (4,4,"128k",["极便宜","长上下文"],"日常对话"),
-        "ernie-bot-8k": (12,12,"8k",["主力"],"日常对话"),
-        "ernie-bot-4k": (12,12,"4k",["主力"],"日常对话"),
-        "ernie-bot-turbo-8k": (8,8,"8k",["快速"],"日常对话"),
-        "ernie-char-fiction-8k": (12,12,"8k",["创作"],"其他"),
-        "ernie-text-embedding": (0,0,"8k",["向量"],"其他"),
-    }
+    """百度文心价格映射 (¥/M tokens) — 千帆V2官网定价"""
     m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    if "4.0" in m2 or "4u" in m2: return 120, 120, "8k", ["旗舰"], "深度推理"
-    if "3.5" in m2: return 12, 12, "8k", ["主力"], "日常对话"
-    if "speed" in m2 and "128" in m2: return 8, 8, "128k", ["快速","长上下文"], "日常对话"
-    if "speed" in m2: return 8, 8, "8k", ["快速"], "日常对话"
-    if "lite" in m2 and "128" in m2: return 4, 4, "128k", ["极便宜","长上下文"], "日常对话"
-    if "lite" in m2: return 4, 4, "8k", ["极便宜"], "日常对话"
-    if "bot" in m2: return 12, 12, "8k", ["主力"], "日常对话"
-    if "novel" in m2 or "char" in m2 or "fiction" in m2: return 12, 12, "8k", ["创作"], "其他"
-    if "irag" in m2: return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
+    # ── 百度自研 ernie 系列 ──
+    if "ernie-5.0" in m2 or "ernie-5" in m2:
+        if "thinking" in m2: return 8, 24, "256k", ["推理","旗舰"], "深度推理"
+        return 8, 24, "256k", ["旗舰"], "深度推理"
+    if "ernie-4.5" in m2:
+        if "turbo" in m2: return 4, 12, "128k", ["主力","性价比"], "日常对话"
+        if "0.3b" in m2: return 1, 1, "8k", ["极便宜"], "日常对话"
+        return 8, 24, "8k", ["旗舰"], "深度推理"
+    if "ernie-4.0" in m2 or "ernie-4u" in m2:
+        return 120, 120, "8k", ["旗舰"], "深度推理"
+    if "ernie-x1" in m2 or "ernie-x1.1" in m2:
+        return 4, 16, "32k", ["推理","旗舰"], "深度推理"
+    if "ernie-3.5" in m2:
+        return 12, 12, "8k", ["主力"], "日常对话"
+    if "ernie-speed" in m2:
+        if "pro" in m2: return 12, 12, "128k", ["快速","长上下文"], "日常对话"
+        return 8, 8, "128k", ["快速","长上下文"], "日常对话"
+    if "ernie-lite" in m2:
+        if "pro" in m2: return 8, 8, "128k", ["便宜","长上下文"], "日常对话"
+        return 4, 4, "8k", ["极便宜"], "日常对话"
+    if "ernie-bot" in m2:
+        if "turbo" in m2: return 8, 8, "8k", ["快速"], "日常对话"
+        return 12, 12, "8k", ["主力"], "日常对话"
+    if "ernie-char" in m2 or "ernie-novel" in m2:
+        return 12, 12, "8k", ["创作"], "其他"
+    if "ernie-text-embedding" in m2:
+        return 0, 0, "8k", ["向量"], "其他"
+    if "ernie-image" in m2 or "ernie-irag" in m2:
+        return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
+    if "ernie-video" in m2:
+        return 0, 0, "8k", ["视频生成","免费额度"], "视频生成"
+    # ── DeepSeek 系列（千帆收费部署） ──
     if "deepseek" in m2:
         if "r1" in m2: return 4, 16, "64k", ["推理","旗舰"], "深度推理"
         if "v4" in m2: return 2, 8, "64k", ["旗舰"], "深度推理"
@@ -483,13 +480,44 @@ def bp(mid):
         if "v3" in m2: return 2, 2, "64k", ["主力"], "日常对话"
         if "ocr" in m2: return 0.3, 0, "8k", ["OCR"], "其他"
         return 2, 2, "64k", ["主力"], "日常对话"
+    # ── GLM 系列（千帆收费部署） ──
+    if "glm" in m2:
+        if "5.1" in m2: return 8, 24, "1M", ["旗舰"], "深度推理"
+        if "5" in m2: return 6, 22, "1M", ["旗舰"], "深度推理"
+        if "4.7" in m2: return 2, 8, "1M", ["主力"], "日常对话"
+        if "4.5" in m2 or "4.6" in m2: return 2, 8, "128k", ["主力"], "日常对话"
+        return 2, 8, "128k", ["主力"], "日常对话"
+    # ── Kimi 系列（千帆收费部署） ──
+    if "kimi" in m2:
+        return 4, 16, "256k", ["旗舰"], "深度推理"
+    # ── MiniMax 系列（千帆收费部署） ──
+    if "minimax" in m2:
+        return 1, 4, "256k", ["主力"], "日常对话"
+    # ── Qwen 系列（千帆上小模型免费，大模型收费） ──
     if "qwen" in m2:
-        if "72b" in m2: return 4, 4, "32k", ["主力"], "日常对话"
-        if "32b" in m2 or "14b" in m2: return 1, 1, "32k", ["便宜"], "日常对话"
+        if "image" in m2: return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
+        if "embedding" in m2 or "reranker" in m2: return 0, 0, "8k", ["向量","免费额度"], "其他"
+        if "235b" in m2: return 0.8, 6.4, "128k", ["旗舰"], "深度推理"
+        if "480b" in m2: return 1.2, 4.8, "128k", ["旗舰"], "深度推理"
+        if "80b" in m2 or "72b" in m2: return 0.6, 4.8, "128k", ["主力"], "日常对话"
+        if "35b" in m2 or "30b" in m2: return 0.5, 2.0, "128k", ["便宜"], "日常对话"
+        if "32b" in m2: return 0.6, 4.8, "128k", ["主力"], "日常对话"
+        if "14b" in m2: return 0.4, 3.2, "128k", ["便宜"], "日常对话"
+        if "8b" in m2: return 0, 0, "128k", ["免费额度"], "日常对话"
+        if "4b" in m2 or "1.7b" in m2 or "0.6b" in m2: return 0, 0, "128k", ["免费额度"], "日常对话"
         return 0, 0, "8k", ["免费额度"], "日常对话"
-    if "llama" in m2 or "gemma" in m2 or "chatglm" in m2 or "mixtral" in m2 or "bloomz" in m2 or "codellama" in m2:
-        return 0, 0, "8k", ["免费额度"], "日常对话"
-    if "yi-" in m2: return 0, 0, "8k", ["免费额度"], "日常对话"
+    # ── InternVL 系列（千帆上小模型免费） ──
+    if "internvl" in m2:
+        if "38b" in m2: return 0.5, 2.0, "32k", ["视觉","便宜"], "视觉图片"
+        return 0, 0, "8k", ["视觉","免费额度"], "视觉图片"
+    # ── 百度应用类模型 (qianfan- 开头) ──
+    if "qianfan-" in m2 or "qfintent" in m2 or "search_lighting" in m2:
+        return 0, 0, "8k", ["免费额度"], "其他"
+    # ── 图片/视频生成模型（按张/次计费，标记免费额度） ──
+    img_video_kw = ["flux","stable-diffusion","wan-2","kling","vidu","musesteamer","paddleocr","pp-structure"]
+    if any(kw in m2 for kw in img_video_kw):
+        return 0, 0, "8k", ["免费额度"], "其他"
+    # ── 其他开源小模型（确实免费） ──
     return 0, 0, "8k", ["免费额度"], "日常对话"
 
 BD = []
