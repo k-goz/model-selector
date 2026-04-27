@@ -2209,6 +2209,8 @@ a{color:var(--accent);text-decoration:none}
 .empty{text-align:center;padding:50px 20px;color:var(--text2);font-size:13px}
 .ftr{text-align:center;padding:24px 12px;border-top:1px solid var(--border);margin-top:28px}
 .ftr p{font-size:11px;color:var(--text3);line-height:2}
+.invite-link{color:var(--accent);text-decoration:none;font-weight:500;transition:opacity .2s}
+.invite-link:hover{opacity:.7;text-decoration:underline}
 .wechat-qr{margin-bottom:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:inline-block}
 .qr-img{width:140px;height:140px;border-radius:8px;image-rendering:pixelated}
 .qr-text{font-size:12px;color:var(--text2);margin-top:8px;font-weight:500}
@@ -4182,7 +4184,7 @@ FTR = (
     '<p>&#128202; 数据来源：各平台 API 实时拉取 + 官网公告（更新时间：' + now + '）</p>'
     '<p>OpenRouter 显示原始美元价格 &middot; 国内平台显示人民币价格 &middot; 点击卡片复制接入方式</p>'
     '<p>快捷键: / 搜索 | Esc 清空 | D 暗色 | V 视图 | 1-9 切换平台</p>'
-    '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a></p>'
+    '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a> &middot; <a href="https://cloud.siliconflow.cn/i/exbVXMa4" target="_blank" class="invite-link">&#9734; 支持开发者 — 注册硅基流动领代金券</a></p>'
     '</div>\n'
     '<div id="toast" class=""></div>\n'
     # Token 计价器模态框
