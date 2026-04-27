@@ -932,14 +932,20 @@ if os.path.exists(MODELS_JSON):
             cur = m["currency"]
             pu = m.get("price_unit", "per_token")
             base_url = m["base_url"]
+            # JSON stores $/token in data-inp; convert back to original price unit for make_card
+            if pu == "per_1m" and cur == "USD" and inp != 0:
+                inp_orig = inp * 1e6
+                out_orig = out * 1e6
+            else:
+                inp_orig = inp
+                out_orig = out
             or_provider = ""
             if pid == "openrouter":
-                # OpenRouter 使用 make_or_card
                 pv = pname.replace("OPENROUTER:", "") if pname.startswith("OPENROUTER:") else pname
-                cards.append(make_or_card(pv, Te(mname), inp, out, ctx, tags, scen, Te(mname), family=fam, price_unit=pu))
+                cards.append(make_or_card(pv, Te(mname), inp_orig, out_orig, ctx, tags, scen, Te(mname), family=fam, price_unit=pu))
             else:
-                cards.append(make_card(pid, pname, pc, Te(mname), inp, out, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu))
-            all_models.append({"p": pid, "n": mname, "i": inp, "o": out, "cur": cur})
+                cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu))
+            all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur})
         price_changes = jmeta.get("price_changes", [])
         USE_JSON_DATA = True
         print("  Loaded %d models from JSON" % len(jmodels), file=sys.stderr)
@@ -1267,6 +1273,7 @@ if not USE_JSON_DATA:
 
     # DeepInfra
     di_list = []
+    di_prices = {}
     if DEEPINFRA:
         d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
         if d:
@@ -1275,13 +1282,19 @@ if not USE_JSON_DATA:
                 mid = m.get("id","")
                 if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "flux" not in mid.lower() and "remove" not in mid.lower() and "enhance" not in mid.lower():
                     di_list.append(mid)
+                    pricing = (m.get("metadata") or {}).get("pricing") or {}
+                    inp_p = pricing.get("input_tokens")
+                    out_p = pricing.get("output_tokens")
+                    ctx_l = (m.get("metadata") or {}).get("context_length")
+                    if inp_p is not None and out_p is not None and inp_p > 0:
+                        di_prices[mid] = (round(inp_p,6), round(out_p,6), str(ctx_l) if ctx_l else "32k")
     if not di_list:
         di_list = ["Qwen/Qwen3.5-27B","Qwen/Qwen3.5-4B","meta-llama/Llama-3.3-70B-Instruct",
                    "meta-llama/Llama-3.1-8B-Instruct","deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
                    "google/gemma-3-27b-it","mistralai/Mixtral-8x7B-Instruct-v0.1",
                    "microsoft/phi-4","Qwen/QwQ-32B",
                    "zai-org/glm-5.1","zai-org/glm-5","zai-org/glm-4.7"]
-    print("  DeepInfra:", len(di_list), file=sys.stderr)
+    print("  DeepInfra:", len(di_list), "with pricing:", len(di_prices), file=sys.stderr)
 
     # AiHubMix
     ahm_list = []
@@ -1592,7 +1605,11 @@ if not USE_JSON_DATA:
 
     # DeepInfra
     for mid in di_list:
-        ii, oo, cc, tt, ss = dip(mid)
+        if mid in di_prices:
+            ii, oo, cc = di_prices[mid]
+            _, _, _, tt, ss = dip(mid)
+        else:
+            ii, oo, cc, tt, ss = dip(mid)
         fam = get_family(mid)
         cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m"))
