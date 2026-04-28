@@ -14,24 +14,24 @@ ALI = os.environ.get("ALIYUN_KEY", "sk-5521c543f8f74954a027ddd41edafa08")
 MS  = os.environ.get("MS_KEY", "sk-ok4u4zjqFLYquLDmBwc1QOxE6PPNG0KSDOj3EnDfmR7QVxXw")
 ZH  = os.environ.get("ZH_KEY", "ff71a2ef7fbb431fb519d10df953b674.gMVnjHX5SgqgZy4Q")
 VC  = os.environ.get("VOLC_KEY", "e5786517-18a1-439d-98b3-b065e3d720e7")
-TX  = os.environ.get("TENCENT_KEY", "")
-XH  = os.environ.get("SPARK_KEY", "")
+TX  = os.environ.get("TENCENT_KEY", "sk-4xNokvGYiRrADPB1WHiwjjEnUE0iMFxfvMUCfBy6bxmYVkbg")
+XH  = os.environ.get("SPARK_KEY", "0381a68ee99a4bbc3da267d0bfbf08cf")
 MM  = os.environ.get("MINIMAX_KEY", "sk-api-3iypJ-Xec0i0WuQMKWLnZi_C1fR8tvc1RpVcZt9p3xGbodYuHKAZUVTw5pZOFBpwEN5U6WlZj4EzwC6n5tiGiEwlJzrrYrkk066m7-tUaGfo_Wh3eg8XzKI")
 YW  = os.environ.get("YI_KEY", "")
-BC  = os.environ.get("BAICHUAN_KEY", "")
-JC  = os.environ.get("JIEYUE_KEY", "")
+BC  = os.environ.get("BAICHUAN_KEY", "sk-4c5aa451a070f58a6d3ad25b6c42d434")
+JC  = os.environ.get("JIEYUE_KEY", "6JfnHf4rhV6LSlpzRGEWQNzg7VOLRuv5VN13Bdq4xIgk8bGOCvRAj4aVoPJRzgN0R")
 DS  = os.environ.get("DEEPSEEK_KEY", "sk-dc8b3ef2d3c842eb8c9e5ea151b1367a")
 GQ  = os.environ.get("GROQ_KEY", "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")
 BDK = os.environ.get("BAIDU_KEY", "bce-v3/ALTAK-piVBdsHZQxU761iH0Jotf/36ba69629da2e1101940c1fd39e8654959855d4a")
 TG  = os.environ.get("TOGETHER_KEY", "tgp_v1_yz89M-nyIWNcC00hgZkAYZxEhslQC6T6AoB0mDU1m3I")
 FW  = os.environ.get("FIREWORKS_KEY", "fw_54N6JXjHHKPrCH9SahRDDB")
-CO  = os.environ.get("COHERE_KEY", "")
+CO  = os.environ.get("COHERE_KEY", "E23E1dX2YvvcsxdaKARuq9IjOdGClrA715yxCVfn")
 INFINI = os.environ.get("INFINI_KEY", "sk-dpkybedmc3yih33b")
 NOVITA = os.environ.get("NOVITA_KEY", "sk_RV_Ef_cKS3h8aIlkTlothOgRu44IMbd0TkbVOjezk")
 DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "moYWp7VPn3bHfETA8eU9eMGIw3zNN3b0")
-AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "")
-N1N = os.environ.get("N1N_KEY", "")
-CA = os.environ.get("CA_KEY", "")
+AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "sk-didEDQ9AUphGO6dQA1088e775f184895958637123c0aD360")
+N1N = os.environ.get("N1N_KEY", "sk-1XBLDQydkPenJgJbaiXS6MWDOQsTFPiHHxBLDGPidV33jfQi")
+CA = os.environ.get("CA_KEY", "sk-hUrKIhasRZTnLZFi4jYI5S82ojAXNbO7elcyUOULQv2ff05Z")
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -260,6 +260,131 @@ def fetch_official_prices():
     return prices
 
 OFFICIAL_PRICES = {}
+
+# ─── 模型名标准化（用于跨平台匹配） ───
+def normalize_for_match(model_name):
+    n = model_name.strip()
+    for pfx in ["deepseek-ai/", "Qwen/", "Pro/", "meta-llama/", "mistralai/",
+                "google/", "microsoft/", "THUDM/", "zai-org/", "moonshotai/",
+                "minimaxai/", "stepfun-ai/", "inclusionai/", "bytedance-seed/",
+                "ByteDance-Seed/", "tencent/", "internlm/", "paddlepaddle/",
+                "PaddlePaddle/", "kwaipilot/", "Kwai-Kolors/", "FunAudioLLM/",
+                "IndexTeam/", "BAAI/", "TeleAI/", "LoRA/", "netease-youdao/",
+                "accounts/fireworks/models/", "turing/", "nvidia/"]:
+        if n.startswith(pfx):
+            n = n[len(pfx):]
+            break
+    if "/" in n:
+        n = n.split("/")[-1]
+    n = re.sub(r'-\d{6,8}$', '', n)
+    n = re.sub(r'-\d{4}$', '', n)
+    n = re.sub(r'-(instruct|it|fp\d+|latest|main|default|base)$', '', n, flags=re.IGNORECASE)
+    return n.lower().strip()
+
+# ─── LiteLLM 价格获取（Tier 3 兜底） ───
+def fetch_litellm_prices():
+    prices = {}
+    try:
+        url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+        h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
+        req = urllib.request.Request(url, headers=h)
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read().decode("utf-8", errors="ignore"))
+        for model_name, info in data.items():
+            if not isinstance(info, dict):
+                continue
+            inp = float(info.get("input_cost_per_token", 0) or 0)
+            out = float(info.get("output_cost_per_token", 0) or 0)
+            inp_1m = inp * 1e6
+            out_1m = out * 1e6
+            if inp_1m == 0:
+                inp_1m = float(info.get("input_cost_per_million_tokens", 0) or 0)
+            if out_1m == 0:
+                out_1m = float(info.get("output_cost_per_million_tokens", 0) or 0)
+            if inp_1m > 0 or out_1m > 0:
+                provider = info.get("litellm_provider", "")
+                norm = normalize_for_match(model_name)
+                if norm not in prices or inp_1m > prices[norm]["input_per_1m"]:
+                    prices[norm] = {
+                        "input_per_1m": inp_1m,
+                        "output_per_1m": out_1m,
+                        "provider": provider,
+                        "raw_name": model_name,
+                    }
+        print("  fetch_litellm_prices: %d models" % len(prices), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_litellm_prices error:", str(e)[:80], file=sys.stderr)
+    return prices
+
+# ─── 价格漂移检测 ───
+def detect_price_drift(all_models, or_prices, litellm_prices):
+    drift = []
+    src_map = {"aliyun": "A", "openrouter": "A", "together": "A",
+               "novita": "A", "deepinfra": "A", "n1n": "P", "ca": "P"}
+    for m in all_models:
+        p = m.get("p", "")
+        src = m.get("src", src_map.get(p, "H"))
+        mn = m.get("n", "")
+        our_i = float(m.get("i", 0) or 0)
+        our_o = float(m.get("o", 0) or 0)
+        cur = m.get("cur", "CNY")
+        norm = normalize_for_match(mn)
+        # LiteLLM fallback for free models
+        if our_i == 0 and our_o == 0 and src == "H":
+            ref = litellm_prices.get(norm)
+            if ref and ref.get("input_per_1m", 0) > 0:
+                ref_i = ref["input_per_1m"]
+                ref_o = ref.get("output_per_1m", 0)
+                if cur == "CNY":
+                    our_display = 0.0
+                    ref_display = round(ref_i * USD_TO_CNY, 4)
+                else:
+                    our_display = 0.0
+                    ref_display = round(ref_i, 4)
+                drift.append({
+                    "model_name": mn,
+                    "platform": p,
+                    "our_price": our_display,
+                    "ref_price": ref_display,
+                    "ref_source": "LiteLLM(兜底)",
+                    "drift_pct": 100.0,
+                })
+            continue
+        if src != "H":
+            continue
+        if our_i <= 0:
+            continue
+        ref = or_prices.get(norm)
+        ref_source = "OpenRouter"
+        if not ref:
+            ref = litellm_prices.get(norm)
+            ref_source = "LiteLLM"
+        if not ref:
+            continue
+        ref_i = ref.get("input_per_1m", 0)
+        if ref_i <= 0:
+            continue
+        if cur == "CNY":
+            our_i_usd = our_i / USD_TO_CNY
+        else:
+            our_i_usd = our_i
+        drift_pct = abs(our_i_usd - ref_i) / ref_i * 100
+        if drift_pct >= 5:
+            if cur == "CNY":
+                our_display = round(our_i, 4)
+                ref_display = round(ref_i * USD_TO_CNY, 4)
+            else:
+                our_display = round(our_i_usd, 4)
+                ref_display = round(ref_i, 4)
+            drift.append({
+                "model_name": mn,
+                "platform": p,
+                "our_price": our_display,
+                "ref_price": ref_display,
+                "ref_source": ref_source,
+                "drift_pct": round(drift_pct, 1),
+            })
+    return drift
 
 # ─── 通用请求函数 (带重试和缓存) ───
 def fj(url, tok="", to=20, retries=3):
@@ -1328,7 +1453,7 @@ if os.path.exists(MODELS_JSON):
                         inp_orig = new_i
                         out_orig = new_o
                 cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=m.get("price_src","")))
-            all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur})
+            all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur, "src": m.get("price_src","")})
         price_changes = jmeta.get("price_changes", [])
         USE_JSON_DATA = True
         print("  Loaded %d models from JSON" % len(jmodels), file=sys.stderr)
@@ -1765,7 +1890,7 @@ if not USE_JSON_DATA:
         fam = get_family(m["n"])
         cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
                      "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src="A"))
-        all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"]})
+        all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"],"src":"A"})
 
     # 硅基流动
     for mid in sf_ids:
@@ -1773,7 +1898,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
                      "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 月之暗面
     for m in ms_list:
@@ -1782,7 +1907,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 智谱AI
     for mid in zh_ids:
@@ -1790,7 +1915,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
                      "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 火山引擎
     for m in vc_list:
@@ -1802,14 +1927,14 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("volcengine","火山引擎","#dc2626",Te(mid),ii,oo,cc,tt,ss,
                      "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 百度文心
     for m in BD:
         fam = get_family(m["n"])
         cards.append(make_card("baidu","百度文心","#2932e1",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
                      "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"]})
+        all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"],"src":"H"})
 
     # OpenRouter
     for m in OR[:350]:
@@ -1835,7 +1960,7 @@ if not USE_JSON_DATA:
         mid2 = Te(m["id"])
         fam = get_family(m.get("id",""))
         cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam, price_src="A"))
-        all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD","src":"A"})
 
     # 腾讯混元
     for mid in tx_ids:
@@ -1843,7 +1968,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
                      "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 讯飞星火
     for mid in xh_ids:
@@ -1851,7 +1976,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
                      "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"spark","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"spark","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # MiniMax
     for mid in mm_ids:
@@ -1859,7 +1984,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.minimax.chat/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 零一万物
     for mid in yw_ids:
@@ -1867,7 +1992,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"yi","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"yi","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 百川智能
     for mid in bc_ids:
@@ -1875,7 +2000,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # 阶跃星辰
     for mid in jc_ids:
@@ -1883,7 +2008,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.stepfun.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # DeepSeek 官方
     for mid in ds_ids:
@@ -1891,7 +2016,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("deepseek","DeepSeek","#4d6dff",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.deepseek.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # Groq
     for mid in gq_ids:
@@ -1899,7 +2024,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
 
     # Together AI
     for m in tg_list:
@@ -1921,7 +2046,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
-        all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD","src":"A"})
 
     # Fireworks AI
     for m in fw_list:
@@ -1934,7 +2059,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
 
     # Cohere
     for m in co_list:
@@ -1943,7 +2068,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
 
     # 无问芯穹 (InfiniAI)
     for mid in infini_list:
@@ -1951,7 +2076,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
                      "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"infini","n":mid,"i":ii,"o":oo})
+        all_models.append({"p":"infini","n":mid,"i":ii,"o":oo,"src":"H"})
 
     # Novita AI
     for m in novita_list:
@@ -1968,7 +2093,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
-        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo,"cur":"USD","src":"A"})
 
     # DeepInfra
     for mid in di_list:
@@ -1986,7 +2111,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
-        all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD","src":"A"})
 
     # AiHubMix
     for mid in ahm_list:
@@ -1994,7 +2119,7 @@ if not USE_JSON_DATA:
         fam = get_family(mid)
         cards.append(make_card("aihubmix","AiHubMix","#10b981",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD"})
+        all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
 
     # n1n.ai
     for mid in n1n_list:
@@ -2015,7 +2140,7 @@ if not USE_JSON_DATA:
         ss = "深度推理" if "推理" in tt else "日常对话"
         cards.append(make_card("n1n","n1n.ai","#f59e0b",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.n1n.ai/v1/chat/completions","CNY",family=fam,price_src="P"))
-        all_models.append({"p":"n1n","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+        all_models.append({"p":"n1n","n":mid,"i":ii,"o":oo,"cur":"CNY","src":"P"})
 
     # ChatAnywhere
     for mid in ca_list:
@@ -2036,7 +2161,7 @@ if not USE_JSON_DATA:
         ss = "深度推理" if "推理" in tt else "日常对话"
         cards.append(make_card("ca","ChatAnywhere","#06b6d4",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam,price_src="P"))
-        all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY"})
+        all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY","src":"P"})
 
     # ─── 价格变动检测 ───
     price_changes = []
@@ -2063,6 +2188,50 @@ total = len(cards)
 print("Generated:", total, file=sys.stderr)
 if price_changes:
     print("  Price changes detected:", len(price_changes), file=sys.stderr)
+
+# ─── 多层级价格源: Tier 2 OpenRouter 交叉验证 + Tier 3 LiteLLM 兜底 ───
+or_prices = {}
+litellm_prices = {}
+drift_list = []
+try:
+    litellm_prices = fetch_litellm_prices()
+    if not USE_JSON_DATA and 'OR' in dir() and OR:
+        for m in OR:
+            mid = m.get("id", "")
+            ii = float(m.get("pricing", {}).get("prompt", 0) or 0)
+            if ii <= 0:
+                continue
+            oo = float(m.get("pricing", {}).get("completion", 0) or 0)
+            norm = normalize_for_match(mid)
+            ii_1m = ii * 1e6
+            oo_1m = oo * 1e6
+            if norm not in or_prices:
+                or_prices[norm] = {"input_per_1m": ii_1m, "output_per_1m": oo_1m, "raw_name": mid}
+        print("  OpenRouter prices: %d models for drift detection" % len(or_prices), file=sys.stderr)
+    else:
+        or_cache = os.path.join(CACHE_DIR, "openrouter_full.json")
+        if os.path.exists(or_cache):
+            try:
+                _or_data = json.load(open(or_cache))
+                for m in _or_data.get("data", []):
+                    mid = m.get("id", "")
+                    ii = float(m.get("pricing", {}).get("prompt", 0) or 0)
+                    if ii <= 0:
+                        continue
+                    oo = float(m.get("pricing", {}).get("completion", 0) or 0)
+                    norm = normalize_for_match(mid)
+                    ii_1m = ii * 1e6
+                    oo_1m = oo * 1e6
+                    if norm not in or_prices:
+                        or_prices[norm] = {"input_per_1m": ii_1m, "output_per_1m": oo_1m, "raw_name": mid}
+                print("  OpenRouter prices (cache): %d models for drift detection" % len(or_prices), file=sys.stderr)
+            except:
+                pass
+    drift_list = detect_price_drift(all_models, or_prices, litellm_prices)
+    if drift_list:
+        print("  Price drift detected: %d models" % len(drift_list), file=sys.stderr)
+except Exception as e:
+    print("  Price drift detection error:", str(e)[:80], file=sys.stderr)
 
 # ─── Telegram 通知（每次运行都发送）───
 def send_telegram_notification(total_models, changes):
@@ -2352,6 +2521,45 @@ calc_panel = (
     '<div class="calc-result" id="calcResult"></div>'
     '</div>'
 )
+
+# ─── 价格漂移报告面板 ───
+drift_panel = ""
+if drift_list:
+    drift_rows = ""
+    for d in drift_list:
+        pct = d["drift_pct"]
+        if pct > 20:
+            cls = "drift-red"
+        elif pct >= 5:
+            cls = "drift-yellow"
+        else:
+            cls = "drift-green"
+        drift_rows += (
+            '<div class="drift-item ' + cls + '">'
+            '<span class="drift-model">' + Te(d["model_name"]) + '</span>'
+            '<span class="drift-platform">' + Te(d["platform"]) + '</span>'
+            '<span class="drift-our">¥' + ("%.4f" % d["our_price"]) + '/M</span>'
+            '<span class="drift-ref">¥' + ("%.4f" % d["ref_price"]) + '/M</span>'
+            '<span class="drift-src">' + Te(d["ref_source"]) + '</span>'
+            '<span class="drift-pct">' + ("%.1f" % pct) + '%</span>'
+            '</div>'
+        )
+    drift_panel = (
+        '<div class="drift-panel" id="driftPanel">'
+        '<div class="drift-title">&#128270; 价格漂移检测</div>'
+        '<div class="drift-desc">硬编码价格与 OpenRouter/LiteLLM 参考价格偏差 ≥5% 的模型（共 ' + str(len(drift_list)) + ' 个）</div>'
+        '<div class="drift-legend"><span class="drift-green">&#9679;</span> &lt;5% <span class="drift-yellow">&#9679;</span> 5-20% <span class="drift-red">&#9679;</span> &gt;20%</div>'
+        '<div class="drift-header-row">'
+        '<span class="drift-model">模型</span>'
+        '<span class="drift-platform">平台</span>'
+        '<span class="drift-our">我方价格</span>'
+        '<span class="drift-ref">参考价格</span>'
+        '<span class="drift-src">参考源</span>'
+        '<span class="drift-pct">偏差</span>'
+        '</div>'
+        '<div class="drift-list">' + drift_rows + '</div>'
+        '</div>'
+    )
 
 # ─── 模型对比面板 ───
 cmp_panel = (
@@ -2783,11 +2991,16 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .calc-row input{padding:4px 6px;font-size:11px;max-width:90px}
 .calc-btns{gap:4px}
 .calc-btn{padding:5px 10px;font-size:11px}
-.calc-presets{gap:3px;margin-bottom:6px}
-.preset-btn{padding:2px 6px;font-size:9px}
-.calc-result{max-height:250px;margin-top:6px}
-.calc-table{font-size:10px}
-.calc-table th,.calc-table td{padding:3px 5px}
+ .calc-presets{gap:3px;margin-bottom:6px}
+ .preset-btn{padding:2px 6px;font-size:9px}
+ .calc-result{max-height:250px;margin-top:6px}
+ .calc-table{font-size:10px}
+ .calc-table th,.calc-table td{padding:3px 5px}
+ .drift-panel{padding:10px;border-radius:10px;margin-bottom:10px}
+ .drift-title{font-size:12px;margin-bottom:4px}
+ .drift-desc{font-size:10px}
+ .drift-header-row,.drift-item{font-size:9px;grid-template-columns:1fr 40px 60px 60px 60px 40px}
+ .drift-list{max-height:200px}
 .cmp-item{padding:4px 6px;gap:4px}
 .cmp-item-name{font-size:11px}
 .cmp-item-price{font-size:10px}
@@ -2903,6 +3116,28 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .rl-tag-mid{background:#dbeafe;color:#1e40af}
 .rl-tag-high{background:#dcfce7;color:#166534}
 .rl-note{font-size:10px;color:var(--text3);margin-top:6px;line-height:1.4}
+
+/* ─── 价格漂移面板 ─── */
+.drift-panel{background:var(--surface);border:1px solid rgba(239,68,68,.12);border-radius:var(--radius-lg);padding:14px;margin-bottom:14px;backdrop-filter:blur(8px)}
+.drift-title{font-size:13px;font-weight:600;color:#f87171;margin-bottom:4px}
+.drift-desc{font-size:11px;color:var(--text2);margin-bottom:6px;line-height:1.4}
+.drift-legend{font-size:10px;color:var(--text3);margin-bottom:8px;display:flex;gap:8px;align-items:center}
+.drift-legend span{font-size:12px;margin-right:2px}
+.drift-header-row,.drift-item{display:grid;grid-template-columns:1fr 60px 80px 80px 80px 50px;gap:4px;padding:4px 6px;font-size:10px;align-items:center}
+.drift-header-row{font-weight:600;color:var(--text2);border-bottom:1px solid var(--border);margin-bottom:2px}
+.drift-item{border-radius:4px;margin-bottom:2px;border-left:3px solid transparent}
+.drift-item.drift-green{border-left-color:#4ade80;background:rgba(34,197,94,.04)}
+.drift-item.drift-yellow{border-left-color:#fbbf24;background:rgba(245,158,11,.04)}
+.drift-item.drift-red{border-left-color:#f87171;background:rgba(239,68,68,.06)}
+.drift-model{font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drift-platform{color:var(--text2)}
+.drift-our,.drift-ref{font-family:monospace;font-size:9px;color:var(--text2)}
+.drift-src{font-size:9px;color:var(--text3)}
+.drift-pct{font-weight:700;font-family:monospace}
+.drift-green .drift-pct{color:#4ade80}
+.drift-yellow .drift-pct{color:#fbbf24}
+.drift-red .drift-pct{color:#f87171}
+.drift-list{max-height:300px;overflow-y:auto}
 
 /* ─── Token 计价器模态框 ─── */
 .tk-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:9997;opacity:0;pointer-events:none;transition:opacity .25s}
@@ -4447,7 +4682,11 @@ HDR = (
     '<div class="fg-title" onclick="toggleFg(this)">⚠ Rate Limits <span class="fg-arrow">▸</span></div>\n'
     '<div class="fg-body">' + rl_panel + '</div>\n'
     '</div>\n'
-    '</div>\n'  # /sidebar
+    + ('<div class="fg fg-collapsible fg-collapsed">\n'
+       '<div class="fg-title" onclick="toggleFg(this)">&#128270; 价格漂移 <span class="fg-arrow">▸</span></div>\n'
+       '<div class="fg-body">' + drift_panel + '</div>\n'
+       '</div>\n' if drift_panel else '')
+    + '</div>\n'  # /sidebar
     # ─── 右侧内容区 ───
     '<div class="content-area">\n'
     + cmp_panel + '\n'
