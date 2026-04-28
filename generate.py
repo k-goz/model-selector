@@ -185,6 +185,77 @@ def fetch_official_prices():
     except Exception as e:
         print("  fetch_official_prices: Aliyun error:", str(e)[:80], file=sys.stderr)
 
+    # 6. 硅基流动 - Next.js RSC 接口，无需 API Key，无需 Playwright
+    try:
+        rsc_url = "https://siliconflow.cn/models?_rsc=1wtp7"
+        rsc_headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+            "RSC": "1",
+            "Next-Router-State-Tree": "%5B%22%22%2C%7B%22children%22%3A%5B%22models%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D",
+        }
+        req = urllib.request.Request(rsc_url, headers=rsc_headers)
+        with urllib.request.urlopen(req, timeout=30) as r:
+            raw = r.read().decode("utf-8", errors="ignore")
+        lines = raw.split("\n")
+        # 数据在第5行(0-indexed)，包含 "data":[ 数组
+        for line in lines:
+            data_start = line.find('"data":[')
+            if data_start == -1:
+                continue
+            arr_start = line.find("[", data_start + 6)
+            # 用栈匹配括号
+            depth = 0
+            arr_end = arr_start
+            for ci in range(arr_start, min(arr_start + 300000, len(line))):
+                if line[ci] == "[":
+                    depth += 1
+                elif line[ci] == "]":
+                    depth -= 1
+                    if depth == 0:
+                        arr_end = ci + 1
+                        break
+            json_str = line[arr_start:arr_end]
+            models_arr = json.loads(json_str)
+            sf_count = 0
+            for m in models_arr:
+                if m.get("type") not in ("text",):
+                    continue
+                if m.get("subType") not in ("chat",):
+                    continue
+                mn_raw = m.get("modelName", "")
+                mn = mn_raw.lower().strip()
+                if not mn:
+                    continue
+                ip = float(m.get("inputPrice", 0) or 0)
+                op = float(m.get("outputPrice", 0) or 0)
+                # 存储多个键以覆盖不同命名格式
+                keys = ["sf:" + mn]
+                # 去掉 Pro/ 前缀
+                if mn.startswith("pro/"):
+                    keys.append("sf:" + mn[4:])
+                # 去掉 provider 前缀
+                for pfx in ["deepseek-ai/", "thudm/", "qwen/", "minimaxai/", "moonshotai/", "stepfun-ai/", "inclusionai/", "zai-org/", "bytedance-seed/", "tencent/", "internlm/", "paddlepaddle/", "kwaipilot/"]:
+                    if mn.startswith(pfx):
+                        keys.append("sf:" + mn[len(pfx):])
+                    if mn.startswith("pro/" + pfx):
+                        keys.append("sf:" + mn[4 + len(pfx):])
+                entry = {
+                    "input": ip,
+                    "output": op,
+                    "currency": "CNY",
+                    "source": "https://siliconflow.cn/models",
+                    "platform": "siliconflow",
+                    "raw_name": mn_raw,
+                }
+                for key in keys:
+                    if key not in prices:
+                        prices[key] = entry
+                sf_count += 1
+            print("  fetch_official_prices: SiliconFlow RSC %d models" % sf_count, file=sys.stderr)
+            break
+    except Exception as e:
+        print("  fetch_official_prices: SiliconFlow RSC error:", str(e)[:80], file=sys.stderr)
+
     print("  fetch_official_prices: total %d models" % len(prices), file=sys.stderr)
     return prices
 
@@ -1167,6 +1238,11 @@ def cop(mid):
 # 数据抓取
 # ═══════════════════════════════════════════════════════════
 
+# ─── 始终从官方源抓取最新价格（无论是否使用 JSON 缓存） ───
+print("Fetching official prices...", file=sys.stderr)
+OFFICIAL_PRICES = fetch_official_prices()
+print("  Official prices: %d models loaded" % len(OFFICIAL_PRICES), file=sys.stderr)
+
 # ─── 检查 models_data.json（伪动态方案：优先从静态 JSON 加载） ───
 MODELS_JSON = os.environ.get("MODELS_JSON", os.path.join(SCRIPT_DIR, "models_data.json"))
 USE_JSON_DATA = False
@@ -1209,6 +1285,48 @@ if os.path.exists(MODELS_JSON):
                 pv = pname.replace("OPENROUTER:", "") if pname.startswith("OPENROUTER:") else pname
                 cards.append(make_or_card(pv, Te(mname), inp_orig, out_orig, ctx, tags, scen, Te(mname), family=fam, price_unit=pu, price_src=m.get("price_src","")))
             else:
+                # ─── 用官方价格覆盖 JSON 缓存中的旧价格 ───
+                if OFFICIAL_PRICES and pid in ("siliconflow",):
+                    # 硅基流动：尝试用 RSC 接口获取的真实价格覆盖
+                    # 尝试多种键格式匹配（RSC modelName 可能带 Pro/ 前缀或不带）
+                    mname_lower = mname.lower()
+                    lookup_key = None
+                    op_data = None
+                    # 去掉已知前缀的组合
+                    prefixes_to_strip = ["pro/", "deepseek-ai/", "thudm/", "qwen/", "minimaxai/", "moonshotai/", "stepfun-ai/", "inclusionai/", "zai-org/", "bytedance-seed/", "tencent/", "internlm/", "paddlepaddle/", "kwaipilot/"]
+                    # 尝试1: 直接用 mname_lower 作为键
+                    candidates = ["sf:" + mname_lower]
+                    # 尝试2: 去掉所有前缀组合
+                    temp = mname_lower
+                    for pfx in prefixes_to_strip:
+                        if temp.startswith(pfx):
+                            temp = temp[len(pfx):]
+                    candidates.append("sf:" + temp)
+                    # 尝试3: Pro/ + 其他前缀
+                    if mname_lower.startswith("pro/"):
+                        temp2 = mname_lower[4:]  # 去掉 pro/
+                        candidates.append("sf:" + temp2)
+                        for pfx in prefixes_to_strip:
+                            if temp2.startswith(pfx):
+                                temp2 = temp2[len(pfx):]
+                                candidates.append("sf:" + temp2)
+                    for c in candidates:
+                        if c in OFFICIAL_PRICES:
+                            lookup_key = c
+                            op_data = OFFICIAL_PRICES[c]
+                            break
+                    if op_data and (op_data.get("input", 0) > 0 or op_data.get("output", 0) > 0):
+                        old_i, old_o = inp_orig, out_orig
+                        new_i = op_data["input"]
+                        new_o = op_data["output"]
+                        if old_i != new_i or old_o != new_o:
+                            price_changes.append({
+                                "p": pid, "n": mname,
+                                "old_i": old_i, "old_o": old_o,
+                                "new_i": new_i, "new_o": new_o,
+                            })
+                        inp_orig = new_i
+                        out_orig = new_o
                 cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=m.get("price_src","")))
             all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur})
         price_changes = jmeta.get("price_changes", [])
