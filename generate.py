@@ -444,7 +444,7 @@ def th(tags):
          "语音":"other","TTS":"other","ASR":"other","向量":"other","排序":"other",
          "OCR":"other","多模态":"vision","Turbo":"hot","降价后":"cheap","降价90%":"cheap",
          "超低价":"cheap","编程":"other","智能路由":"other","免费":"free",
-         "满血版":"hot","价格变动":"other","涨价":"hot","降价":"cheap"}
+          "满血版":"hot","价格变动":"other","涨价":"hot","降价":"cheap","按次计费":"other"}
     return "".join('<span class="tg tg-' + m.get(x,"other") + '">' + x + '</span>' for x in (tags or []))
 
 # ─── 价格徽章 (CNY) ───
@@ -477,9 +477,10 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     pt = PT(inp, out, cur, price_unit)
     ts = th(tags)
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out, price_unit)
-    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价"}
+    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)"}
     src_title = src_map.get(price_src, price_src or "硬编码")
-    src_tag = '<span class="price-src" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
+    src_cls = "price-src price-src-proxy" if price_src == "P" else "price-src"
+    src_tag = '<span class="' + src_cls + '" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
     # data-inp/data-out: unified to $/token (consistent with OpenRouter), per_1m needs /1e6
     if price_unit == "per_1m" and cur == "USD":
         inp_s = str(inp / 1e6) if inp else "0"
@@ -512,9 +513,10 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     pp = PT(inp, out, "USD", price_unit)
     tts = th(tt)
     bg = bo(inp, out, price_unit)
-    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价"}
+    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)"}
     src_title = src_map.get(price_src, price_src or "硬编码")
-    src_tag = '<span class="price-src" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
+    src_cls = "price-src price-src-proxy" if price_src == "P" else "price-src"
+    src_tag = '<span class="' + src_cls + '" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
     # data-inp/data-out: unified to $/token, per_1m needs /1e6
     if price_unit == "per_1m":
         inp_s = str(inp / 1e6) if inp else "0"
@@ -734,20 +736,46 @@ def mp(mid):
         if k in mid: return ii, oo, cc, tt, ss
     return 4, 16, "262k", ["旗舰","价格待确认"], "深度推理"
 
+def ap(mid):
+    """阿里百炼硬编码价格补充 (API不返回价格的模型)"""
+    m = {
+        "qwen3-next-80b-a3b-thinking": (2,8,"128k",["推理","旗舰"],"深度推理"),
+        "qwen3-30b-a3b-thinking":     (0.6,4.8,"128k",["推理","主力"],"深度推理"),
+        "qwen3-235b-a22b-thinking":   (0.8,6.4,"128k",["推理","旗舰"],"深度推理"),
+        "qwen-max":                   (20,60,"32k",["旗舰","2025新"],"深度推理"),
+        "qwen-plus":                  (0.8,2,"128k",["主力","性价比"],"日常对话"),
+        "qwen-turbo":                 (0.3,0.6,"1M",["快速","极便宜"],"日常对话"),
+        "qwen-long":                  (0.5,2,"1M",["长上下文"],"日常对话"),
+        "qwen-vl-max":                (20,60,"32k",["视觉","旗舰"],"视觉图片"),
+        "qwen-vl-plus":               (0.8,2,"128k",["视觉","性价比"],"视觉图片"),
+        "qwen-coder-plus":            (0.8,2,"128k",["代码"],"编程代码"),
+        "qwq-32b":                    (0.7,2,"128k",["推理"],"深度推理"),
+        "qwen3-235b-a22b":            (0.8,6.4,"128k",["旗舰","MoE"],"深度推理"),
+        "qwen3-32b":                  (0.6,4.8,"128k",["主力"],"日常对话"),
+        "qwen3-14b":                  (0.4,3.2,"128k",["轻量"],"日常对话"),
+        "qwen3-8b":                   (0.2,2,"128k",["轻量","免费额度"],"日常对话"),
+        "qwen3-4b":                   (0.2,2,"128k",["轻量","免费额度"],"日常对话"),
+    }
+    m2 = mid.lower().replace(" ","")
+    for k,(ii,oo,cc,tt,ss) in m.items():
+        if k in m2:
+            return ii, oo, cc, tt, ss
+    return None
+
 def zp(mid):
     """智谱AI价格映射"""
     m = {
-        "glm-5":         (6,22,"1M",["旗舰","2026新"],"深度推理"),
+        "glm-5":         (4,18,"1M",["旗舰","2026新","降价"],"深度推理"),
         "glm-5-turbo":   (5,22,"1M",["高性能"],"深度推理"),
-        "glm-5.1":       (8,24,"1M",["旗舰"],"深度推理"),
+        "glm-5.1":       (6,24,"1M",["旗舰","降价"],"深度推理"),
         "glm-4.7":       (2,8,"1M",["主力","2026新"],"日常对话"),
         "glm-4.7-flashx":(0.5,3,"200k",["快速","长上下文"],"日常对话"),
         "glm-4.7-flash": (0,0,"200k",["免费"],"日常对话"),
         "glm-4-plus":    (5,5,"128k",["旗舰","降价90%"],"深度推理"),
         "glm-5v-turbo":  (5,5,"1M",["视觉","旗舰"],"视觉图片"),
         "glm-z1-air":    (0.5,2,"32k",["推理","便宜"],"深度推理"),
-        "glm-4.5":      (2,8,"128k",["主力"],"日常对话"),
-        "glm-4.5-air":   (0.5,3,"32k",["轻量"],"日常对话"),
+        "glm-4.5-air":   (0.8,2,"32k",["轻量","涨价"],"日常对话"),
+        # glm-4.5 移至微调区，不再作为推理模型
         "glm-4.6":      (2,8,"128k",["主力"],"日常对话"),
     }
     m2 = mid.lower()
@@ -759,7 +787,7 @@ def vp(mid):
     """火山引擎价格映射"""
     m = {
         "doubao-1.6-pro-32k":    (0.8,8,"32k",["旗舰","2025新"],"日常对话"),
-        "doubao-1.5-pro-32k":   (0.5,2,"32k",["主力","性价比"],"日常对话"),
+        "doubao-1.5-pro-32k":   (0.8,2,"32k",["主力","性价比","涨价"],"日常对话"),
         "doubao-1.5-pro-128k":  (5,5,"128k",["长上下文"],"深度推理"),
         "doubao-lite-32k":        (0.15,0.6,"32k",["极便宜","免费额度"],"日常对话"),
         "doubao-1.5-lite-32k":  (0.15,0.6,"32k",["极便宜"],"日常对话"),
@@ -769,8 +797,10 @@ def vp(mid):
         "doubao-seed-1.6-flash":  (0.8,0.8,"32k",["快速","极便宜"],"日常对话"),
         "doubao-seed-1.6-vision": (3,3,"64k",["视觉","旗舰"],"视觉图片"),
         "doubao-seed-1.6-thinking":(4,16,"262k",["推理","旗舰"],"深度推理"),
-        "doubao-seed-2.0-pro":     (1,4,"32k",["旗舰","最新版"],"日常对话"),
-        "doubao-seed-2.0-mini":    (0.8,2,"32k",["轻量","性价比"],"日常对话"),
+        "doubao-seed-2.0-pro":     (3.2,16,"32k",["旗舰","涨价"],"日常对话"),
+        "doubao-seed-2.0-mini":    (0.2,2,"32k",["轻量","性价比"],"日常对话"),
+        "doubao-seed-2.0-lite":   (0.6,3.6,"32k",["便宜"],"日常对话"),
+        "doubao-seed-2.0-code":    (3.2,16,"32k",["代码","旗舰"],"编程代码"),
         "doubao-smart-router":      (0.8,2,"32k",["智能路由"],"日常对话"),
     }
     for k,(ii,oo,cc,tt,ss) in m.items():
@@ -784,115 +814,9 @@ def vp(mid):
     if "thinking" in m2 or "reason" in m2: return 4, 16, "262k", ["推理"], "深度推理"
     return 0.5, 2, "32k", ["价格待确认"], "日常对话"
 
-# ─── 百度文心 (从 API 拉取 + 硬编码价格映射) ───
-def bp(mid):
-    """百度文心价格映射 (¥/M tokens) — 千帆V2官网定价"""
-    m2 = mid.lower()
-    # ── 百度自研 ernie 系列 ──
-    if "ernie-5.0" in m2 or "ernie-5" in m2:
-        if "thinking" in m2: return 8, 24, "256k", ["推理","旗舰"], "深度推理"
-        return 8, 24, "256k", ["旗舰"], "深度推理"
-    if "ernie-4.5" in m2:
-        if "turbo" in m2: return 4, 12, "128k", ["主力","性价比"], "日常对话"
-        if "0.3b" in m2: return 1, 1, "8k", ["极便宜"], "日常对话"
-        return 8, 24, "8k", ["旗舰"], "深度推理"
-    if "ernie-4.0" in m2 or "ernie-4u" in m2:
-        return 120, 120, "8k", ["旗舰"], "深度推理"
-    if "ernie-x1" in m2 or "ernie-x1.1" in m2:
-        return 4, 16, "32k", ["推理","旗舰"], "深度推理"
-    if "ernie-3.5" in m2:
-        return 12, 12, "8k", ["主力"], "日常对话"
-    if "ernie-speed" in m2:
-        if "pro" in m2: return 12, 12, "128k", ["快速","长上下文"], "日常对话"
-        return 8, 8, "128k", ["快速","长上下文"], "日常对话"
-    if "ernie-lite" in m2:
-        if "pro" in m2: return 8, 8, "128k", ["便宜","长上下文"], "日常对话"
-        return 4, 4, "8k", ["极便宜"], "日常对话"
-    if "ernie-bot" in m2:
-        if "turbo" in m2: return 8, 8, "8k", ["快速"], "日常对话"
-        return 12, 12, "8k", ["主力"], "日常对话"
-    if "ernie-char" in m2 or "ernie-novel" in m2:
-        return 12, 12, "8k", ["创作"], "其他"
-    if "ernie-text-embedding" in m2:
-        return 0, 0, "8k", ["向量"], "其他"
-    if "ernie-image" in m2 or "ernie-irag" in m2:
-        return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
-    if "ernie-video" in m2:
-        return 0, 0, "8k", ["视频生成","免费额度"], "视频生成"
-    # ── DeepSeek 系列（千帆收费部署） ──
-    if "deepseek" in m2:
-        if "r1" in m2: return 1, 2, "1M", ["推理","旗舰"], "深度推理"
-        if "v4" in m2:
-            if "flash" in m2: return 1, 2, "1M", ["主力"], "日常对话"
-            return 3, 6, "1M", ["旗舰"], "深度推理"
-        if "v3.2" in m2: return 1, 2, "1M", ["主力"], "日常对话"
-        if "v3.1" in m2: return 1, 2, "1M", ["主力"], "日常对话"
-        if "v3" in m2: return 1, 2, "1M", ["主力"], "日常对话"
-        if "ocr" in m2: return 0.3, 0, "8k", ["OCR"], "其他"
-        return 1, 2, "1M", ["主力"], "日常对话"
-    # ── GLM 系列（千帆收费部署） ──
-    if "glm" in m2:
-        if "5.1" in m2: return 8, 24, "1M", ["旗舰"], "深度推理"
-        if "5" in m2: return 6, 22, "1M", ["旗舰"], "深度推理"
-        if "4.7" in m2: return 2, 8, "1M", ["主力"], "日常对话"
-        if "4.5" in m2 or "4.6" in m2: return 2, 8, "128k", ["主力"], "日常对话"
-        return 2, 8, "128k", ["主力"], "日常对话"
-    # ── Kimi 系列（千帆收费部署） ──
-    if "kimi" in m2:
-        return 4, 16, "256k", ["旗舰"], "深度推理"
-    # ── MiniMax 系列（千帆收费部署） ──
-    if "minimax" in m2:
-        return 1, 4, "256k", ["主力"], "日常对话"
-    # ── Qwen 系列（千帆上小模型免费，大模型收费） ──
-    if "qwen" in m2:
-        if "image" in m2: return 0, 0, "8k", ["图片生成","免费额度"], "图片生成"
-        if "embedding" in m2 or "reranker" in m2: return 0, 0, "8k", ["向量","免费额度"], "其他"
-        if "235b" in m2: return 0.8, 6.4, "128k", ["旗舰"], "深度推理"
-        if "480b" in m2: return 1.2, 4.8, "128k", ["旗舰"], "深度推理"
-        if "80b" in m2 or "72b" in m2: return 0.6, 4.8, "128k", ["主力"], "日常对话"
-        if "35b" in m2 or "30b" in m2: return 0.5, 2.0, "128k", ["便宜"], "日常对话"
-        if "32b" in m2: return 0.6, 4.8, "128k", ["主力"], "日常对话"
-        if "14b" in m2: return 0.4, 3.2, "128k", ["便宜"], "日常对话"
-        if "8b" in m2: return 0, 0, "128k", ["免费额度"], "日常对话"
-        if "4b" in m2 or "1.7b" in m2 or "0.6b" in m2: return 0, 0, "128k", ["免费额度"], "日常对话"
-        return 0, 0, "8k", ["免费额度"], "日常对话"
-    # ── InternVL 系列（千帆上小模型免费） ──
-    if "internvl" in m2:
-        if "38b" in m2: return 0.5, 2.0, "32k", ["视觉","便宜"], "视觉图片"
-        return 0, 0, "8k", ["视觉","免费额度"], "视觉图片"
-    # ── 百度应用类模型 (qianfan- 开头) ──
-    if "qianfan-" in m2 or "qfintent" in m2 or "search_lighting" in m2:
-        return 0, 0, "8k", ["免费额度"], "其他"
-    # ── 图片/视频生成模型（按张/次计费，标记免费额度） ──
-    img_video_kw = ["flux","stable-diffusion","wan-2","kling","vidu","musesteamer","paddleocr","pp-structure"]
-    if any(kw in m2 for kw in img_video_kw):
-        return 0, 0, "8k", ["免费额度"], "其他"
-    # ── 其他开源小模型（确实免费） ──
-    return 0, 0, "8k", ["免费额度"], "日常对话"
-
-BD = []
-if BDK:
-    d = fj("https://qianfan.baidubce.com/v2/models", BDK)
-    if d:
-        for m in (d.get("data", []) if d else []):
-            mid = m.get("id", "")
-            nn = m.get("name", mid)
-            cc_r = m.get("context_length", 0) or 0
-            # 用硬编码价格映射，API不返回价格
-            ii, oo, cc, tt, ss = bp(mid)
-            if cc_r > 0: cc = str(int(cc_r)//1000)+"k"
-            if cc_r >= 100000 and "长上下文" not in tt: tt.append("长上下文")
-            BD.append({"n": nn, "c": cc, "i": ii, "o": oo, "t": tt, "s": ss})
-if not BD:
-    BD = [
-        {"n":"文心一言 4.0","c":"8k","i":120,"o":120,"t":["旗舰"],"s":"深度推理"},
-        {"n":"文心一言 4.0-32K","c":"32k","i":120,"o":120,"t":["旗舰","长上下文"],"s":"深度推理"},
-        {"n":"文心一言 3.5","c":"8k","i":12,"o":12,"t":["主力"],"s":"日常对话"},
-        {"n":"文心速度 128K","c":"128k","i":8,"o":8,"t":["快速","长上下文"],"s":"日常对话"},
-        {"n":"文心 Lite","c":"8k","i":4,"o":4,"t":["极便宜"],"s":"日常对话"},
-        {"n":"文心Bot 8K","c":"8k","i":12,"o":12,"t":["主力"],"s":"日常对话"},
-    ]
-
+# ─── 百度文心 (已移除：定价页404，API无价格数据) ───
+# 百度文心代码已移除，不再爬取
+BD = []  # 百度文心已弃用
 # ─── 腾讯混元价格映射 ───
 def tp(mid):
     m = {
@@ -916,7 +840,11 @@ def tp(mid):
 # ─── 讯飞星火价格映射 ───
 def xp(mid):
     m = {
-        "generalv3.5":        (2,8,"8k",["主力"],"日常对话"),
+        "spark-x2":           (2,3,"32k",["旗舰","推理","2026新"],"深度推理"),
+        "spark-x1.5":         (3,5,"32k",["推理","主力"],"深度推理"),
+        "spark-ultra":        (0.8,0.8,"32k",["旗舰","便宜"],"日常对话"),
+        "spark-pro":          (5,5,"128k",["旗舰","长上下文"],"日常对话"),
+        "generalv3.5":        (3,5,"8k",["主力","涨价"],"日常对话"),
         "generalv3":          (1.5,5,"8k",["性价比"],"日常对话"),
         "4.0Ultra":           (5,20,"32k",["旗舰"],"深度推理"),
         "generalv2":          (0.5,1.5,"8k",["便宜"],"日常对话"),
@@ -966,7 +894,7 @@ def yp(mid):
     return 1, 4, "16k", ["价格待确认"], "日常对话"
 
 # ─── 百川智能价格映射 ───
-def bp(mid):
+def bcp(mid):
     m = {
         "baichuan2-turbo":    (0.5,1.5,"32k",["便宜"],"日常对话"),
         "baichuan2-53b":      (2,8,"32k",["主力"],"日常对话"),
@@ -1489,6 +1417,8 @@ if not USE_JSON_DATA:
                 elif "Reasoning" in ca: ss = "深度推理"
                 else: ss = "日常对话"
                 nn = (m.get("name") or m.get("model") or "")
+                if ii == 0 and oo == 0 and ("IG" in ca or "VG" in ca):
+                    tt = tt[:] + ["按次计费"]
                 ali.append({"n":nn,"i":ii,"o":oo,"c":cc,"t":tt,"s":ss})
             print("  Aliyun: %d/%d" % (len(ali), tot), file=sys.stderr)
             if len(ali) >= tot: break
@@ -1888,9 +1818,22 @@ if not USE_JSON_DATA:
     # 阿里百炼
     for m in ali:
         fam = get_family(m["n"])
-        cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
-                     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src="A"))
-        all_models.append({"p":"aliyun","n":m["n"],"i":m["i"],"o":m["o"],"src":"A"})
+        ii, oo = m["i"], m["o"]
+        src = "A"
+        if ii == 0 and oo == 0:
+            hc = ap(m["n"])
+            if hc:
+                ii, oo = hc[0], hc[1]
+                if m["c"] in ("0k",""):
+                    m["c"] = hc[2]
+                if not m["t"]:
+                    m["t"] = hc[3]
+                if m["s"] in ("日常对话",""):
+                    m["s"] = hc[4]
+                src = "H"
+        cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),ii,oo,m["c"],m["t"],m["s"],
+                     "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"aliyun","n":m["n"],"i":ii,"o":oo,"src":src})
 
     # 硅基流动
     for mid in sf_ids:
@@ -1996,7 +1939,7 @@ if not USE_JSON_DATA:
 
     # 百川智能
     for mid in bc_ids:
-        ii, oo, cc, tt, ss = bp(mid)
+        ii, oo, cc, tt, ss = bcp(mid)
         fam = get_family(mid)
         cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam,price_src="H"))
@@ -2678,7 +2621,7 @@ a{color:var(--accent);text-decoration:none}
 .tg-other{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
 .prow{display:flex;align-items:center;gap:5px;margin-bottom:3px;min-height:20px}
 .price-badge{font-size:11px;font-weight:600;padding:2px 7px;border-radius:8px;white-space:nowrap;letter-spacing:.01em}
-.price-src{display:inline-block;font-size:9px;font-weight:500;padding:1px 4px;border-radius:4px;background:rgba(100,116,139,.08);color:#94a3b8;margin-left:3px;vertical-align:middle;cursor:help}
+.price-src{display:inline-block;font-size:9px;font-weight:500;padding:1px 4px;border-radius:4px;background:rgba(100,116,139,.08);color:#94a3b8;margin-left:3px;vertical-align:middle;cursor:help}.price-src-proxy{background:rgba(249,115,22,.12);color:#f97316;font-weight:700}
 .price-free{background:rgba(34,197,94,.1);color:#4ade80}
 .price-cheap{background:rgba(59,130,246,.1);color:#60a5fa}
 .price-mid{background:rgba(245,158,11,.1);color:#fbbf24}
@@ -4124,7 +4067,7 @@ if(!modelMap[coreName])modelMap[coreName]=[];
 var key=pid+'_'+coreName;
 if(platformSet[key])return;
 platformSet[key]=true;
-modelMap[coreName].push({name:mName,prov:prov,inp:inp,out:out,cur:cur,baseName:coreName,pid:pid});
+modelMap[coreName].push({name:mName,prov:prov,inp:inp,out:out,cur:cur,baseName:coreName,pid:pid,isProxy:pid==='n1n'||pid==='ca'});
 });
 // 搜索过滤
 var crossQ=(document.getElementById('crossSearchInput')||{}).value||'';
@@ -4173,10 +4116,11 @@ var isBest=Math.abs(cnyInp-minCost)<0.01;
 var diff=cnyInp-minCost;
 var diffStr="";
 if(diff>0.01&&minCost>0)diffStr=" <span style=\"color:#94a3b8;font-size:10px\">(+"+((diff/minCost)*100).toFixed(0)+"%)</span>";
+var proxyTag=m.isProxy?'<span style="color:#f97316;font-size:9px;font-weight:700;margin-left:2px" title="代理平台自营价,非官方价">P</span>':"";
 html+="<div class=\"cross-item\"><span class=\"cross-platform\">"+m.prov+"</span>"
 +"<span class=\"cross-price\">"+priceStr+"</span>"
 +(isBest?"<span class=\"cross-best\">\u6700\u4f4e</span>":"")
-+diffStr
++diffStr+proxyTag
 +"</div>";
 });
 html+="</div>";
@@ -4691,7 +4635,7 @@ HDR = (
     '<div class="content-area">\n'
     + cmp_panel + '\n'
 
-    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型 <span style="font-weight:400;color:#94a3b8;font-size:10px;margin-left:8px">价格来源: <span class="price-src" title="API实时返回">A</span>=API实时 <span class="price-src" title="硬编码,可能过时">H</span>=硬编码 <span class="price-src" title="代理平台自营价">P</span>=代理自营</span></div>\n'
+    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型 <span style="font-weight:400;color:#94a3b8;font-size:10px;margin-left:8px">价格来源: <span class="price-src" title="API实时返回">A</span>=API实时 <span class="price-src" title="硬编码,可能过时">H</span>=硬编码 <span class="price-src price-src-proxy" title="代理平台自营价,非官方价">P</span>=代理自营</span></div>\n'
         '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
