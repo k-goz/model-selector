@@ -862,6 +862,8 @@ t0 = time.time()
 cards = []
 all_models = []
 price_changes = []
+or_prices = {}  # OpenRouter 价格查找表（始终可用）
+OR = []         # OpenRouter 原始数据
 
 if os.path.exists(MODELS_JSON):
     print("Loading models from JSON:", MODELS_JSON, file=sys.stderr)
@@ -895,7 +897,8 @@ if os.path.exists(MODELS_JSON):
             or_provider = ""
             if pid == "openrouter":
                 pv = pname.replace("OPENROUTER:", "") if pname.startswith("OPENROUTER:") else pname
-                cards.append(make_or_card(pv, Te(mname), inp_orig, out_orig, ctx, tags, scen, Te(mname), family=fam, price_unit=pu, price_src=m.get("price_src","")))
+                _or_src = m.get("price_src","") or ("A" if (inp_orig > 0 or out_orig > 0) else "")
+                cards.append(make_or_card(pv, Te(mname), inp_orig, out_orig, ctx, tags, scen, Te(mname), family=fam, price_unit=pu, price_src=_or_src))
             else:
                 # ─── 用官方价格覆盖 JSON 缓存中的旧价格 ───
                 if OFFICIAL_PRICES and pid in ("siliconflow",):
@@ -939,11 +942,30 @@ if os.path.exists(MODELS_JSON):
                             })
                         inp_orig = new_i
                         out_orig = new_o
-                cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=m.get("price_src","")))
-            all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur, "src": m.get("price_src","")})
+                # 用 resolve_model_price 确定价格来源标签
+                _, _, _, _src_tag = resolve_model_price(pid, mname, or_prices)
+                _effective_src = _src_tag or m.get("price_src","") or "H"
+                cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=_effective_src))
+            all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur, "src": m.get("price_src","") or _src_tag})
         price_changes = jmeta.get("price_changes", [])
         USE_JSON_DATA = True
         print("  Loaded %d models from JSON" % len(jmodels), file=sys.stderr)
+        # 加载 OpenRouter 缓存用于交叉验证
+        _or_cache = os.path.join(CACHE_DIR, "openrouter_full.json")
+        if os.path.exists(_or_cache):
+            try:
+                _or_data = json.load(open(_or_cache))
+                OR = _or_data.get("data", [])
+                for _m in OR:
+                    _mid = _m.get("id", "")
+                    _ii = float(_m.get("pricing", {}).get("prompt", 0) or 0)
+                    _oo = float(_m.get("pricing", {}).get("completion", 0) or 0)
+                    if _ii <= 0 and _oo <= 0: continue
+                    _norm = normalize_for_match(_mid)
+                    if _norm not in or_prices:
+                        or_prices[_norm] = {"input_per_1m": _ii * 1e6, "output_per_1m": _oo * 1e6, "raw_name": _mid}
+                print("  OpenRouter prices (cache): %d models" % len(or_prices), file=sys.stderr)
+            except: pass
     except Exception as e:
         print("  JSON load error:", str(e)[:100], file=sys.stderr)
         USE_JSON_DATA = False

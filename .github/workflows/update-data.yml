@@ -50,6 +50,9 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python3 generate.py
 
+      - name: Verify Ground Truth prices
+        run: python3 verify_ground_truth.py
+
       - name: Check for changes
         id: check
         run: |
