@@ -264,13 +264,14 @@ OFFICIAL_PRICES = {}
 # ─── 模型名标准化（用于跨平台匹配） ───
 def normalize_for_match(model_name):
     n = model_name.strip()
-    for pfx in ["deepseek-ai/", "Qwen/", "Pro/", "meta-llama/", "mistralai/",
-                "google/", "microsoft/", "THUDM/", "zai-org/", "moonshotai/",
+    for pfx in ["deepseek-ai/", "deepseek/", "Qwen/", "qwen/", "Pro/", "meta-llama/",
+                "mistralai/", "google/", "microsoft/", "THUDM/", "zai-org/", "moonshotai/",
                 "minimaxai/", "stepfun-ai/", "inclusionai/", "bytedance-seed/",
-                "ByteDance-Seed/", "tencent/", "internlm/", "paddlepaddle/",
+                "ByteDance-Seed/", "bytedance/", "tencent/", "internlm/", "paddlepaddle/",
                 "PaddlePaddle/", "kwaipilot/", "Kwai-Kolors/", "FunAudioLLM/",
                 "IndexTeam/", "BAAI/", "TeleAI/", "LoRA/", "netease-youdao/",
-                "accounts/fireworks/models/", "turing/", "nvidia/"]:
+                "accounts/fireworks/models/", "turing/", "nvidia/",
+                "openai/", "anthropic/", "cohere/"]:
         if n.startswith(pfx):
             n = n[len(pfx):]
             break
@@ -279,42 +280,81 @@ def normalize_for_match(model_name):
     n = re.sub(r'-\d{6,8}$', '', n)
     n = re.sub(r'-\d{4}$', '', n)
     n = re.sub(r'-(instruct|it|fp\d+|latest|main|default|base)$', '', n, flags=re.IGNORECASE)
+    # qwen variant normalization: qwen-2.5 <-> qwen2.5
+    n = re.sub(r'qwen-(\d)', r'qwen\1', n)
+    n = re.sub(r'glm-(\d)', r'glm\1', n)
+    n = re.sub(r'doubao-(\d)', r'doubao\1', n)
+    # Known alias mapping
+    ALIAS_MAP = {
+        "deepseek-chat": "deepseek-v3",
+        "deepseek-reasoner": "deepseek-r1",
+    }
+    if n in ALIAS_MAP:
+        n = ALIAS_MAP[n]
     return n.lower().strip()
 
-# ─── LiteLLM 价格获取（Tier 3 兜底） ───
+# ─── LiteLLM 价格获取（按平台+模型二维字典） ───
 def fetch_litellm_prices():
     prices = {}
     try:
         url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-        h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
-        req = urllib.request.Request(url, headers=h)
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=30) as r:
             data = json.loads(r.read().decode("utf-8", errors="ignore"))
-        for model_name, info in data.items():
-            if not isinstance(info, dict):
-                continue
-            inp = float(info.get("input_cost_per_token", 0) or 0)
-            out = float(info.get("output_cost_per_token", 0) or 0)
-            inp_1m = inp * 1e6
-            out_1m = out * 1e6
-            if inp_1m == 0:
-                inp_1m = float(info.get("input_cost_per_million_tokens", 0) or 0)
-            if out_1m == 0:
-                out_1m = float(info.get("output_cost_per_million_tokens", 0) or 0)
+        for raw_model_name, info in data.items():
+            if not isinstance(info, dict): continue
+            provider = info.get("litellm_provider", "")
+            if not provider: continue
+            inp_1m = float(info.get("input_cost_per_token", 0) or 0) * 1e6
+            out_1m = float(info.get("output_cost_per_token", 0) or 0) * 1e6
+            if inp_1m == 0: inp_1m = float(info.get("input_cost_per_million_tokens", 0) or 0)
+            if out_1m == 0: out_1m = float(info.get("output_cost_per_million_tokens", 0) or 0)
+            ctx = info.get("max_input_tokens", 0)
             if inp_1m > 0 or out_1m > 0:
-                provider = info.get("litellm_provider", "")
-                norm = normalize_for_match(model_name)
-                if norm not in prices or inp_1m > prices[norm]["input_per_1m"]:
-                    prices[norm] = {
-                        "input_per_1m": inp_1m,
-                        "output_per_1m": out_1m,
-                        "provider": provider,
-                        "raw_name": model_name,
-                    }
-        print("  fetch_litellm_prices: %d models" % len(prices), file=sys.stderr)
+                if provider not in prices:
+                    prices[provider] = {}
+                model_key = raw_model_name.replace(f"{provider}/", "")
+                norm = normalize_for_match(model_key)
+                price_data = {
+                    "input": inp_1m,
+                    "output": out_1m,
+                    "context": f"{ctx//1000}k" if ctx else "N/A"
+                }
+                prices[provider][norm] = price_data
+                prices[provider][model_key.lower()] = price_data
+        total = sum(len(v) for v in prices.values())
+        print("  fetch_litellm_prices: %d providers, %d entries" % (len(prices), total), file=sys.stderr)
     except Exception as e:
-        print("  fetch_litellm_prices error:", str(e)[:80], file=sys.stderr)
+        print("  fetch_litellm_prices error:", e, file=sys.stderr)
     return prices
+
+LITELLM_DB = fetch_litellm_prices()
+
+def get_dynamic_price(platform_key, mid):
+    LITELLM_KEY_MAP = {
+        "together": "together_ai",
+        "fireworks": "fireworks_ai",
+        "cohere": "cohere",
+        "groq": "groq",
+        "novita": "novita",
+        "deepinfra": "deepinfra",
+        "aihubmix": "aihubmix",
+    }
+    litellm_provider = LITELLM_KEY_MAP.get(platform_key, platform_key)
+    mid_lower = mid.lower()
+    norm = normalize_for_match(mid)
+    if litellm_provider in LITELLM_DB:
+        if mid_lower in LITELLM_DB[litellm_provider]:
+            d = LITELLM_DB[litellm_provider][mid_lower]
+            ii, oo, ctx = d["input"], d["output"], d["context"]
+            tt, ss = infer_tags_and_scene(mid, ii, oo, ctx)
+            return ii, oo, ctx, tt, ss
+        if norm in LITELLM_DB[litellm_provider]:
+            d = LITELLM_DB[litellm_provider][norm]
+            ii, oo, ctx = d["input"], d["output"], d["context"]
+            tt, ss = infer_tags_and_scene(mid, ii, oo, ctx)
+            return ii, oo, ctx, tt, ss
+    return 0, 0, "N/A", [], "日常对话"
 
 # ─── 价格漂移检测 ───
 def detect_price_drift(all_models, or_prices, litellm_prices):
@@ -477,9 +517,10 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     pt = PT(inp, out, cur, price_unit)
     ts = th(tags)
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out, price_unit)
-    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)"}
+    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
+               "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据", "CV": "交叉验证修正"}
     src_title = src_map.get(price_src, price_src or "硬编码")
-    src_cls = "price-src price-src-proxy" if price_src == "P" else "price-src"
+    src_cls = "price-src price-src-proxy" if price_src == "P" else ("price-src price-src-or" if price_src == "OR" else "price-src")
     src_tag = '<span class="' + src_cls + '" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
     # data-inp/data-out: unified to $/token (consistent with OpenRouter), per_1m needs /1e6
     if price_unit == "per_1m" and cur == "USD":
@@ -494,7 +535,7 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     return (
         '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="' + cur + '" '
-        'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" data-pu="' + price_unit + '" ' + extra_attrs + fam_attr + ' '
+        'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" data-pu="' + price_unit + '" data-src="' + price_src + '" ' + extra_attrs + fam_attr + ' '
         'onclick="showCodeModal(\'' + cmd_base + '\',\'' + mname + '\',\'' + pid + '\')">'
         '<div class="dot"></div><div class="prov">' + pname + '</div>'
         '<div class="mname">' + mname + '</div><div class="tags">' + ts + '</div>'
@@ -513,9 +554,10 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     pp = PT(inp, out, "USD", price_unit)
     tts = th(tt)
     bg = bo(inp, out, price_unit)
-    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)"}
+    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
+               "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据", "CV": "交叉验证修正"}
     src_title = src_map.get(price_src, price_src or "硬编码")
-    src_cls = "price-src price-src-proxy" if price_src == "P" else "price-src"
+    src_cls = "price-src price-src-proxy" if price_src == "P" else ("price-src price-src-or" if price_src == "OR" else "price-src")
     src_tag = '<span class="' + src_cls + '" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
     # data-inp/data-out: unified to $/token, per_1m needs /1e6
     if price_unit == "per_1m":
@@ -531,7 +573,7 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     return (
         '<div class="mc" style="--c:#6366f1" data-s="' + ss + '" data-p="openrouter" data-pt="' + pp + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="USD" '
-        'data-ctx="' + ctx_num + '" data-ctx-display="' + cc + '" data-pu="' + price_unit + '" ' + fam_attr + ' '
+        'data-ctx="' + ctx_num + '" data-ctx-display="' + cc + '" data-pu="' + price_unit + '" data-src="' + price_src + '" ' + fam_attr + ' '
         'onclick="showCodeModal(\'' + cmd + '\',\'' + nn + '\',\'openrouter\')">'
         '<div class="dot"></div><div class="prov">OPENROUTER:' + pv + '</div>'
         '<div class="mname">' + nn + '</div><div class="tags">' + tts + '</div>'
@@ -608,610 +650,79 @@ def get_family(mid):
     return 'Other'
 
 # ═══════════════════════════════════════════════════════════
-# 各平台价格映射函数
+# 双轨制价格获取：海外走 LiteLLM，国内走 domestic_prices.json
 # ═══════════════════════════════════════════════════════════
 
-def sp(mid):
-    """硅基流动价格映射"""
-    t = ["免费额度"]; s = "日常对话"; i = o = 0.0
-    n = mid.lower()
-    if "deepseek-ai/" in mid:
-        if "R1" in mid:
-            if "Distill" in mid:
-                t = ["推理","蒸馏"]
-                sz = next((x for x in ["7B","14B","32B"] if x in mid), "7B")
-                i = {"7B":0.1,"14B":0.4,"32B":1.0}[sz]; o = i * 4
-            else:
-                i, o = 1.0, 2.0; t = ["推理","旗舰"]
-        elif "V4" in mid:
-            if "Flash" in mid: i, o = 1.0, 2.0; t = ["快速","旗舰"]
-            else: i, o = 2.0, 8.0; t = ["旗舰","最新版"]
-        elif "V3.2" in mid: i, o = 1.0, 2.0; t = ["满血版","主力"]
-        elif "V3.1" in mid: i, o = 1.0, 2.0; t = ["主力"]
-        elif "V3" in mid:   i, o = 1.0, 2.0; t = ["满血版","主力"]
-        elif "OCR" in mid:  i, o = 0.3, 0; t = ["OCR"]; s = "其他"
-        else: i, o = 0, 0; t = ["价格待确认"]
-    elif mid.startswith("Qwen/"):
-        b = mid.split("/",1)[1]; t = []
-        if "Image" in b:         i, o = 0.5, 0; t = ["图片生成"]; s = "图片生成"
-        elif "VL" in b:
-            t = ["视觉"]; s = "视觉图片"
-            i, o = (0.8,6.4) if any(x in b for x in ["235B","397B"]) else \
-                    (0.6,4.8) if "32B" in b else \
-                    (0.4,3.2) if "30B" in b else (0.2,2.0)
-            if "Thinking" in b:   t.append("推理"); s = "深度推理"
-        elif "Coder" in b:       i, o = 0.4, 3.2; t = ["代码"]; s = "编程代码"
-        elif "QwQ" in b:         i, o = 0.7, 2.0; t = ["推理"]; s = "深度推理"
-        elif "Embedding" in b:    i, o = 0.1, 0; t = ["向量"]; s = "其他"
-        elif "Reranker" in b:    i, o = 0.1, 0; t = ["排序"]; s = "其他"
-        elif "Omni" in b:        i, o = 0.4, 3.2; t = ["多模态"]
-        elif "3.6" in b:
-            t = ["最新版"]
-            i, o = (0.2,2.0) if any(x in b for x in ["4B","9B"]) else \
-                    (0.4,3.2) if "27B" in b else \
-                    (0.5,2.0) if any(x in b for x in ["35B","30B"]) else (0.4,3.2)
-        elif "3.5" in b:
-            t = ["最新版"]
-            i, o = (0.2,2.0) if any(x in b for x in ["4B","9B"]) else \
-                    (0.6,4.8) if "27B" in b else \
-                    (0.4,3.2) if any(x in b for x in ["35B","30B"]) else \
-                    (0.8,6.4) if any(x in b for x in ["122B","397B"]) else (0.2,2.0)
-        elif "3-" in b or (".3" in b and "3.5" not in b):
-            t = ["2025新"]
-            if any(x in b for x in ["4B","8B"]): i, o = 0, 0; t = ["免费额度"]
-            elif any(x in b for x in ["14B","32B"]): i, o = 0.5, 1.0
-            elif "235B" in b: i, o = 0.8, 6.4
-            else: i, o = 0.5, 1.0
-        elif "2.5" in b:
-            t = ["开源"]
-            if "7B" in b:       i, o = 0, 0; t = ["免费额度"]
-            elif "14B" in b:     i, o = 0.5, 0.7
-            elif "32B" in b:     i, o = 0.6, 2.0
-            elif "72B" in b:     i, o = 1.4, 4.13
-            elif "Coder" in b:   i, o = 0.7, 1.4; t = ["代码"]; s = "编程代码"
-            else:                 i, o = 0, 0; t = ["免费额度"]
-        elif "2-VL" in b:        i, o = 3.0, 8.0; t = ["视觉"]
-        else:                     i, o = 0, 0; t = ["免费额度"]
-        if not t: t = ["免费额度"]
-    elif "GLM" in mid:
-        b = mid.split("/")[-1]
-        if "5.1" in b:                          i, o = 8.0, 24.0; t = ["旗舰"]
-        elif "GLM-5" in b and "4" not in b:      i, o = 6.0, 22.0; t = ["旗舰"]
-        elif "4.7" in b:                        i, o = 2.0, 8.0; t = ["主力"]
-        elif any(x in b for x in ["4.6V","4.5V"]): i, o = 2.0, 8.0; t = ["视觉"]; s = "视觉图片"
-        elif "4.6" in b:                        i, o = 2.0, 8.0; t = ["主力"]
-        elif "4.5-Air" in b:                   i, o = 0.5, 3.0; t = ["轻量"]
-        elif "4.5" in b:                        i, o = 2.0, 8.0; t = ["主力"]
-        elif "Z1-32B" in b:                    i, o = 0.5, 2.0; t = ["推理"]; s = "深度推理"
-        elif "Z1-9B" in b:                     i, o = 0, 0; t = ["推理","免费额度"]
-        elif "4.1V" in b:                      i, o = 0, 0; t = ["视觉","推理","免费额度"]; s = "视觉图片"
-        elif "4-32B" in b:                     i, o = 2.0, 8.0; t = ["主力"]
-        elif "4-9B" in b:                       i, o = 0, 0; t = ["免费额度"]
-        else:                                     i, o = 2.0, 8.0; t = ["主力"]
-    elif "Pro/" in mid:
-        ii, oo, tt, ss = sp(mid.split("/",1)[1])
-        return ii, oo, tt+["Pro订阅"], ss
-    elif "moonshotai/Kimi" in mid or "Kimi-K2" in mid: i, o = 4.0, 16.0; t = ["开源","推理"]; s = "深度推理"
-    elif "inclusionAI/Ling-flash" in mid:  i, o = 1.0, 4.0; t = ["长上下文"]
-    elif "inclusionAI/Ling-mini" in mid:   i, o = 0.5, 2.0; t = ["快速","便宜"]
-    elif "inclusionAI/Ring" in mid:        i, o = 0.5, 2.0; t = ["快速"]
-    elif "FunAudioLLM/CosyVoice" in mid:   i, o = 0.2, 0; t = ["语音","TTS"]; s = "其他"
-    elif "FunAudioLLM/SenseVoice" in mid:   i, o = 0.3, 0; t = ["语音","ASR"]; s = "其他"
-    elif "IndexTeam/IndexTTS" in mid:      i, o = 0.5, 0; t = ["语音","TTS"]; s = "其他"
-    elif "BAAI/bge" in mid or "netease-youdao" in mid: i, o = 0.1, 0; t = ["向量"]; s = "其他"
-    elif "Kwai-Kolors/Kolors" in mid:       i, o = 0.5, 0; t = ["图片生成","开源"]; s = "图片生成"
-    elif "Wan-AI/Wan" in mid:               i, o = 0.5, 0; t = ["视频生成","开源"]; s = "视频生成"
-    elif "ByteDance-Seed" in mid:            i, o = 1.0, 4.0; t = ["开源","旗舰"]
-    elif "internlm" in mid:                 i, o = 0, 0; t = ["开源","免费额度"]
-    elif "MiniMaxAI/MiniMax" in mid:         i, o = 1.0, 4.0; t = ["主力"]; s = "日常对话"
-    elif "stepfun-ai/Step" in mid:           i, o = 0.5, 2.0; t = ["主力"]; s = "日常对话"
-    elif "Kwaipilot/KAT" in mid:            i, o = 0.5, 2.0; t = ["代码"]; s = "编程代码"
-    elif "tencent/Hunyuan" in mid:
-        if "MT" in mid:                     i, o = 0, 0; t = ["免费额度"]
-        elif "A13B" in mid:                 i, o = 0.5, 2.0; t = ["便宜"]
-        else:                               i, o = 1.0, 4.0; t = ["主力"]
-    elif "PaddlePaddle" in mid:             i, o = 0, 0; t = ["OCR","免费额度"]; s = "其他"
-    elif "TeleAI" in mid:                   i, o = 0, 0; t = ["语音","免费额度"]; s = "其他"
-    elif "LoRA/" in mid:                    ii2, oo2, tt2, ss2 = sp(mid.split("/",1)[1]); return ii2, oo2, tt2+["微调"], ss2
-    else:                                     i, o = 0, 0; t = ["价格待确认"]
-    if not t: t = ["免费额度"]
-    return i, o, t, s
+DOMESTIC_DB = {}
+_dp_path = os.path.join(SCRIPT_DIR, "domestic_prices.json")
+if os.path.exists(_dp_path):
+    try:
+        with open(_dp_path, "r", encoding="utf-8") as _f:
+            DOMESTIC_DB = json.load(_f)
+        _dc = sum(len(v) for v in DOMESTIC_DB.values())
+        print("  domestic_prices.json: %d platforms, %d entries" % (len(DOMESTIC_DB), _dc), file=sys.stderr)
+    except Exception as e:
+        print("  domestic_prices.json load error:", e, file=sys.stderr)
 
-def mp(mid):
-    """月之暗面价格映射"""
-    m = {
-        "moonshot-v1-8k":         (2,10,"8k",["主力","降价后"],"日常对话"),
-        "moonshot-v1-32k":        (5,20,"32k",["长上下文"],"日常对话"),
-        "moonshot-v1-128k":       (10,30,"128k",["超长上下文","旗舰"],"深度推理"),
-        "kimi-k2":                  (4,16,"262k",["旗舰","2025新"],"深度推理"),
-        "kimi-k2.5":                (4,16,"262k",["旗舰","最新版"],"深度推理"),
-        "kimi-k2-turbo":            (4,16,"262k",["旗舰","Turbo"],"深度推理"),
-        "kimi-k2-thinking":          (4,16,"262k",["推理","旗舰"],"深度推理"),
-        "kimi-k2-thinking-turbo":    (4,16,"262k",["推理","Turbo"],"深度推理"),
-        "moonshot-v1-8k-vision":     (12,12,"8k",["视觉"],"视觉图片"),
-        "moonshot-v1-32k-vision":   (24,24,"32k",["视觉"],"视觉图片"),
-        "moonshot-v1-128k-vision":   (24,24,"128k",["视觉","超长上下文"],"视觉图片"),
-    }
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in mid: return ii, oo, cc, tt, ss
-    return 4, 16, "262k", ["旗舰","价格待确认"], "深度推理"
+# ─── SPA 爬取价格（由 fetch_spa_prices.py 生成，Playwright 爬取 SPA 定价页） ───
+SPA_PRICES = {}
+_spa_path = os.path.join(SCRIPT_DIR, "spa_prices.json")
+if os.path.exists(_spa_path):
+    try:
+        with open(_spa_path, "r", encoding="utf-8") as _f:
+            _spa_data = json.load(_f)
+            SPA_PRICES = _spa_data.get("prices", {})
+        _sc = sum(len(v) for v in SPA_PRICES.values())
+        print("  spa_prices.json: %d platforms, %d entries" % (len(SPA_PRICES), _sc), file=sys.stderr)
+    except Exception as e:
+        print("  spa_prices.json load error:", e, file=sys.stderr)
 
-def ap(mid):
-    """阿里百炼硬编码价格补充 (API不返回价格的模型)"""
-    m = {
-        "qwen3-next-80b-a3b-thinking": (2,8,"128k",["推理","旗舰"],"深度推理"),
-        "qwen3-30b-a3b-thinking":     (0.6,4.8,"128k",["推理","主力"],"深度推理"),
-        "qwen3-235b-a22b-thinking":   (0.8,6.4,"128k",["推理","旗舰"],"深度推理"),
-        "qwen-max":                   (20,60,"32k",["旗舰","2025新"],"深度推理"),
-        "qwen-plus":                  (0.8,2,"128k",["主力","性价比"],"日常对话"),
-        "qwen-turbo":                 (0.3,0.6,"1M",["快速","极便宜"],"日常对话"),
-        "qwen-long":                  (0.5,2,"1M",["长上下文"],"日常对话"),
-        "qwen-vl-max":                (20,60,"32k",["视觉","旗舰"],"视觉图片"),
-        "qwen-vl-plus":               (0.8,2,"128k",["视觉","性价比"],"视觉图片"),
-        "qwen-coder-plus":            (0.8,2,"128k",["代码"],"编程代码"),
-        "qwq-32b":                    (0.7,2,"128k",["推理"],"深度推理"),
-        "qwen3-235b-a22b":            (0.8,6.4,"128k",["旗舰","MoE"],"深度推理"),
-        "qwen3-32b":                  (0.6,4.8,"128k",["主力"],"日常对话"),
-        "qwen3-14b":                  (0.4,3.2,"128k",["轻量"],"日常对话"),
-        "qwen3-8b":                   (0.2,2,"128k",["轻量","免费额度"],"日常对话"),
-        "qwen3-4b":                   (0.2,2,"128k",["轻量","免费额度"],"日常对话"),
-    }
-    m2 = mid.lower().replace(" ","")
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2:
-            return ii, oo, cc, tt, ss
-    return None
+def get_domestic_price(platform_key, raw_model_id):
+    if platform_key not in DOMESTIC_DB:
+        return 0, 0, "N/A", [], "日常对话"
+    platform_rules = DOMESTIC_DB[platform_key]
+    model_id = raw_model_id.lower()
+    entry = None
+    if model_id in platform_rules:
+        entry = platform_rules[model_id]
+    else:
+        sorted_rule_keys = sorted(platform_rules.keys(), key=len, reverse=True)
+        for rule_key in sorted_rule_keys:
+            if model_id.startswith(rule_key):
+                entry = platform_rules[rule_key]
+                break
+    if entry:
+        ii = entry.get("input", 0)
+        oo = entry.get("output", 0)
+        cc = entry.get("context", "N/A")
+        tt, ss = infer_tags_and_scene(raw_model_id, ii, oo, cc)
+        return ii, oo, cc, tt, ss
+    return 0, 0, "N/A", [], "日常对话"
 
-def zp(mid):
-    """智谱AI价格映射"""
-    m = {
-        "glm-5":         (4,18,"1M",["旗舰","2026新","降价"],"深度推理"),
-        "glm-5-turbo":   (5,22,"1M",["高性能"],"深度推理"),
-        "glm-5.1":       (6,24,"1M",["旗舰","降价"],"深度推理"),
-        "glm-4.7":       (2,8,"1M",["主力","2026新"],"日常对话"),
-        "glm-4.7-flashx":(0.5,3,"200k",["快速","长上下文"],"日常对话"),
-        "glm-4.7-flash": (0,0,"200k",["免费"],"日常对话"),
-        "glm-4-plus":    (5,5,"128k",["旗舰","降价90%"],"深度推理"),
-        "glm-5v-turbo":  (5,5,"1M",["视觉","旗舰"],"视觉图片"),
-        "glm-z1-air":    (0.5,2,"32k",["推理","便宜"],"深度推理"),
-        "glm-4.5-air":   (0.8,2,"32k",["轻量","涨价"],"日常对话"),
-        # glm-4.5 移至微调区，不再作为推理模型
-        "glm-4.6":      (2,8,"128k",["主力"],"日常对话"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 2, 8, "128k", ["主力"], "日常对话"
-
-def vp(mid):
-    """火山引擎价格映射"""
-    m = {
-        "doubao-1.6-pro-32k":    (0.8,8,"32k",["旗舰","2025新"],"日常对话"),
-        "doubao-1.5-pro-32k":   (0.8,2,"32k",["主力","性价比","涨价"],"日常对话"),
-        "doubao-1.5-pro-128k":  (5,5,"128k",["长上下文"],"深度推理"),
-        "doubao-lite-32k":        (0.15,0.6,"32k",["极便宜","免费额度"],"日常对话"),
-        "doubao-1.5-lite-32k":  (0.15,0.6,"32k",["极便宜"],"日常对话"),
-        "doubao-vision":            (3,3,"64k",["视觉","超低价"],"视觉图片"),
-        "doubao-coder":            (2,8,"32k",["代码","编程"],"编程代码"),
-        "doubao-seed-1.6":         (0.8,8,"32k",["旗舰","2025新"],"日常对话"),
-        "doubao-seed-1.6-flash":  (0.8,0.8,"32k",["快速","极便宜"],"日常对话"),
-        "doubao-seed-1.6-vision": (3,3,"64k",["视觉","旗舰"],"视觉图片"),
-        "doubao-seed-1.6-thinking":(4,16,"262k",["推理","旗舰"],"深度推理"),
-        "doubao-seed-2.0-pro":     (3.2,16,"32k",["旗舰","涨价"],"日常对话"),
-        "doubao-seed-2.0-mini":    (0.2,2,"32k",["轻量","性价比"],"日常对话"),
-        "doubao-seed-2.0-lite":   (0.6,3.6,"32k",["便宜"],"日常对话"),
-        "doubao-seed-2.0-code":    (3.2,16,"32k",["代码","旗舰"],"编程代码"),
-        "doubao-smart-router":      (0.8,2,"32k",["智能路由"],"日常对话"),
-    }
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in mid: return ii, oo, cc, tt, ss
-    m2 = mid.lower()
-    if "pro" in m2: return 0.5, 2, "32k", ["主力"], "日常对话"
-    if "lite" in m2: return 0.15, 0.6, "32k", ["极便宜"], "日常对话"
-    if "vision" in m2: return 3, 3, "64k", ["视觉"], "视觉图片"
-    if "coder" in m2: return 2, 8, "32k", ["代码"], "编程代码"
-    if "embedding" in m2: return 0.1, 0, "4k", ["向量"], "其他"
-    if "thinking" in m2 or "reason" in m2: return 4, 16, "262k", ["推理"], "深度推理"
-    return 0.5, 2, "32k", ["价格待确认"], "日常对话"
-
-# ─── 百度文心 (已移除：定价页404，API无价格数据) ───
-# 百度文心代码已移除，不再爬取
-BD = []  # 百度文心已弃用
-# ─── 腾讯混元价格映射 ───
-def tp(mid):
-    m = {
-        "hunyuan-turbos":      (0.8,2,"32k",["快速","便宜"],"日常对话"),
-        "hunyuan-turbo":       (1,4,"32k",["主力"],"日常对话"),
-        "hunyuan-pro":         (4,16,"32k",["旗舰"],"深度推理"),
-        "hunyuan-large":       (4,16,"256k",["旗舰","长上下文"],"深度推理"),
-        "hunyuan-lite":        (0,0,"32k",["免费额度"],"日常对话"),
-        "hunyuan-standard":    (0.8,2,"32k",["性价比"],"日常对话"),
-        "hunyuan-standard-vision": (2,2,"32k",["视觉"],"视觉图片"),
-        "hunyuan-vision":      (4,4,"32k",["视觉","旗舰"],"视觉图片"),
-        "hunyuan-coder":       (2,8,"32k",["代码"],"编程代码"),
-        "hunyuan-t1":          (1,4,"256k",["推理","旗舰"],"深度推理"),
-        "hunyuan-turbos-vision": (1,1,"32k",["视觉","便宜"],"视觉图片"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 1, 4, "32k", ["价格待确认"], "日常对话"
-
-# ─── 讯飞星火价格映射 ───
-def xp(mid):
-    m = {
-        "spark-x2":           (2,3,"32k",["旗舰","推理","2026新"],"深度推理"),
-        "spark-x1.5":         (3,5,"32k",["推理","主力"],"深度推理"),
-        "spark-ultra":        (0.8,0.8,"32k",["旗舰","便宜"],"日常对话"),
-        "spark-pro":          (5,5,"128k",["旗舰","长上下文"],"日常对话"),
-        "generalv3.5":        (3,5,"8k",["主力","涨价"],"日常对话"),
-        "generalv3":          (1.5,5,"8k",["性价比"],"日常对话"),
-        "4.0Ultra":           (5,20,"32k",["旗舰"],"深度推理"),
-        "generalv2":          (0.5,1.5,"8k",["便宜"],"日常对话"),
-        "spark-lite":         (0,0,"8k",["免费额度"],"日常对话"),
-        "generalv3.5-vision": (2,8,"8k",["视觉"],"视觉图片"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 2, 8, "8k", ["价格待确认"], "日常对话"
-
-# ─── MiniMax价格映射 ───
-def mm_p(mid):
-    m = {
-        "abab6.5s":           (0.5,1.5,"32k",["快速","便宜"],"日常对话"),
-        "abab6.5":            (2,8,"128k",["主力","长上下文"],"日常对话"),
-        "abab6.5g":           (4,16,"128k",["旗舰","长上下文"],"深度推理"),
-        "abab5.5":            (0.5,1.5,"32k",["便宜"],"日常对话"),
-        "abab5.5s":           (0.1,0.3,"32k",["极便宜"],"日常对话"),
-        "abab6.5s-vision":    (0.5,1.5,"32k",["视觉","便宜"],"视觉图片"),
-        "abab6.5-vision":     (2,8,"32k",["视觉"],"视觉图片"),
-        "minimax-m1":         (4,16,"1M",["推理","旗舰","长上下文"],"深度推理"),
-        "minimax-m2.7":       (2.1,8.4,"196k",["主力","长上下文"],"日常对话"),
-        "minimax-m2.7-highspeed": (4.2,16.8,"196k",["快速","旗舰"],"深度推理"),
-        "minimax-m2.5":       (2.1,8.4,"196k",["主力"],"日常对话"),
-        "minimax-m2.5-highspeed": (4.2,16.8,"196k",["快速"],"深度推理"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 1, 4, "32k", ["价格待确认"], "日常对话"
-
-# ─── 零一万物价格映射 ───
-def yp(mid):
-    m = {
-        "yi-light":           (0,0,"16k",["免费额度"],"日常对话"),
-        "yi-medium":          (0.5,1.5,"16k",["便宜"],"日常对话"),
-        "yi-large":           (4,16,"32k",["旗舰"],"深度推理"),
-        "yi-vision":          (2,6,"16k",["视觉"],"视觉图片"),
-        "yi-large-turbo":     (2,8,"32k",["主力","Turbo"],"日常对话"),
-        "yi-spark":           (0.5,1.5,"16k",["便宜"],"日常对话"),
-        "yi-lightning":       (0.1,0.3,"16k",["极便宜"],"日常对话"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 1, 4, "16k", ["价格待确认"], "日常对话"
-
-# ─── 百川智能价格映射 ───
-def bcp(mid):
-    m = {
-        "baichuan2-turbo":    (0.5,1.5,"32k",["便宜"],"日常对话"),
-        "baichuan2-53b":      (2,8,"32k",["主力"],"日常对话"),
-        "baichuan-14b":       (0.5,1.5,"8k",["便宜"],"日常对话"),
-        "baichuan4":          (4,16,"128k",["旗舰","长上下文"],"深度推理"),
-        "baichuan4-vision":   (4,16,"32k",["视觉","旗舰"],"视觉图片"),
-        "baichuan-m1":        (4,16,"128k",["推理","旗舰"],"深度推理"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 1, 4, "32k", ["价格待确认"], "日常对话"
-
-# ─── 阶跃星辰价格映射 ───
-def jp(mid):
-    m = {
-        "step-1-8k":          (2,8,"8k",["主力"],"日常对话"),
-        "step-1-32k":         (4,16,"32k",["旗舰"],"深度推理"),
-        "step-1-128k":        (5,20,"128k",["旗舰","长上下文"],"深度推理"),
-        "step-1-flash":       (0.5,1.5,"8k",["快速","便宜"],"日常对话"),
-        "step-1v-8k":         (2,8,"8k",["视觉"],"视觉图片"),
-        "step-1v-32k":        (4,16,"32k",["视觉","旗舰"],"视觉图片"),
-        "step-2-16k":         (4,16,"16k",["旗舰","2025新"],"深度推理"),
-        "step-2-mini":        (1,4,"32k",["性价比"],"日常对话"),
-        "step-r1":            (4,16,"32k",["推理","旗舰"],"深度推理"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 2, 8, "8k", ["价格待确认"], "日常对话"
-
-# ─── DeepSeek 官方价格映射 ───
-def dp(mid):
-    """DeepSeek 官方（¥/M tokens，2026年4月官网定价 — V4-Flash ¥1/¥2）"""
-    m = {
-        "deepseek-chat":     (1,2,"1M",["主力","满血版"],"日常对话"),
-        "deepseek-reasoner": (1,2,"1M",["推理","旗舰"],"深度推理"),
-        "deepseek-v3":       (1,2,"1M",["主力","满血版"],"日常对话"),
-        "deepseek-r1":       (1,2,"1M",["推理","旗舰"],"深度推理"),
-        "deepseek-v3.1":     (1,2,"1M",["主力","满血版"],"日常对话"),
-        "deepseek-prover-v2":(1,2,"1M",["推理"],"深度推理"),
-        "deepseek-v4-flash": (1,2,"1M",["主力","最新版"],"日常对话"),
-        "deepseek-v4-pro":   (3,6,"1M",["旗舰","最新版"],"深度推理"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 1, 2, "1M", ["价格待确认"], "日常对话"
-
-# ─── Groq 价格映射 ───
-def gp(mid):
-    """Groq - 超快推理（$/1M tokens，2026年4月官网定价）"""
-    m = {
-        "llama-3.3-70b-versatile":  (0.59,0.79,"128k",["主力","快速"],"日常对话"),
-        "llama-3.3-70b-instruct":   (0.59,0.79,"128k",["主力","快速"],"日常对话"),
-        "llama-3.1-8b-instant":     (0.05,0.08,"128k",["极便宜","快速"],"日常对话"),
-        "llama-3.1-70b-versatile":  (0.59,0.79,"128k",["主力","快速"],"日常对话"),
-        "llama-3.2-1b-preview":     (0.02,0.02,"128k",["极便宜","快速"],"日常对话"),
-        "llama-3.2-3b-preview":     (0.03,0.06,"128k",["极便宜","快速"],"日常对话"),
-        "llama-3.2-11b-vision-preview":(0.12,0.18,"128k",["视觉","便宜"],"视觉图片"),
-        "llama-3.2-90b-vision-preview":(0.59,0.79,"128k",["视觉","主力"],"视觉图片"),
-        "mixtral-8x7b-32768":       (0.24,0.24,"32k",["便宜","快速"],"日常对话"),
-        "gemma2-9b-it":             (0.05,0.07,"8k",["极便宜","快速"],"日常对话"),
-        "deepseek-r1-distill-llama-70b": (0.59,0.79,"128k",["推理","快速"],"深度推理"),
-        "deepseek-r1-distill-qwen-32b":  (0.12,0.18,"128k",["推理","便宜"],"深度推理"),
-        "qwen-qwq-32b":             (0.12,0.18,"128k",["推理","便宜"],"深度推理"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 0.24, 0.24, "32k", ["价格待确认"], "日常对话"
-
-# ─── Together AI 价格映射 ───
-def tgp(mid):
-    """Together AI - 开源模型托管平台，价格极低（$/1M tokens）"""
-    m = {
-        "meta-llama/Llama-3.3-70B-Instruct-Turbo": (0.88,0.88,"128k",["主力","快速"],"日常对话"),
-        "meta-llama/Llama-3.1-8B-Instruct-Turbo":  (0.18,0.18,"128k",["便宜","快速"],"日常对话"),
-        "meta-llama/Llama-3.1-405B-Instruct-Turbo":(3.50,3.50,"128k",["旗舰"],"深度推理"),
-        "meta-llama/Llama-3.2-3B-Instruct-Turbo":  (0.04,0.04,"128k",["极便宜","快速"],"日常对话"),
-        "Qwen/Qwen2.5-72B-Instruct-Turbo":         (1.20,1.20,"128k",["主力","快速"],"日常对话"),
-        "Qwen/Qwen2.5-Coder-32B-Instruct":         (0.80,0.80,"32k",["代码","便宜"],"编程代码"),
-        "Qwen/QwQ-32B":                            (1.20,1.20,"128k",["推理","便宜"],"深度推理"),
-        "deepseek-ai/DeepSeek-V3-0324":             (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
-        "deepseek-ai/DeepSeek-R1-Distill-Llama-70B":(2.00,2.00,"128k",["推理"],"深度推理"),
-        "mistralai/Mixtral-8x7B-Instruct-v0.1":    (0.60,0.60,"32k",["便宜","快速"],"日常对话"),
-        "mistralai/Mixtral-8x22B-Instruct-v0.3":   (0.60,0.60,"64k",["主力"],"日常对话"),
-        "google/gemma-2-27b-it":                    (0.80,0.80,"8k",["便宜"],"日常对话"),
-        "deepseek-ai/DeepSeek-R1":                  (3.00,7.00,"128k",["推理","旗舰"],"深度推理"),
-        "deepseek-ai/DeepSeek-V3.1":                (0.60,1.70,"128k",["主力"],"日常对话"),
-        "Qwen/Qwen3-235B-A22B-Instruct-2507-tput":  (0.20,0.60,"256k",["主力","快速"],"日常对话"),
-        "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8":(0.27,0.85,"1M",["旗舰","长上下文"],"日常对话"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k.lower() in m2: return ii, oo, cc, tt, ss
-    # 通用：根据模型名推断
-    if "405b" in m2: return 3.50, 3.50, "128k", ["旗舰"], "深度推理"
-    if "70b" in m2 or "72b" in m2: return 0.88, 0.88, "128k", ["主力"], "日常对话"
-    if "32b" in m2 or "34b" in m2: return 0.80, 0.80, "32k", ["便宜"], "日常对话"
-    if "8b" in m2 or "9b" in m2: return 0.18, 0.18, "128k", ["便宜"], "日常对话"
-    if "3b" in m2: return 0.04, 0.04, "128k", ["极便宜"], "日常对话"
-    return 0.30, 0.30, "32k", ["价格待确认"], "日常对话"
-
-# ─── Together AI 标签推断 (API有真实价格时使用) ───
-def tgp_tags(mid, inp, out, ctx):
-    """根据模型名和价格推断标签和场景"""
+def infer_tags_and_scene(mid, inp, out, ctx):
     n = mid.lower()
     tt = []
-    ss = "日常对话"
-    # 价格标签
-    if inp < 0.1: tt.append("极便宜")
-    elif inp < 0.5: tt.append("便宜")
-    elif inp < 2: pass
-    elif inp < 5: tt.append("旗舰")
+    if inp == 0 and out == 0: tt.append("免费额度")
+    elif inp < 0.1: tt.append("极便宜")
+    elif inp < 1: tt.append("便宜")
+    elif inp < 5: tt.append("主力")
     else: tt.append("旗舰")
-    # 上下文标签
-    if ctx >= 128000: tt.append("长上下文")
-    # 模型类型标签
-    if "deepseek-r1" in n: tt.append("推理"); ss = "深度推理"
-    elif "qwq" in n or "thinking" in n: tt.append("推理"); ss = "深度推理"
-    elif "coder" in n or "code" in n: tt.append("代码"); ss = "编程代码"
-    elif "vl" in n or "vision" in n: tt.append("视觉"); ss = "视觉图片"
-    elif "embed" in n or "rerank" in n: ss = "其他"
-    elif "405b" in n: tt.append("旗舰"); ss = "深度推理"
-    elif "70b" in n or "72b" in n or "397b" in n: tt.append("主力")
-    return tt, ss
-
-# ─── Fireworks AI 价格映射 ───
-def fwp(mid):
-    """Fireworks AI - 快速推理平台（$/1M tokens，2026年4月官网定价）"""
-    m = {
-        "accounts/fireworks/models/llama-v3p3-70b-instruct":  (0.90,0.90,"128k",["主力","快速"],"日常对话"),
-        "accounts/fireworks/models/llama-v3p1-8b-instruct":   (0.08,0.08,"128k",["极便宜","快速"],"日常对话"),
-        "accounts/fireworks/models/llama-v3p1-70b-instruct":  (0.90,0.90,"128k",["主力","快速"],"日常对话"),
-        "accounts/fireworks/models/llama-v3p2-3b-instruct":   (0.04,0.04,"128k",["极便宜","快速"],"日常对话"),
-        "accounts/fireworks/models/qwen2p5-72b-instruct":     (0.90,0.90,"128k",["主力","快速"],"日常对话"),
-        "accounts/fireworks/models/qwen2p5-coder-32b-instruct":(0.55,0.55,"32k",["代码","便宜"],"编程代码"),
-        "accounts/fireworks/models/deepseek-v3":               (1.25,1.25,"64k",["主力","满血版"],"日常对话"),
-        "accounts/fireworks/models/deepseek-r1":               (2.50,2.50,"64k",["推理","旗舰"],"深度推理"),
-        "accounts/fireworks/models/mixtral-8x7b-instruct":    (0.24,0.24,"32k",["便宜","快速"],"日常对话"),
-        "accounts/fireworks/models/deepseek-v3p2":             (1.25,1.25,"128k",["主力","满血版"],"日常对话"),
-        "accounts/fireworks/models/deepseek-v3p1":             (1.25,1.25,"128k",["主力","满血版"],"日常对话"),
-        "accounts/fireworks/models/kimi-k2p5":                 (0.50,2.80,"256k",["旗舰","长上下文"],"深度推理"),
-        "accounts/fireworks/models/glm-5p1":                   (1.40,4.40,"200k",["旗舰"],"深度推理"),
-        "accounts/fireworks/models/glm-5":                     (1.00,3.20,"200k",["主力"],"日常对话"),
-        "accounts/fireworks/models/minimax-m2p7":              (0.30,1.20,"196k",["主力","长上下文"],"日常对话"),
-        "accounts/fireworks/models/gpt-oss-120b":              (0.15,0.60,"128k",["便宜","快速"],"日常对话"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k.lower() in m2: return ii, oo, cc, tt, ss
-    if "70b" in m2 or "72b" in m2: return 0.90, 0.90, "128k", ["主力","快速"], "日常对话"
-    if "8b" in m2: return 0.08, 0.08, "128k", ["极便宜","快速"], "日常对话"
-    if "32b" in m2: return 0.55, 0.55, "32k", ["便宜"], "日常对话"
-    return 0.30, 0.30, "32k", ["价格待确认"], "日常对话"
-
-# ─── 无问芯穹 价格映射 ───
-def ip(mid):
-    """无问芯穹 InfiniAI - 国内聚合平台（¥/M tokens）"""
-    m = {
-        "qwen2.5-72b-instruct": (4,4,"128k",["主力","长上下文"],"日常对话"),
-        "qwen2.5-32b-instruct": (1.5,1.5,"32k",["便宜"],"日常对话"),
-        "qwen2.5-14b-instruct": (0.8,0.8,"32k",["便宜"],"日常对话"),
-        "qwen2.5-7b-instruct":  (0.4,0.4,"32k",["极便宜"],"日常对话"),
-        "qwen2.5-coder-32b-instruct": (1.5,1.5,"32k",["代码","便宜"],"编程代码"),
-        "qwq-32b":              (1.5,1.5,"128k",["推理","便宜"],"深度推理"),
-        "deepseek-v3":          (1,2,"1M",["主力","满血版"],"日常对话"),
-        "deepseek-r1":          (1,2,"1M",["推理","旗舰"],"深度推理"),
-        "deepseek-v4-flash":    (1,2,"1M",["主力","最新版"],"日常对话"),
-        "deepseek-v4-pro":      (12,24,"1M",["旗舰","最新版"],"深度推理"),
-        "glm-5.1":              (8,24,"1M",["旗舰"],"深度推理"),
-        "glm-5":                (6,22,"1M",["旗舰"],"深度推理"),
-        "glm-4.7":              (2,8,"1M",["主力"],"日常对话"),
-        "glm-4-plus":           (2,8,"128k",["主力"],"日常对话"),
-        "glm-4-flash":          (0.5,3,"128k",["便宜","快速"],"日常对话"),
-        "glm-4-9b-chat":        (0.1,0.1,"8k",["极便宜"],"日常对话"),
-        "kimi-k2":              (4,16,"128k",["旗舰","长上下文"],"深度推理"),
-        "yi-lightning":         (0.1,0.1,"16k",["极便宜","快速"],"日常对话"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    if "glm-5.1" in m2: return 8, 24, "1M", ["旗舰"], "深度推理"
-    if "glm-5" in m2: return 6, 22, "1M", ["旗舰"], "深度推理"
-    if "glm-4.7" in m2: return 2, 8, "1M", ["主力"], "日常对话"
-    if "deepseek-v4-pro" in m2: return 12, 24, "1M", ["旗舰"], "深度推理"
-    if "deepseek-v4" in m2: return 1, 2, "1M", ["主力"], "日常对话"
-    if "deepseek-r1" in m2: return 1, 2, "1M", ["推理"], "深度推理"
-    if "deepseek" in m2: return 1, 2, "1M", ["主力"], "日常对话"
-    if "72b" in m2: return 4, 4, "128k", ["主力"], "日常对话"
-    if "32b" in m2: return 1.5, 1.5, "32k", ["便宜"], "日常对话"
-    if "14b" in m2: return 0.8, 0.8, "32k", ["便宜"], "日常对话"
-    if "7b" in m2 or "9b" in m2: return 0.4, 0.4, "32k", ["极便宜"], "日常对话"
-    return 1, 4, "32k", ["价格待确认"], "日常对话"
-
-# ─── Novita AI 价格映射 (fallback) ───
-def np(mid):
-    """Novita AI - 聚合平台（¥/M tokens，API返回真实价格时不用此函数）"""
-    m2 = mid.lower()
-    if "glm-5.1" in m2: return 8.0, 24.0, "1M", ["旗舰"], "深度推理"
-    if "glm-5" in m2: return 6.0, 22.0, "1M", ["旗舰"], "深度推理"
-    if "glm-4.7" in m2: return 2.0, 8.0, "1M", ["主力"], "日常对话"
-    if "deepseek" in m2: return 0.269, 0.4, "128k", ["主力"], "日常对话"
-    if "kimi" in m2: return 0.95, 4.0, "256k", ["旗舰","长上下文"], "深度推理"
-    if "qwen3.5" in m2: return 0.3, 2.4, "256k", ["主力"], "日常对话"
-    if "minimax" in m2: return 0.3, 1.2, "200k", ["主力"], "日常对话"
-    if "gemma" in m2: return 0.13, 0.4, "256k", ["便宜"], "日常对话"
-    return 0.3, 1.2, "128k", ["价格待确认"], "日常对话"
-
-# ─── DeepInfra 价格映射 ───
-def dip(mid):
-    """DeepInfra - 开源模型推理（$/1M tokens）"""
-    m = {
-        "Qwen/Qwen3.5-27B": (0.12,0.36,"128k",["主力","便宜"],"日常对话"),
-        "Qwen/Qwen3.5-4B":  (0.02,0.06,"128k",["极便宜"],"日常对话"),
-        "Qwen/QwQ-32B":     (0.12,0.36,"128k",["推理","便宜"],"深度推理"),
-        "meta-llama/Llama-3.3-70B-Instruct": (0.35,0.40,"128k",["主力"],"日常对话"),
-        "meta-llama/Llama-3.1-8B-Instruct":  (0.05,0.05,"128k",["极便宜"],"日常对话"),
-        "deepseek-ai/DeepSeek-V3":  (0.42,0.85,"64k",["主力","满血版"],"日常对话"),
-        "deepseek-ai/DeepSeek-R1":  (0.80,2.19,"64k",["推理","旗舰"],"深度推理"),
-        "google/gemma-3-27b-it":    (0.10,0.10,"128k",["便宜"],"日常对话"),
-        "mistralai/Mixtral-8x7B-Instruct-v0.1": (0.24,0.24,"32k",["便宜"],"日常对话"),
-        "microsoft/phi-4": (0.07,0.14,"16k",["极便宜"],"日常对话"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k.lower() in m2: return ii, oo, cc, tt, ss
-    if "glm-5.1" in m2: return 1.10, 3.67, "1M", ["旗舰"], "深度推理"
-    if "glm-5" in m2: return 0.83, 3.03, "1M", ["旗舰"], "深度推理"
-    if "glm-4.7" in m2: return 0.28, 1.10, "1M", ["主力"], "日常对话"
-    if "70b" in m2 or "72b" in m2: return 0.35, 0.40, "128k", ["主力"], "日常对话"
-    if "32b" in m2 or "34b" in m2: return 0.12, 0.36, "128k", ["便宜"], "日常对话"
-    if "8b" in m2 or "9b" in m2: return 0.05, 0.05, "128k", ["极便宜"], "日常对话"
-    if "4b" in m2: return 0.02, 0.06, "128k", ["极便宜"], "日常对话"
-    return 0.12, 0.36, "32k", ["价格待确认"], "日常对话"
-
-# ─── Novita AI 标签推断 ───
-def np_tags(mid, inp, out, ctx):
-    """根据模型名和价格推断标签和场景"""
-    m2 = mid.lower()
-    tt = []
-    if inp < 0.1: tt.append("极便宜")
-    elif inp < 0.5: tt.append("便宜")
-    elif inp < 2: tt.append("主力")
-    else: tt.append("旗舰")
-    if "coder" in m2 or "code" in m2: tt.append("代码"); ss = "编程代码"
-    elif "reason" in m2 or "r1" in m2 or "qwq" in m2 or "kimi-k2" in m2: tt.append("推理"); ss = "深度推理"
-    elif "vision" in m2 or "vl" in m2: tt.append("视觉"); ss = "视觉图片"
-    elif "ocr" in m2: tt.append("OCR"); ss = "其他"
+    if "r1" in n or "reason" in n or "think" in n or "qwq" in n or "kimi-k2" in n: tt.append("推理")
+    if "coder" in n or "code" in n: tt.append("代码")
+    if "vision" in n or "vl" in n: tt.append("视觉")
+    if ctx and int(re.sub(r'[^\d]', '', str(ctx)) or 0) >= 200000: tt.append("长上下文")
+    if "推理" in tt: ss = "深度推理"
+    elif "代码" in tt: ss = "编程代码"
+    elif "视觉" in tt: ss = "视觉图片"
     else: ss = "日常对话"
-    if ctx >= 200000: tt.append("长上下文")
     return tt, ss
 
-# ─── DeepInfra 标签推断 ───
-def dip_tags(mid, inp, out, ctx):
-    m2 = mid.lower()
-    tt = []
-    if inp < 0.05: tt.append("极便宜")
-    elif inp < 0.2: tt.append("便宜")
-    elif inp < 1: tt.append("主力")
-    else: tt.append("旗舰")
-    if "coder" in m2 or "code" in m2: tt.append("代码"); ss = "编程代码"
-    elif "r1" in m2 or "qwq" in m2: tt.append("推理"); ss = "深度推理"
-    elif "vision" in m2 or "vl" in m2: tt.append("视觉"); ss = "视觉图片"
-    else: ss = "日常对话"
-    if ctx >= 128000: tt.append("长上下文")
-    return tt, ss
-
-# ─── AiHubMix 价格映射 ───
-def ahmp(mid):
-    """AiHubMix - 聚合平台（$/1M tokens，含闭源模型代理）"""
-    m = {
-        "gpt-4o":           (2.50,10.00,"128k",["旗舰"],"日常对话"),
-        "gpt-4o-mini":      (0.15,0.60,"128k",["便宜","快速"],"日常对话"),
-        "gpt-5.4":          (10.00,30.00,"128k",["旗舰"],"深度推理"),
-        "gpt-5.4-mini":     (2.00,8.00,"128k",["主力"],"日常对话"),
-        "gpt-5.4-nano":     (0.50,2.00,"128k",["便宜"],"日常对话"),
-        "claude-sonnet-4-5":(3.00,15.00,"200k",["旗舰"],"深度推理"),
-        "claude-opus-4-7":  (15.00,75.00,"200k",["旗舰"],"深度推理"),
-        "gemini-3.1-pro":   (1.25,5.00,"1M",["旗舰","长上下文"],"日常对话"),
-        "grok-4-20":        (5.00,25.00,"128k",["旗舰"],"深度推理"),
-        "DeepSeek-V3":      (0.42,0.85,"64k",["主力","满血版"],"日常对话"),
-        "DeepSeek-R1":      (0.80,2.19,"64k",["推理","旗舰"],"深度推理"),
-        "Qwen/QwQ-32B":     (0.12,0.36,"128k",["推理","便宜"],"深度推理"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k.lower() in m2: return ii, oo, cc, tt, ss
-    # 通用推断
-    if "opus" in m2 or "grok-4" in m2: return 15.00, 75.00, "200k", ["旗舰"], "深度推理"
-    if "sonnet" in m2: return 3.00, 15.00, "200k", ["旗舰"], "深度推理"
-    if "gpt-5" in m2: return 10.00, 30.00, "128k", ["旗舰"], "深度推理"
-    if "gpt-4o" in m2 and "mini" not in m2: return 2.50, 10.00, "128k", ["旗舰"], "日常对话"
-    if "gpt-4o-mini" in m2: return 0.15, 0.60, "128k", ["便宜"], "日常对话"
-    if "gemini" in m2 and "pro" in m2: return 1.25, 5.00, "1M", ["旗舰"], "日常对话"
-    if "deepseek-r1" in m2: return 0.80, 2.19, "64k", ["推理"], "深度推理"
-    if "deepseek" in m2: return 0.42, 0.85, "64k", ["主力"], "日常对话"
-    if "glm-5.1" in m2: return 1.10, 3.30, "1M", ["旗舰"], "深度推理"
-    if "glm-5" in m2: return 0.83, 3.03, "1M", ["主力"], "日常对话"
-    if "kimi" in m2: return 0.95, 4.00, "256k", ["旗舰"], "深度推理"
-    if "qwen" in m2 and "72b" in m2: return 0.40, 0.40, "128k", ["主力"], "日常对话"
-    if "minimax" in m2: return 0.30, 1.20, "200k", ["主力"], "日常对话"
-    if "mimo" in m2: return 1.00, 4.00, "128k", ["主力"], "日常对话"
-    if "qwen3" in m2 and "235" in m2: return 0.80, 6.40, "128k", ["旗舰"], "深度推理"
-    if "qwen" in m2 and "coder" in m2: return 0.40, 3.20, "128k", ["代码"], "编程代码"
-    if "glm" in m2: return 0.83, 3.03, "1M", ["主力"], "日常对话"
-    if "claude" in m2: return 3.00, 15.00, "200k", ["旗舰"], "深度推理"
-    return 1.00, 5.00, "128k", ["价格待确认"], "日常对话"
-
-# ─── n1n.ai 价格映射 ───
+# ─── 代理平台价格映射 (n1n.ai / ChatAnywhere, 自营定价) ───
 def n1np(mid):
     """n1n.ai - 国内聚合平台（¥/M tokens，从API获取真实价格）"""
     if mid in n1n_prices:
         ii, oo = n1n_prices[mid]
         return ii, oo
-    # 通用推断
     m = mid.lower()
     if "gpt-5.4" in m: return 17.5, 105.0
     if "gpt-5.2" in m and "pro" in m: return 147.0, 1176.0
@@ -1240,13 +751,11 @@ def n1np(mid):
     if "kimi" in m: return 2.0, 8.0
     return 1.0, 5.0
 
-# ─── ChatAnywhere 价格映射 ───
 def cap(mid):
     """ChatAnywhere - 国内中转平台（¥/M tokens，从网页获取真实价格）"""
     if mid in ca_prices:
         ii, oo = ca_prices[mid]
         return ii, oo
-    # 通用推断 (ChatAnywhere 价格约为官方的0.6-1.0x)
     m = mid.lower()
     if "gpt-5.4" in m: return 17.5, 105.0
     if "gpt-5.2" in m: return 12.25, 98.0
@@ -1269,23 +778,73 @@ def cap(mid):
     if "qwen" in m: return 1.4, 5.6
     return 1.0, 5.0
 
-# ─── Cohere 价格映射 ───
-def cop(mid):
-    """Cohere - Command R+ 系列，企业级（$/1M tokens，2026年4月官网定价）"""
-    m = {
-        "command-r-plus":  (2.50,10.00,"128k",["旗舰","长上下文"],"深度推理"),
-        "command-r":        (0.50,1.50,"128k",["主力","长上下文"],"日常对话"),
-        "command-r7b":      (0.0375,0.0375,"8k",["极便宜"],"日常对话"),
-        "command-a":        (0.15,0.60,"256k",["便宜","长上下文"],"日常对话"),
-        "c4ai-aya-expanse-8b": (0.15,0.15,"8k",["便宜"],"日常对话"),
-        "c4ai-aya-expanse-32b":(0.50,1.50,"128k",["主力"],"日常对话"),
-        "embed-v3":         (0.10,0,"0.5k",["向量"],"其他"),
-        "rerank-v3":        (0.10,0,"0.5k",["排序"],"其他"),
-    }
-    m2 = mid.lower()
-    for k,(ii,oo,cc,tt,ss) in m.items():
-        if k in m2: return ii, oo, cc, tt, ss
-    return 0.50, 1.50, "128k", ["价格待确认"], "日常对话"
+
+# ─── 统一价格解析（7 层 fallback 链） ───
+# 注意：此函数在 or_prices 构建后才能使用，否则 OpenRouter 回填不生效
+def resolve_model_price(platform, model_name, or_lookup, api_price=None):
+    """
+    统一价格解析，7 层 fallback。
+    Returns (input, output, context, source_tag)
+    source_tag: "A"=API, "S"=官方爬取, "SP"=SPA爬取, "H"=手动, "OR"=OpenRouter回填, "L"=LiteLLM, ""=未知
+    """
+    # 1. API 直接返回的价格
+    if api_price and (api_price[0] > 0 or api_price[1] > 0):
+        return api_price[0], api_price[1], api_price[2] if len(api_price) > 2 else "N/A", "A"
+
+    # 2. 官方爬取结果 (fetch_official_prices)
+    mn_lower = model_name.lower()
+    official = OFFICIAL_PRICES.get(mn_lower)
+    if not official:
+        official = OFFICIAL_PRICES.get("sf:" + mn_lower)
+    if not official:
+        for sf_pfx in ["deepseek-ai/", "thudm/", "qwen/"]:
+            official = OFFICIAL_PRICES.get("sf:" + sf_pfx + mn_lower)
+            if official:
+                break
+    if official and (official.get("input", 0) > 0 or official.get("output", 0) > 0):
+        return official["input"], official["output"], official.get("context", "N/A"), "S"
+
+    # 3. SPA 爬取结果 (spa_prices.json)
+    spa_platform = SPA_PRICES.get(platform, {})
+    spa_entry = spa_platform.get(mn_lower)
+    if not spa_entry:
+        for k in sorted(spa_platform.keys(), key=len, reverse=True):
+            if mn_lower.startswith(k):
+                spa_entry = spa_platform[k]
+                break
+    if spa_entry and (spa_entry.get("input", 0) > 0 or spa_entry.get("output", 0) > 0):
+        return spa_entry["input"], spa_entry["output"], spa_entry.get("context", "N/A"), "SP"
+
+    # 4. domestic_prices.json
+    dom_i, dom_o, dom_c, _, _ = get_domestic_price(platform, model_name)
+    if dom_i > 0 or dom_o > 0:
+        return dom_i, dom_o, dom_c, "H"
+
+    # 5. OpenRouter 交叉回填 (USD→CNY)
+    if or_lookup:
+        norm = normalize_for_match(model_name)
+        or_ref = or_lookup.get(norm)
+        if not or_ref:
+            for or_pfx in ["deepseek/", "qwen/", "bytedance/"]:
+                or_ref = or_lookup.get(normalize_for_match(or_pfx + model_name))
+                if or_ref:
+                    break
+        if or_ref and (or_ref.get("input_per_1m", 0) > 0 or or_ref.get("output_per_1m", 0) > 0):
+            cny_i = round(or_ref["input_per_1m"] * USD_TO_CNY, 4)
+            cny_o = round(or_ref["output_per_1m"] * USD_TO_CNY, 4)
+            return cny_i, cny_o, "N/A", "OR"
+
+    # 6. LiteLLM 兜底
+    ll_i, ll_o, ll_c, _, _ = get_dynamic_price(platform, model_name)
+    if ll_i > 0 or ll_o > 0:
+        return ll_i, ll_o, ll_c if ll_c != "N/A" else "N/A", "L"
+
+    # 7. 未知
+    return 0, 0, "N/A", ""
+
+
+# ═══════════════════════════════════════════════════════════
+
 
 # ═══════════════════════════════════════════════════════════
 # 数据抓取
@@ -1530,6 +1089,19 @@ if not USE_JSON_DATA:
             except: pass
     print("  OpenRouter:", len(OR), file=sys.stderr)
 
+    # 构建 OpenRouter 价格查找表（供 resolve_model_price 使用）
+    or_prices = {}
+    for _m in OR:
+        _mid = _m.get("id", "")
+        _ii = float(_m.get("pricing", {}).get("prompt", 0) or 0)
+        _oo = float(_m.get("pricing", {}).get("completion", 0) or 0)
+        if _ii <= 0 and _oo <= 0:
+            continue
+        _norm = normalize_for_match(_mid)
+        if _norm not in or_prices:
+            or_prices[_norm] = {"input_per_1m": _ii * 1e6, "output_per_1m": _oo * 1e6, "raw_name": _mid}
+    print("  OpenRouter prices lookup: %d models" % len(or_prices), file=sys.stderr)
+
     # ─── 腾讯混元 ───
     tx_ids = []
     if TX:
@@ -1570,6 +1142,9 @@ if not USE_JSON_DATA:
     if not yw_ids:
         yw_ids = ["yi-light","yi-medium","yi-large","yi-vision","yi-large-turbo","yi-spark","yi-lightning"]
     print("  Yi:", len(yw_ids), file=sys.stderr)
+
+    # ─── 百度文心（已弃用API，用 domestic_prices.json 兜底） ───
+    BD = []
 
     # ─── 百川智能 ───
     bc_ids = []
@@ -1818,66 +1393,72 @@ if not USE_JSON_DATA:
     # 阿里百炼
     for m in ali:
         fam = get_family(m["n"])
-        ii, oo = m["i"], m["o"]
-        src = "A"
-        if ii == 0 and oo == 0:
-            hc = ap(m["n"])
-            if hc:
-                ii, oo = hc[0], hc[1]
-                if m["c"] in ("0k",""):
-                    m["c"] = hc[2]
-                if not m["t"]:
-                    m["t"] = hc[3]
-                if m["s"] in ("日常对话",""):
-                    m["s"] = hc[4]
-                src = "H"
-        cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),ii,oo,m["c"],m["t"],m["s"],
+        api_price = (m["i"], m["o"], m["c"]) if (m["i"] > 0 or m["o"] > 0) else None
+        ii, oo, cc, src = resolve_model_price("aliyun", m["n"], or_prices, api_price=api_price)
+        tt, ss = m["t"], m["s"]
+        if src != "A":
+            tt2, ss2 = infer_tags_and_scene(m["n"], ii, oo, cc)
+            if not tt: tt = tt2
+            if ss in ("日常对话",""): ss = ss2
+        cards.append(make_card("aliyun","阿里百炼","#ff6a00",Te(m["n"]),ii,oo,cc,tt,ss,
                      "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src=src))
         all_models.append({"p":"aliyun","n":m["n"],"i":ii,"o":oo,"src":src})
 
     # 硅基流动
     for mid in sf_ids:
-        ii, oo, tt, ss = sp(mid)
+        ii, oo, cc, src = resolve_model_price("siliconflow", mid, or_prices)
+        if not cc or cc == "N/A":
+            cc = "32k"
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
-        cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,"32k",tt,ss,
-                     "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo,"src":"H"})
+        cards.append(make_card("siliconflow","硅基流动","#7C3AED",Te(mid),ii,oo,cc,tt,ss,
+                     "https://api.siliconflow.cn/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"siliconflow","n":mid,"i":ii,"o":oo,"src":src})
 
     # 月之暗面
     for m in ms_list:
         mid = m["id"]
-        ii, oo, cc, tt, ss = mp(mid)
+        ii, oo, cc, src = resolve_model_price("moonshot", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://api.moonshot.cn/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"moonshot","n":mid,"i":ii,"o":oo,"src":src})
 
     # 智谱AI
     for mid in zh_ids:
-        ii, oo, cc, tt, ss = zp(mid)
+        ii, oo, cc, src = resolve_model_price("zhipu", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
-                     "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://open.bigmodel.cn/api/paas/v4/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"zhipu","n":mid,"i":ii,"o":oo,"src":src})
 
     # 火山引擎
     for m in vc_list:
         mid = m["id"]; st = m.get("st","")
-        ii, oo, cc, tt, ss = vp(mid)
+        ii, oo, cc, src = resolve_model_price("volcengine", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         tt = tt[:]
         if st == "Shutdown":  tt = ["已下线"] + tt
         elif st == "Retiring": tt = ["即将下线"] + tt
         fam = get_family(mid)
         cards.append(make_card("volcengine","火山引擎","#dc2626",Te(mid),ii,oo,cc,tt,ss,
-                     "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://ark.cn-beijing.volces.com/api/v3/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"volcengine","n":mid,"i":ii,"o":oo,"src":src})
 
     # 百度文心
     for m in BD:
-        fam = get_family(m["n"])
-        cards.append(make_card("baidu","百度文心","#2932e1",Te(m["n"]),m["i"],m["o"],m["c"],m["t"],m["s"],
-                     "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"baidu","n":m["n"],"i":m["i"],"o":m["o"],"src":"H"})
+        mid = m["n"]
+        fam = get_family(mid)
+        api_price = (m["i"], m["o"], m["c"]) if (m["i"] > 0 and m["o"] > 0) else None
+        ii, oo, cc, src = resolve_model_price("baidu", mid, or_prices, api_price=api_price)
+        if not cc or cc == "N/A":
+            cc = m["c"]
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
+        cards.append(make_card("baidu","百度文心","#2932e1",Te(mid),ii,oo,cc,tt,ss,
+                     "https://qianfan.baidubce.com/v2/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"baidu","n":mid,"i":ii,"o":oo,"src":src})
 
     # OpenRouter
     for m in OR[:350]:
@@ -1907,85 +1488,87 @@ if not USE_JSON_DATA:
 
     # 腾讯混元
     for mid in tx_ids:
-        ii, oo, cc, tt, ss = tp(mid)
+        ii, oo, cc, src = resolve_model_price("tencent", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
-                     "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://hunyuan.tencentcloudapi.com/compatible-mode/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"tencent","n":mid,"i":ii,"o":oo,"src":src})
 
     # 讯飞星火
     for mid in xh_ids:
-        ii, oo, cc, tt, ss = xp(mid)
+        ii, oo, cc, src = resolve_model_price("spark", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
-                     "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"spark","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://spark-api.xf-yun.com/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"spark","n":mid,"i":ii,"o":oo,"src":src})
 
     # MiniMax
     for mid in mm_ids:
-        ii, oo, cc, tt, ss = mm_p(mid)
+        ii, oo, cc, src = resolve_model_price("minimax", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.minimax.chat/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://api.minimax.chat/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"minimax","n":mid,"i":ii,"o":oo,"src":src})
 
     # 零一万物
     for mid in yw_ids:
-        ii, oo, cc, tt, ss = yp(mid)
+        ii, oo, cc, src = resolve_model_price("yi", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"yi","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://api.lingyiwanwu.com/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"yi","n":mid,"i":ii,"o":oo,"src":src})
 
     # 百川智能
     for mid in bc_ids:
-        ii, oo, cc, tt, ss = bcp(mid)
+        ii, oo, cc, src = resolve_model_price("baichuan", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://api.baichuan-ai.com/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"baichuan","n":mid,"i":ii,"o":oo,"src":src})
 
     # 阶跃星辰
     for mid in jc_ids:
-        ii, oo, cc, tt, ss = jp(mid)
+        ii, oo, cc, src = resolve_model_price("jieyue", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.stepfun.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://api.stepfun.com/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"jieyue","n":mid,"i":ii,"o":oo,"src":src})
 
     # DeepSeek 官方
     for mid in ds_ids:
-        ii, oo, cc, tt, ss = dp(mid)
+        ii, oo, cc, src = resolve_model_price("deepseek", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("deepseek","DeepSeek","#4d6dff",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.deepseek.com/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://api.deepseek.com/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"deepseek","n":mid,"i":ii,"o":oo,"src":src})
 
     # Groq
     for mid in gq_ids:
-        ii, oo, cc, tt, ss = gp(mid)
+        ii, oo, cc, src = resolve_model_price("groq", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
+                     "https://api.groq.com/openai/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"groq","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # Together AI
     for m in tg_list:
         mid = m["id"]
-        # 优先使用 API 返回的真实价格
         api_inp = m.get("i", 0)
         api_out = m.get("o", 0)
         api_ctx = m.get("c", 0)
+        ii, oo, cc, tt, ss = get_dynamic_price("together", mid)
         if api_inp > 0 and api_out > 0:
             ii, oo = api_inp, api_out
-            cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
-        else:
-            ii, oo, cc, tt, ss = tgp(mid)
-        if api_inp == 0 and api_out == 0:
-            ii, oo, cc, tt, ss = tgp(mid)
-        else:
-            # 从模型名推断标签
-            tt, ss = tgp_tags(mid, ii, oo, api_ctx)
+            cc = str(int(api_ctx)//1000)+"k" if api_ctx else cc
+            tt, ss = infer_tags_and_scene(mid, ii, oo, api_ctx)
         fam = get_family(mid)
         cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
@@ -1994,32 +1577,34 @@ if not USE_JSON_DATA:
     # Fireworks AI
     for m in fw_list:
         mid = m["id"]
-        ii, oo, cc, tt, ss = fwp(mid)
-        # 使用 API 返回的上下文长度
+        ii, oo, cc, src = resolve_model_price("fireworks", mid, or_prices)
         api_ctx = m.get("c", 0)
         if api_ctx > 0:
             cc = str(int(api_ctx)//1000)+"k"
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
+                     "https://api.fireworks.ai/inference/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"fireworks","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # Cohere
     for m in co_list:
         mid = m["id"]
-        ii, oo, cc, tt, ss = cop(mid)
+        ii, oo, cc, src = resolve_model_price("cohere", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
+                     "https://api.cohere.com/v2/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"cohere","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # 无问芯穹 (InfiniAI)
     for mid in infini_list:
-        ii, oo, cc, tt, ss = ip(mid)
+        ii, oo, cc, src = resolve_model_price("infini", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
-                     "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam,price_src="H"))
-        all_models.append({"p":"infini","n":mid,"i":ii,"o":oo,"src":"H"})
+                     "https://cloud.infini-ai.com/maas/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"infini","n":mid,"i":ii,"o":oo,"src":src})
 
     # Novita AI
     for m in novita_list:
@@ -2030,9 +1615,9 @@ if not USE_JSON_DATA:
         if api_inp > 0 and api_out > 0:
             ii, oo = api_inp, api_out
             cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
-            tt, ss = np_tags(mid, ii, oo, api_ctx)
+            tt, ss = infer_tags_and_scene(mid, ii, oo, api_ctx)
         else:
-            ii, oo, cc, tt, ss = np(mid)
+            ii, oo, cc, tt, ss = get_dynamic_price("novita", mid)
         fam = get_family(mid)
         cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
@@ -2040,17 +1625,16 @@ if not USE_JSON_DATA:
 
     # DeepInfra
     for mid in di_list:
+        ii, oo, cc, tt, ss = get_dynamic_price("deepinfra", mid)
         if mid in di_prices:
-            ii, oo, cc = di_prices[mid]
-            # Convert numeric context to "k" format
+            ii2, oo2, cc2 = di_prices[mid]
+            if ii2 > 0 and oo2 > 0:
+                ii, oo = ii2, oo2
             try:
-                cc_int = int(cc)
+                cc_int = int(cc2)
                 cc = str(cc_int // 1000) + "k" if cc_int >= 1000 else str(cc_int)
             except (ValueError, TypeError):
                 pass
-            _, _, _, tt, ss = dip(mid)
-        else:
-            ii, oo, cc, tt, ss = dip(mid)
         fam = get_family(mid)
         cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
@@ -2058,11 +1642,12 @@ if not USE_JSON_DATA:
 
     # AiHubMix
     for mid in ahm_list:
-        ii, oo, cc, tt, ss = ahmp(mid)
+        ii, oo, cc, src = resolve_model_price("aihubmix", mid, or_prices)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("aihubmix","AiHubMix","#10b981",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="H"))
-        all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD","src":"H"})
+                     "https://api.aihubmix.com/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"aihubmix","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # n1n.ai
     for mid in n1n_list:
@@ -2106,6 +1691,39 @@ if not USE_JSON_DATA:
                      "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam,price_src="P"))
         all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY","src":"P"})
 
+    # ─── 多源交叉验证（自动修正 price=0 的模型）───
+    try:
+        from cross_validator import cross_validate_all, save_log
+        cv_results = cross_validate_all(all_models, or_prices, LITELLM_DB, SPA_PRICES, OFFICIAL_PRICES)
+        cv_corrections = 0
+        for m in all_models:
+            key = (m["p"], m["n"])
+            if key in cv_results:
+                r = cv_results[key]
+                if r["action"] == "auto_fill" and r["input"] > 0:
+                    m["i"] = r["input"]
+                    m["o"] = r["output"]
+                    m["src"] = "CV"
+                    cv_corrections += 1
+        # 更新卡片中的价格（替换 data-inp/data-out 属性）
+        if cv_corrections > 0:
+            for idx, c in enumerate(cards):
+                _dp = re.search(r'data-p="([^"]*)"', c)
+                _mn = re.search(r'class="mname">([^<]*)', c)
+                if _dp and _mn:
+                    key = (_dp.group(1), _mn.group(1).lower())
+                    if key in cv_results and cv_results[key]["action"] == "auto_fill":
+                        r = cv_results[key]
+                        c = re.sub(r'data-inp="[^"]*"', 'data-inp="%s"' % str(r["input"]), c)
+                        c = re.sub(r'data-out="[^"]*"', 'data-out="%s"' % str(r["output"]), c)
+                        # 更新价格显示
+                        c = re.sub(r'class="price-val"[^>]*>[^<]*', 'class="price-val">¥%.4f' % r["input"], c, count=1)
+                        cards[idx] = c
+            print("  Cross-validation: %d models auto-corrected" % cv_corrections, file=sys.stderr)
+        save_log(cv_results)
+    except Exception as e:
+        print("  Cross-validation error:", str(e)[:80], file=sys.stderr)
+
     # ─── 价格变动检测 ───
     price_changes = []
     if os.path.exists(PREV_DATA):
@@ -2133,44 +1751,10 @@ if price_changes:
     print("  Price changes detected:", len(price_changes), file=sys.stderr)
 
 # ─── 多层级价格源: Tier 2 OpenRouter 交叉验证 + Tier 3 LiteLLM 兜底 ───
-or_prices = {}
-litellm_prices = {}
+# or_prices 和 litellm_db 已在数据抓取阶段构建，此处直接复用
 drift_list = []
 try:
-    litellm_prices = fetch_litellm_prices()
-    if not USE_JSON_DATA and 'OR' in dir() and OR:
-        for m in OR:
-            mid = m.get("id", "")
-            ii = float(m.get("pricing", {}).get("prompt", 0) or 0)
-            if ii <= 0:
-                continue
-            oo = float(m.get("pricing", {}).get("completion", 0) or 0)
-            norm = normalize_for_match(mid)
-            ii_1m = ii * 1e6
-            oo_1m = oo * 1e6
-            if norm not in or_prices:
-                or_prices[norm] = {"input_per_1m": ii_1m, "output_per_1m": oo_1m, "raw_name": mid}
-        print("  OpenRouter prices: %d models for drift detection" % len(or_prices), file=sys.stderr)
-    else:
-        or_cache = os.path.join(CACHE_DIR, "openrouter_full.json")
-        if os.path.exists(or_cache):
-            try:
-                _or_data = json.load(open(or_cache))
-                for m in _or_data.get("data", []):
-                    mid = m.get("id", "")
-                    ii = float(m.get("pricing", {}).get("prompt", 0) or 0)
-                    if ii <= 0:
-                        continue
-                    oo = float(m.get("pricing", {}).get("completion", 0) or 0)
-                    norm = normalize_for_match(mid)
-                    ii_1m = ii * 1e6
-                    oo_1m = oo * 1e6
-                    if norm not in or_prices:
-                        or_prices[norm] = {"input_per_1m": ii_1m, "output_per_1m": oo_1m, "raw_name": mid}
-                print("  OpenRouter prices (cache): %d models for drift detection" % len(or_prices), file=sys.stderr)
-            except:
-                pass
-    drift_list = detect_price_drift(all_models, or_prices, litellm_prices)
+    drift_list = detect_price_drift(all_models, or_prices, LITELLM_DB)
     if drift_list:
         print("  Price drift detected: %d models" % len(drift_list), file=sys.stderr)
 except Exception as e:
@@ -2528,6 +2112,10 @@ if price_changes:
 
 # ═══════════════════════════════════════════════════════════
 # CSS (完全内联)
+# ═══════════════════════════════════════════════════════════
+
+
+# CSS (完整样式)
 # ═══════════════════════════════════════════════════════════
 
 CSS = '''
@@ -3142,6 +2730,7 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .tool-btn-extended{margin-left:4px}
 
 '''
+
 
 # ═══════════════════════════════════════════════════════════
 # JavaScript (完整前端逻辑)
@@ -4755,6 +4344,7 @@ try:
         _df = re.search(r'data-family="([^"]*)"', c)
         _pu = re.search(r'data-pu="([^"]*)"', c)
         _dpt = re.search(r'data-pt="([^"]*)"', c)
+        _dsrc = re.search(r'data-src="([^"]*)"', c)
         _mn = re.search(r'class="mname">([^<]*)', c)
         _pn = re.search(r'class="prov">([^<]*)', c)
         _bu = re.search(r'class="base-url">([^<]*)', c)
@@ -4777,7 +4367,8 @@ try:
             "tags":_tg,
             "scene":_ds.group(1) if _ds else "",
             "family":_df.group(1) if _df else "",
-            "base_url":html.unescape(_bu.group(1)) if _bu else ""
+            "base_url":html.unescape(_bu.group(1)) if _bu else "",
+            "price_src":_dsrc.group(1) if _dsrc else ""
         })
     _mj["meta"]["platform_counts"] = _pc
     _mj["meta"]["price_tiers"] = _ptc
