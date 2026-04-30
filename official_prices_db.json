@@ -1145,5 +1145,1726 @@
       "output": 0.69,
       "context": "128k"
     }
+  },
+  "glm-5": {
+    "input_price": 6.0,
+    "output_price": 22.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-5-turbo": {
+    "input_price": 5.0,
+    "output_price": 22.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-5.1": {
+    "input_price": 8.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-4.7": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-4.7-flashx": {
+    "input_price": 0.5,
+    "output_price": 3.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-4.7-flash": {
+    "input_price": 0.0,
+    "output_price": 0.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-4-plus": {
+    "input_price": 5.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "glm-5v-turbo": {
+    "input_price": 5.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-z1-air": {
+    "input_price": 0.5,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-4.5-air": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "glm-4.6": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "zhipu"
+  },
+  "doubao-1.6-pro-32k": {
+    "input_price": 0.8,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-1.5-pro-32k": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-1.5-pro-128k": {
+    "input_price": 5.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-lite-32k": {
+    "input_price": 0.15,
+    "output_price": 0.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-1.5-lite-32k": {
+    "input_price": 0.15,
+    "output_price": 0.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-vision": {
+    "input_price": 3.0,
+    "output_price": 3.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-coder": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-1.6": {
+    "input_price": 0.8,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-1.6-flash": {
+    "input_price": 0.8,
+    "output_price": 0.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-1.6-vision": {
+    "input_price": 3.0,
+    "output_price": 3.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-1.6-thinking": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-2.0-pro": {
+    "input_price": 3.2,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-2.0-mini": {
+    "input_price": 0.2,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-2.0-lite": {
+    "input_price": 0.6,
+    "output_price": 3.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-seed-2.0-code": {
+    "input_price": 3.2,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-smart-router": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-pro-32k": {
+    "input_price": 0.5,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "doubao-pro-128k": {
+    "input_price": 0.5,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "volcengine"
+  },
+  "hunyuan-turbos": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-turbo": {
+    "input_price": 1.0,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-pro": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-large": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-lite": {
+    "input_price": 0.0,
+    "output_price": 0.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-standard": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-standard-vision": {
+    "input_price": 2.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-vision": {
+    "input_price": 4.0,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-coder": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-t1": {
+    "input_price": 1.0,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "hunyuan-turbos-vision": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "tencent"
+  },
+  "deepseek-chat": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "deepseek"
+  },
+  "deepseek-reasoner": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "deepseek"
+  },
+  "deepseek-v3": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "deepseek-r1": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "deepseek-v3.1": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "deepseek"
+  },
+  "deepseek-prover-v2": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "deepseek-v4-flash": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "deepseek"
+  },
+  "deepseek-v4-pro": {
+    "input_price": 3.0,
+    "output_price": 6.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "deepseek"
+  },
+  "moonshot-v1-8k": {
+    "input_price": 2.0,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "moonshot-v1-32k": {
+    "input_price": 5.0,
+    "output_price": 20.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "moonshot-v1-128k": {
+    "input_price": 10.0,
+    "output_price": 30.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "kimi-k2": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "kimi-k2.5": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "kimi-k2-turbo": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "kimi-k2-thinking": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "kimi-k2-thinking-turbo": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "moonshot-v1-8k-vision": {
+    "input_price": 12.0,
+    "output_price": 12.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "moonshot-v1-32k-vision": {
+    "input_price": 24.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "moonshot-v1-128k-vision": {
+    "input_price": 24.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "moonshot"
+  },
+  "spark-x2": {
+    "input_price": 2.0,
+    "output_price": 3.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "spark-x1.5": {
+    "input_price": 3.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "spark-ultra": {
+    "input_price": 0.8,
+    "output_price": 0.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "spark-pro": {
+    "input_price": 5.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "generalv3.5": {
+    "input_price": 3.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "generalv3": {
+    "input_price": 1.5,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "4.0Ultra": {
+    "input_price": 5.0,
+    "output_price": 20.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "generalv2": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "spark-lite": {
+    "input_price": 0.0,
+    "output_price": 0.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "generalv3.5-vision": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "spark"
+  },
+  "abab6.5s": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "abab6.5": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "abab6.5g": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "abab5.5": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "abab5.5s": {
+    "input_price": 0.1,
+    "output_price": 0.3,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "abab6.5s-vision": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "abab6.5-vision": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "minimax-m1": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "minimax-m2.7": {
+    "input_price": 2.1,
+    "output_price": 8.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "minimax-m2.7-highspeed": {
+    "input_price": 4.2,
+    "output_price": 16.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "minimax-m2.5": {
+    "input_price": 2.1,
+    "output_price": 8.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "minimax-m2.5-highspeed": {
+    "input_price": 4.2,
+    "output_price": 16.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "minimax-m2.1": {
+    "input_price": 1.0,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "minimax"
+  },
+  "yi-light": {
+    "input_price": 0.0,
+    "output_price": 0.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "yi-medium": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "yi-large": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "yi-vision": {
+    "input_price": 2.0,
+    "output_price": 6.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "yi-large-turbo": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "yi-spark": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "yi-lightning": {
+    "input_price": 0.1,
+    "output_price": 0.3,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "yi"
+  },
+  "baichuan2-turbo": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baichuan"
+  },
+  "baichuan2-53b": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baichuan"
+  },
+  "baichuan-14b": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baichuan"
+  },
+  "baichuan4": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baichuan"
+  },
+  "baichuan4-vision": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baichuan"
+  },
+  "baichuan-m1": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baichuan"
+  },
+  "step-1-8k": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-1-32k": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-1-128k": {
+    "input_price": 5.0,
+    "output_price": 20.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-1-flash": {
+    "input_price": 0.5,
+    "output_price": 1.5,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-1v-8k": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-1v-32k": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-2-16k": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-2-mini": {
+    "input_price": 1.0,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "step-r1": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "jieyue"
+  },
+  "qwen3-next-80b-a3b-thinking": {
+    "input_price": 2.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen3-30b-a3b-thinking": {
+    "input_price": 0.6,
+    "output_price": 4.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen3-235b-a22b-thinking": {
+    "input_price": 0.8,
+    "output_price": 6.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-max": {
+    "input_price": 20.0,
+    "output_price": 60.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-plus": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-turbo": {
+    "input_price": 0.3,
+    "output_price": 0.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-long": {
+    "input_price": 0.5,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-vl-max": {
+    "input_price": 20.0,
+    "output_price": 60.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-vl-plus": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen-coder-plus": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwq-32b": {
+    "input_price": 0.7,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "aliyun"
+  },
+  "qwen3-235b-a22b": {
+    "input_price": 0.8,
+    "output_price": 6.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen3-32b": {
+    "input_price": 0.6,
+    "output_price": 4.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen3-14b": {
+    "input_price": 0.4,
+    "output_price": 3.2,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen3-8b": {
+    "input_price": 0.2,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen3-4b": {
+    "input_price": 0.2,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen3-30b-a3b": {
+    "input_price": 0.6,
+    "output_price": 2.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen2.5-72b-instruct": {
+    "input_price": 1.6,
+    "output_price": 6.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen2.5-32b-instruct": {
+    "input_price": 0.8,
+    "output_price": 3.2,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen2.5-14b-instruct": {
+    "input_price": 0.4,
+    "output_price": 1.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen2.5-7b-instruct": {
+    "input_price": 0.2,
+    "output_price": 0.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen2.5-coder-32b-instruct": {
+    "input_price": 0.8,
+    "output_price": 3.2,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen2.5-math-72b-instruct": {
+    "input_price": 1.6,
+    "output_price": 6.4,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "deepseek-v3-0324": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "deepseek-r1-0528": {
+    "input_price": 4.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "glm-4-9b": {
+    "input_price": 0.2,
+    "output_price": 0.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "llama-3.3-70b-instruct": {
+    "input_price": 0.54,
+    "output_price": 0.78,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "llama-4-maverick-17b-128e-instruct": {
+    "input_price": 0.28,
+    "output_price": 0.85,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "mistral-small-24b-instruct-2501": {
+    "input_price": 0.14,
+    "output_price": 0.42,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "bce-reranker-base_v1": {
+    "input_price": 0.002,
+    "output_price": 0.002,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "bge-m3": {
+    "input_price": 0.002,
+    "output_price": 0.002,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "deepseek-ai/deepseek-v3": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "qwen/qwen2.5-72b-instruct": {
+    "input_price": 1.4,
+    "output_price": 4.13,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "siliconflow"
+  },
+  "ernie-4.0-8k": {
+    "input_price": 24.0,
+    "output_price": 48.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-4.0-8k-0329": {
+    "input_price": 24.0,
+    "output_price": 48.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-4.0-turbo-8k": {
+    "input_price": 8.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-4.0-turbo-64k": {
+    "input_price": 8.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-4.0-5-preview": {
+    "input_price": 12.0,
+    "output_price": 36.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-4.5-8k": {
+    "input_price": 16.0,
+    "output_price": 48.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-4.5-8k-0311": {
+    "input_price": 16.0,
+    "output_price": 48.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-3.5-8k": {
+    "input_price": 1.2,
+    "output_price": 1.2,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-3.5-128k": {
+    "input_price": 1.2,
+    "output_price": 1.2,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-speed-8k": {
+    "input_price": 0.3,
+    "output_price": 0.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-speed-128k": {
+    "input_price": 0.3,
+    "output_price": 0.6,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-lite-8k": {
+    "input_price": 0.08,
+    "output_price": 0.08,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-lite-pro-128k": {
+    "input_price": 0.8,
+    "output_price": 0.8,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-char-8k": {
+    "input_price": 0.12,
+    "output_price": 0.12,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "ernie-n4-5-0205": {
+    "input_price": 16.0,
+    "output_price": 48.0,
+    "currency": "CNY",
+    "source": "merged_from_legacy_domestic_prices",
+    "provider": "baidu"
+  },
+  "hy3-preview": {
+    "input_price": 1.2,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "tencent_prices.json",
+    "provider": "tencent"
+  },
+  "hunyuan-2.0-instruct-20251111": {
+    "input_price": 3.18,
+    "output_price": 7.95,
+    "currency": "CNY",
+    "source": "tencent_prices.json",
+    "provider": "tencent"
+  },
+  "hunyuan-2.0-thinking-20251109": {
+    "input_price": 3.975,
+    "output_price": 15.9,
+    "currency": "CNY",
+    "source": "tencent_prices.json",
+    "provider": "tencent"
+  },
+  "moonshot-v1-8k-vision-preview": {
+    "input_price": 2.0,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://platform.moonshot.cn/docs/pricing/chat-v1"
+  },
+  "moonshot-v1-32k-vision-preview": {
+    "input_price": 5.0,
+    "output_price": 20.0,
+    "currency": "CNY",
+    "source": "https://platform.moonshot.cn/docs/pricing/chat-v1"
+  },
+  "moonshot-v1-128k-vision-preview": {
+    "input_price": 10.0,
+    "output_price": 30.0,
+    "currency": "CNY",
+    "source": "https://platform.moonshot.cn/docs/pricing/chat-v1"
+  },
+  "m2-her": {
+    "input_price": 2.1,
+    "output_price": 8.4,
+    "currency": "CNY",
+    "source": "https://platform.minimaxi.com/docs/guides/pricing-paygo"
+  },
+  "minimax-m2.1-highspeed": {
+    "input_price": 4.2,
+    "output_price": 16.8,
+    "currency": "CNY",
+    "source": "https://platform.minimaxi.com/docs/guides/pricing-paygo"
+  },
+  "minimax-m2": {
+    "input_price": 2.1,
+    "output_price": 8.4,
+    "currency": "CNY",
+    "source": "https://platform.minimaxi.com/docs/guides/pricing-paygo"
+  },
+  "qwen3.6-max-preview上下文缓存享有折扣": {
+    "input_price": 9.0,
+    "output_price": 54.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-maxbatch调用半价上下文缓存享有折扣": {
+    "input_price": 2.5,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-max-2026-01-23": {
+    "input_price": 2.5,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-max-2025-09-23": {
+    "input_price": 6.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-max-preview上下文缓存享有折扣": {
+    "input_price": 6.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-max上下文缓存享有折扣": {
+    "input_price": 2.5,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-max-latest始终与最新快照版能力相同": {
+    "input_price": 11.743,
+    "output_price": 46.971,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-plus当前与qwen3.6-plus-2026-04-02能力相同默认开启思考模式batch调用半价上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 983.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-plus当前与qwen3.6-plus-2026-04-02能力相同默认开启思考模式上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 983.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-plus-us当前与 qwen-plus-2025-12-01-us 能力相同属于qwen3系列上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 32.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-flash当前与 qwen3.6-flash-2026-04-16能力相同默认开启思考模式batch调用半价上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 983.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-flash当前与 qwen3.6-flash-2026-04-16能力相同默认开启思考模式上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 983.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-flash当前与 qwen3.6-flash-2026-04-16能力相同属于qwen3.6系列默认开启思考模式上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 983.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-flash-us当前与 qwen-flash-2025-07-28-us能力相同属于qwen3系列上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 995.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-turbo-2025-04-28又称qwen-turbo-0428属于qwen3系列": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-turbo-2024-11-01又称qwen-turbo-1101": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-turbo-2025-02-11又称qwen-turbo-0211": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwq-plus-latest始终与最新快照版能力相同": {
+    "input_price": 1.6,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-longbatch调用半价": {
+    "input_price": 10.0,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-long-2025-01-25又称qwen-long-0125": {
+    "input_price": 0.5,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-max-2025-08-13又称qwen-vl-max-0813视觉理解指标全面提升，数学、推理、物体识别、多语言处理能力显著增强。": {
+    "input_price": 1.6,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-max-2025-04-08又称qwen-vl-max-0408增强数学和推理能力": {
+    "input_price": 3.0,
+    "output_price": 9.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-plus-2025-08-15又称qwen-vl-plus-0815在物体识别与定位、多语言处理的能力上有显著提升": {
+    "input_price": 0.8,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-max-latest始终与最新快照版能力相同": {
+    "input_price": 5.871,
+    "output_price": 23.486,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-plus-latest始终与最新快照版能力相同": {
+    "input_price": 1.541,
+    "output_price": 4.624,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-math-plus": {
+    "input_price": 4.0,
+    "output_price": 12.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-math-turbo": {
+    "input_price": 2.0,
+    "output_price": 6.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-coder-plus当前与qwen3-coder-plus-2025-09-23能力相同上下文缓存享有折扣": {
+    "input_price": 1.0,
+    "output_price": 997.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-mt-flash属于qwen3-mt": {
+    "input_price": 0.7,
+    "output_price": 1.95,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-mt-lite属于qwen3-mt": {
+    "input_price": 0.6,
+    "output_price": 1.6,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-mt-turbo属于qwen3-mt": {
+    "input_price": 0.7,
+    "output_price": 1.95,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-deep-research": {
+    "input_price": 1.0,
+    "output_price": 997.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-35b-a3b": {
+    "input_price": 1.8,
+    "output_price": 10.8,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.6-27b": {
+    "input_price": 3.0,
+    "output_price": 18.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.5-397b-a17b": {
+    "input_price": 1.2,
+    "output_price": 7.2,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.5-122b-a10b": {
+    "input_price": 0.8,
+    "output_price": 6.4,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.5-27b": {
+    "input_price": 0.6,
+    "output_price": 4.8,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3.5-35b-a3b": {
+    "input_price": 0.4,
+    "output_price": 3.2,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-14b-instruct-1m": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-7b-instruct-1m": {
+    "input_price": 0.5,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-vl-32b-instruct": {
+    "input_price": 8.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-vl-7b-instruct": {
+    "input_price": 2.0,
+    "output_price": 5.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-vl-3b-instruct": {
+    "input_price": 1.2,
+    "output_price": 3.6,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-math-7b-instruct": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-coder-next": {
+    "input_price": 1.0,
+    "output_price": 4.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-coder-480b-a35b-instruct": {
+    "input_price": 6.0,
+    "output_price": 24.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-coder-30b-a3b-instruct": {
+    "input_price": 1.5,
+    "output_price": 6.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-coder-14b-instruct": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-coder-7b-instruct": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "deepseek-r1-distill-qwen-1.5b基于 qwen2.5-math-1.5b": {
+    "input_price": 32.0,
+    "output_price": 32.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "deepseek-r1-distill-qwen-7b基于 qwen2.5-math-7b": {
+    "input_price": 0.5,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "deepseek-r1-distill-qwen-14b基于 qwen2.5-14b": {
+    "input_price": 1.0,
+    "output_price": 3.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "deepseek-r1-distill-qwen-32b基于 qwen2.5-32b": {
+    "input_price": 2.0,
+    "output_price": 6.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-2.0-pro-2026-04-22": {
+    "input_price": 0.5,
+    "output_price": 0.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-2.0当前与qwen-image-2.0-2026-03-03能力相同": {
+    "input_price": 0.2,
+    "output_price": 0.2,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-2.0-2026-03-03": {
+    "input_price": 0.2,
+    "output_price": 0.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-max当前与qwen-image-max-2025-12-30能力相同": {
+    "input_price": 0.5,
+    "output_price": 0.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-plus当前与qwen-image能力相同": {
+    "input_price": 0.2,
+    "output_price": 0.2,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-plus-2026-01-09": {
+    "input_price": 0.2,
+    "output_price": 0.25,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-edit-max当前与qwen-image-edit-max-2026-01-16能力相同": {
+    "input_price": 0.5,
+    "output_price": 0.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-edit-plus当前与qwen-image-edit-plus-2025-10-30能力相同": {
+    "input_price": 0.2,
+    "output_price": 0.2,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-edit-plus-2025-12-15": {
+    "input_price": 0.2,
+    "output_price": 0.2,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-image-edit-plus-2025-10-30": {
+    "input_price": 0.2,
+    "output_price": 0.3,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-mt-image": {
+    "input_price": 0.003,
+    "output_price": 100.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-instruct-flash当前能力等同 qwen3-tts-instruct-flash-2026-01-26": {
+    "input_price": 0.8,
+    "output_price": 600.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-vd-2026-01-26": {
+    "input_price": 0.8,
+    "output_price": 600.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-vc-2026-01-22": {
+    "input_price": 0.8,
+    "output_price": 600.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-flash当前能力等同 qwen3-tts-flash-2025-11-27": {
+    "input_price": 0.8,
+    "output_price": 600.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-tts当前与 qwen-tts-2025-04-10 能力相同": {
+    "input_price": 8.0,
+    "output_price": 512.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-instruct-flash-realtime当前能力等同 qwen3-tts-instruct-flash-realtime-2026-01-22": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-vd-realtime-2026-01-15": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-vc-realtime-2026-01-15": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-tts-flash-realtime当前能力等同 qwen3-tts-flash-realtime-2025-11-27": {
+    "input_price": 1.0,
+    "output_price": 1.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-tts-realtime当前能力等同 qwen-tts-realtime-2025-07-15": {
+    "input_price": 8.0,
+    "output_price": 512.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-voice-enrollment": {
+    "input_price": 0.01,
+    "output_price": 1000.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-voice-design": {
+    "input_price": 0.2,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-asr-flash-filetrans当前等同qwen3-asr-flash-filetrans-2025-11-17": {
+    "input_price": 0.00022,
+    "output_price": 36.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-asr-flash当前等同qwen3-asr-flash-2025-09-08": {
+    "input_price": 0.00022,
+    "output_price": 36.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-asr-flash-realtime当前等同qwen3-asr-flash-realtime-2025-10-27": {
+    "input_price": 0.00033,
+    "output_price": 36.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "text-embedding-v4属于qwen3-embedding系列batch调用半价": {
+    "input_price": 2.0,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "text-embedding-v4属于qwen3-embedding系列": {
+    "input_price": 2.0,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2.5-vl-embedding": {
+    "input_price": 1024.0,
+    "output_price": 1152.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-vl-rerank": {
+    "input_price": 100.0,
+    "output_price": 120.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-plus-charactersession cache享有折扣": {
+    "input_price": 32.0,
+    "output_price": 32.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-flash-charactersession cache享有折扣": {
+    "input_price": 8.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-flash-character-2026-02-26": {
+    "input_price": 8.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-plus-character-ja": {
+    "input_price": 8.0,
+    "output_price": 512.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen1.5-72b-chat": {
+    "input_price": 5.0,
+    "output_price": 10.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen1.5-32b-chat": {
+    "input_price": 3.5,
+    "output_price": 7.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen1.5-7b-chat": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-chat-v1": {
+    "input_price": 1.0,
+    "output_price": 991.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3-vl-plus-2025-12-19": {
+    "input_price": 1.5,
+    "output_price": 4.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-max-2024-08-09": {
+    "input_price": 1.5,
+    "output_price": 4.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-vl-plus-2024-08-09": {
+    "input_price": 1.5,
+    "output_price": 4.5,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen3、deepseek、kimi等": {
+    "input_price": 16.0,
+    "output_price": 16.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen-14b-chat": {
+    "input_price": 8.0,
+    "output_price": 8.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "qwen2-math-7b-instruct": {
+    "input_price": 1.0,
+    "output_price": 2.0,
+    "currency": "CNY",
+    "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"
+  },
+  "sf:pro/qwen/qwen2.5-7b-instruct": {
+    "input_price": 0.35,
+    "output_price": 0.35,
+    "currency": "CNY",
+    "source": "https://siliconflow.cn/models"
+  },
+  "sf:qwen/qwen2.5-7b-instruct": {
+    "input_price": 0.35,
+    "output_price": 0.35,
+    "currency": "CNY",
+    "source": "https://siliconflow.cn/models"
+  },
+  "sf:qwen2.5-7b-instruct": {
+    "input_price": 0.35,
+    "output_price": 0.35,
+    "currency": "CNY",
+    "source": "https://siliconflow.cn/models"
   }
 }

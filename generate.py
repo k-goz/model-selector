@@ -35,10 +35,13 @@ CA = os.environ.get("CA_KEY", "sk-hUrKIhasRZTnLZFi4jYI5S82ojAXNbO7elcyUOULQv2ff0
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT = os.environ.get("OUTPUT_FILE", os.path.expanduser("~/.qclaw/model-selector-v2.html"))
-CACHE_DIR = os.environ.get("CACHE_DIR", os.path.expanduser("~/.qclaw/cache"))
+OUT = os.environ.get("OUTPUT_FILE", os.path.join(SCRIPT_DIR, "index.html"))
+CACHE_DIR = os.environ.get("CACHE_DIR", os.path.join(SCRIPT_DIR, ".cache"))
 PREV_DATA = os.path.join(CACHE_DIR, "prev_models.json")
 os.makedirs(CACHE_DIR, exist_ok=True)
+
+# ─── 解析参数 ───
+UPDATE_DB = "--update-db" in sys.argv
 
 # ─── 汇率 ───
 USD_TO_CNY = 7.25
@@ -247,14 +250,98 @@ def fetch_official_prices():
                     "platform": "siliconflow",
                     "raw_name": mn_raw,
                 }
-                for key in keys:
-                    if key not in prices:
-                        prices[key] = entry
-                sf_count += 1
-            print("  fetch_official_prices: SiliconFlow RSC %d models" % sf_count, file=sys.stderr)
-            break
+            for key in keys:
+                if key not in prices:
+                    prices[key] = entry
+            sf_count += 1
+        print("  fetch_official_prices: SiliconFlow RSC %d models" % sf_count, file=sys.stderr)
     except Exception as e:
         print("  fetch_official_prices: SiliconFlow RSC error:", str(e)[:80], file=sys.stderr)
+
+    # 7. 百度文心 - 百度智能云文档
+    try:
+        h = _fh("https://cloud.baidu.com/doc/WENXINWORKSHOP/s/hlxqvkx82")
+        if h:
+            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
+            for i in range(len(tds) - 3):
+                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip().lower()
+                if not model_txt or 'ernie' not in model_txt:
+                    continue
+                mn = model_txt.replace(' ', '-').strip()
+                if mn in prices:
+                    continue
+                for j in range(i + 1, min(i + 4, len(tds))):
+                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
+                    inp_m = re.search(r'([\d.]+)\s*(?:元|/)', inp_txt)
+                    if inp_m and float(inp_m.group(1)) > 0:
+                        iv = float(inp_m.group(1))
+                        # 通常按千 tokens 计费，我们需要转为百万 tokens
+                        if "千" in inp_txt or "1000" in inp_txt:
+                            iv *= 1000
+                        for k in range(j + 1, min(j + 3, len(tds))):
+                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
+                            out_m = re.search(r'([\d.]+)\s*(?:元|/)', out_txt)
+                            if out_m and float(out_m.group(1)) > 0:
+                                ov = float(out_m.group(1))
+                                if "千" in out_txt or "1000" in out_txt:
+                                    ov *= 1000
+                                prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
+                                             "source": "https://cloud.baidu.com/doc/WENXINWORKSHOP/s/hlxqvkx82"}
+                                break
+                        break
+            print("  fetch_official_prices: Baidu %d models" % sum(1 for k in prices if "ernie" in k), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: Baidu error:", str(e)[:80], file=sys.stderr)
+
+    # 8. 火山引擎 (Doubao)
+    try:
+        h = _fh("https://www.volcengine.com/docs/82379/1099320")
+        if h:
+            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
+            for i in range(len(tds) - 3):
+                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip().lower()
+                if not model_txt or 'doubao' not in model_txt:
+                    continue
+                mn = model_txt.replace(' ', '-').strip()
+                if mn in prices:
+                    continue
+                for j in range(i + 1, min(i + 4, len(tds))):
+                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
+                    inp_m = re.search(r'([\d.]+)\s*(?:元|/)', inp_txt)
+                    if inp_m and float(inp_m.group(1)) > 0:
+                        iv = float(inp_m.group(1))
+                        if "千" in inp_txt or "1000" in inp_txt:
+                            iv *= 1000
+                        for k in range(j + 1, min(j + 3, len(tds))):
+                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
+                            out_m = re.search(r'([\d.]+)\s*(?:元|/)', out_txt)
+                            if out_m and float(out_m.group(1)) > 0:
+                                ov = float(out_m.group(1))
+                                if "千" in out_txt or "1000" in out_txt:
+                                    ov *= 1000
+                                prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
+                                             "source": "https://www.volcengine.com/docs/82379/1099320"}
+                                break
+                        break
+            print("  fetch_official_prices: Volcengine %d models" % sum(1 for k in prices if "doubao" in k), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: Volcengine error:", str(e)[:80], file=sys.stderr)
+
+    # 9. 加载本地 tencent_prices.json 兜底
+    try:
+        tencent_file = os.path.join(SCRIPT_DIR, "tencent_prices.json")
+        if os.path.exists(tencent_file):
+            with open(tencent_file, 'r', encoding='utf-8') as f:
+                t_data = json.load(f)
+            t_count = 0
+            for k, v in t_data.items():
+                mn = v.get("model_id", "").lower().strip()
+                if mn and mn not in prices and float(v.get("input_price", 0)) > 0:
+                    prices[mn] = {"input": float(v.get("input_price")), "output": float(v.get("output_price")), "currency": "CNY", "source": "tencent_prices.json"}
+                    t_count += 1
+            print("  fetch_official_prices: Tencent JSON %d models" % t_count, file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: Tencent JSON error:", str(e)[:80], file=sys.stderr)
 
     print("  fetch_official_prices: total %d models" % len(prices), file=sys.stderr)
     return prices
@@ -663,6 +750,32 @@ def get_absolute_price(platform, model_name, api_price=None):
 print("Fetching official prices...", file=sys.stderr)
 OFFICIAL_PRICES = fetch_official_prices()
 print("  Official prices: %d models loaded" % len(OFFICIAL_PRICES), file=sys.stderr)
+
+if UPDATE_DB:
+    print("Updating official_prices_db.json...", file=sys.stderr)
+    db_path = os.path.join(SCRIPT_DIR, "official_prices_db.json")
+    try:
+        db_data = {}
+        if os.path.exists(db_path):
+            with open(db_path, "r", encoding="utf-8") as f:
+                db_data = json.load(f)
+        added_count = 0
+        for m, pinfo in OFFICIAL_PRICES.items():
+            if m not in db_data:
+                db_data[m] = {}
+            if "input_price" not in db_data[m] or db_data[m].get("input_price") == 0:
+                db_data[m]["input_price"] = pinfo["input"]
+                db_data[m]["output_price"] = pinfo["output"]
+                db_data[m]["currency"] = pinfo.get("currency", "CNY")
+                db_data[m]["source"] = pinfo.get("source", "scraped")
+                added_count += 1
+        with open(db_path, "w", encoding="utf-8") as f:
+            json.dump(db_data, f, indent=2, ensure_ascii=False)
+        print("  Successfully updated %d prices in %s" % (added_count, db_path), file=sys.stderr)
+    except Exception as e:
+        print("  Error updating DB:", e, file=sys.stderr)
+    sys.exit(0)
+
 
 # ─── 检查 models_data.json（伪动态方案：优先从静态 JSON 加载） ───
 MODELS_JSON = os.environ.get("MODELS_JSON", os.path.join(SCRIPT_DIR, "models_data.json"))
