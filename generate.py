@@ -293,138 +293,49 @@ def normalize_for_match(model_name):
         n = ALIAS_MAP[n]
     return n.lower().strip()
 
-# ─── LiteLLM 价格获取（按平台+模型二维字典） ───
-def fetch_litellm_prices():
-    prices = {}
+# ─── 官方价格数据库（SSOT: Single Source of Truth） ───
+OFFICIAL_PRICES_DB = {}
+_opdb_path = os.path.join(SCRIPT_DIR, "official_prices_db.json")
+if os.path.exists(_opdb_path):
     try:
-        url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = json.loads(r.read().decode("utf-8", errors="ignore"))
-        for raw_model_name, info in data.items():
-            if not isinstance(info, dict): continue
-            provider = info.get("litellm_provider", "")
-            if not provider: continue
-            inp_1m = float(info.get("input_cost_per_token", 0) or 0) * 1e6
-            out_1m = float(info.get("output_cost_per_token", 0) or 0) * 1e6
-            if inp_1m == 0: inp_1m = float(info.get("input_cost_per_million_tokens", 0) or 0)
-            if out_1m == 0: out_1m = float(info.get("output_cost_per_million_tokens", 0) or 0)
-            ctx = info.get("max_input_tokens", 0)
-            if inp_1m > 0 or out_1m > 0:
-                if provider not in prices:
-                    prices[provider] = {}
-                model_key = raw_model_name.replace(f"{provider}/", "")
-                norm = normalize_for_match(model_key)
-                price_data = {
-                    "input": inp_1m,
-                    "output": out_1m,
-                    "context": f"{ctx//1000}k" if ctx else "N/A"
-                }
-                prices[provider][norm] = price_data
-                prices[provider][model_key.lower()] = price_data
-        total = sum(len(v) for v in prices.values())
-        print("  fetch_litellm_prices: %d providers, %d entries" % (len(prices), total), file=sys.stderr)
+        with open(_opdb_path, "r", encoding="utf-8") as _f:
+            OFFICIAL_PRICES_DB = json.load(_f)
+        _opdb_count = sum(len([k for k in v if not k.startswith("_")]) for k in OFFICIAL_PRICES_DB if k != "_meta" for v in [OFFICIAL_PRICES_DB[k]])
+        print("  official_prices_db.json: %d platforms, %d entries" % (len([k for k in OFFICIAL_PRICES_DB if k != "_meta"]), _opdb_count), file=sys.stderr)
     except Exception as e:
-        print("  fetch_litellm_prices error:", e, file=sys.stderr)
-    return prices
+        print("  official_prices_db.json load error:", e, file=sys.stderr)
+def get_db_price(platform_key, raw_model_id):
+    """从 official_prices_db.json 查找价格（精确匹配 → 前缀匹配）"""
+    if platform_key not in OFFICIAL_PRICES_DB:
+        return 0, 0, "N/A"
+    platform_rules = OFFICIAL_PRICES_DB[platform_key]
+    model_id = raw_model_id.lower()
+    # 去掉常见前缀
+    for pfx in ["deepseek-ai/", "qwen/", "thudm/", "meta-llama/", "mistralai/",
+                 "google/", "microsoft/", "zai-org/", "moonshotai/", "pro/",
+                 "minimaxai/", "stepfun-ai/", "inclusionai/", "bytedance-seed/",
+                 "tencent/", "internlm/", "paddlepaddle/", "kwaipilot/",
+                 "nvidia/", "openai/", "anthropic/", "accounts/fireworks/models/"]:
+        if model_id.startswith(pfx):
+            stripped = model_id[len(pfx):]
+            # Try stripped version first
+            if stripped in platform_rules:
+                e = platform_rules[stripped]
+                return e.get("input", 0), e.get("output", 0), e.get("context", "N/A")
+    # 精确匹配
+    if model_id in platform_rules:
+        e = platform_rules[model_id]
+        return e.get("input", 0), e.get("output", 0), e.get("context", "N/A")
+    # 前缀匹配（按键长度倒序，最长匹配优先）
+    sorted_keys = sorted([k for k in platform_rules if not k.startswith("_")], key=len, reverse=True)
+    for rule_key in sorted_keys:
+        if model_id.startswith(rule_key):
+            e = platform_rules[rule_key]
+            return e.get("input", 0), e.get("output", 0), e.get("context", "N/A")
+    return 0, 0, "N/A"
 
-LITELLM_DB = fetch_litellm_prices()
 
-def get_dynamic_price(platform_key, mid):
-    LITELLM_KEY_MAP = {
-        "together": "together_ai",
-        "fireworks": "fireworks_ai",
-        "cohere": "cohere",
-        "groq": "groq",
-        "novita": "novita",
-        "deepinfra": "deepinfra",
-        "aihubmix": "aihubmix",
-    }
-    litellm_provider = LITELLM_KEY_MAP.get(platform_key, platform_key)
-    mid_lower = mid.lower()
-    norm = normalize_for_match(mid)
-    if litellm_provider in LITELLM_DB:
-        if mid_lower in LITELLM_DB[litellm_provider]:
-            d = LITELLM_DB[litellm_provider][mid_lower]
-            ii, oo, ctx = d["input"], d["output"], d["context"]
-            tt, ss = infer_tags_and_scene(mid, ii, oo, ctx)
-            return ii, oo, ctx, tt, ss
-        if norm in LITELLM_DB[litellm_provider]:
-            d = LITELLM_DB[litellm_provider][norm]
-            ii, oo, ctx = d["input"], d["output"], d["context"]
-            tt, ss = infer_tags_and_scene(mid, ii, oo, ctx)
-            return ii, oo, ctx, tt, ss
-    return 0, 0, "N/A", [], "日常对话"
-
-# ─── 价格漂移检测 ───
-def detect_price_drift(all_models, or_prices, litellm_prices):
-    drift = []
-    src_map = {"aliyun": "A", "openrouter": "A", "together": "A",
-               "novita": "A", "deepinfra": "A", "n1n": "P", "ca": "P"}
-    for m in all_models:
-        p = m.get("p", "")
-        src = m.get("src", src_map.get(p, "H"))
-        mn = m.get("n", "")
-        our_i = float(m.get("i", 0) or 0)
-        our_o = float(m.get("o", 0) or 0)
-        cur = m.get("cur", "CNY")
-        norm = normalize_for_match(mn)
-        # LiteLLM fallback for free models
-        if our_i == 0 and our_o == 0 and src == "H":
-            ref = litellm_prices.get(norm)
-            if ref and ref.get("input_per_1m", 0) > 0:
-                ref_i = ref["input_per_1m"]
-                ref_o = ref.get("output_per_1m", 0)
-                if cur == "CNY":
-                    our_display = 0.0
-                    ref_display = round(ref_i * USD_TO_CNY, 4)
-                else:
-                    our_display = 0.0
-                    ref_display = round(ref_i, 4)
-                drift.append({
-                    "model_name": mn,
-                    "platform": p,
-                    "our_price": our_display,
-                    "ref_price": ref_display,
-                    "ref_source": "LiteLLM(兜底)",
-                    "drift_pct": 100.0,
-                })
-            continue
-        if src != "H":
-            continue
-        if our_i <= 0:
-            continue
-        ref = or_prices.get(norm)
-        ref_source = "OpenRouter"
-        if not ref:
-            ref = litellm_prices.get(norm)
-            ref_source = "LiteLLM"
-        if not ref:
-            continue
-        ref_i = ref.get("input_per_1m", 0)
-        if ref_i <= 0:
-            continue
-        if cur == "CNY":
-            our_i_usd = our_i / USD_TO_CNY
-        else:
-            our_i_usd = our_i
-        drift_pct = abs(our_i_usd - ref_i) / ref_i * 100
-        if drift_pct >= 5:
-            if cur == "CNY":
-                our_display = round(our_i, 4)
-                ref_display = round(ref_i * USD_TO_CNY, 4)
-            else:
-                our_display = round(our_i_usd, 4)
-                ref_display = round(ref_i, 4)
-            drift.append({
-                "model_name": mn,
-                "platform": p,
-                "our_price": our_display,
-                "ref_price": ref_display,
-                "ref_source": ref_source,
-                "drift_pct": round(drift_pct, 1),
-            })
-    return drift
+# ─── 价格漂移检测（已移除：不再依赖第三方数据源交叉验证） ───
 
 # ─── 通用请求函数 (带重试和缓存) ───
 def fj(url, tok="", to=20, retries=3):
@@ -653,52 +564,11 @@ def get_family(mid):
 # 双轨制价格获取：海外走 LiteLLM，国内走 domestic_prices.json
 # ═══════════════════════════════════════════════════════════
 
-DOMESTIC_DB = {}
-_dp_path = os.path.join(SCRIPT_DIR, "domestic_prices.json")
-if os.path.exists(_dp_path):
-    try:
-        with open(_dp_path, "r", encoding="utf-8") as _f:
-            DOMESTIC_DB = json.load(_f)
-        _dc = sum(len(v) for v in DOMESTIC_DB.values())
-        print("  domestic_prices.json: %d platforms, %d entries" % (len(DOMESTIC_DB), _dc), file=sys.stderr)
-    except Exception as e:
-        print("  domestic_prices.json load error:", e, file=sys.stderr)
+# domestic_prices.json 已被 official_prices_db.json 取代
 
-# ─── SPA 爬取价格（由 fetch_spa_prices.py 生成，Playwright 爬取 SPA 定价页） ───
-SPA_PRICES = {}
-_spa_path = os.path.join(SCRIPT_DIR, "spa_prices.json")
-if os.path.exists(_spa_path):
-    try:
-        with open(_spa_path, "r", encoding="utf-8") as _f:
-            _spa_data = json.load(_f)
-            SPA_PRICES = _spa_data.get("prices", {})
-        _sc = sum(len(v) for v in SPA_PRICES.values())
-        print("  spa_prices.json: %d platforms, %d entries" % (len(SPA_PRICES), _sc), file=sys.stderr)
-    except Exception as e:
-        print("  spa_prices.json load error:", e, file=sys.stderr)
+# SPA 爬取价格已移除（不再作为 fallback 源）
 
-def get_domestic_price(platform_key, raw_model_id):
-    if platform_key not in DOMESTIC_DB:
-        return 0, 0, "N/A", [], "日常对话"
-    platform_rules = DOMESTIC_DB[platform_key]
-    model_id = raw_model_id.lower()
-    entry = None
-    if model_id in platform_rules:
-        entry = platform_rules[model_id]
-    else:
-        sorted_rule_keys = sorted(platform_rules.keys(), key=len, reverse=True)
-        for rule_key in sorted_rule_keys:
-            if model_id.startswith(rule_key):
-                entry = platform_rules[rule_key]
-                break
-    if entry:
-        ii = entry.get("input", 0)
-        oo = entry.get("output", 0)
-        cc = entry.get("context", "N/A")
-        tt, ss = infer_tags_and_scene(raw_model_id, ii, oo, cc)
-        return ii, oo, cc, tt, ss
-    return 0, 0, "N/A", [], "日常对话"
-
+# get_domestic_price 已被 get_db_price 取代
 def infer_tags_and_scene(mid, inp, out, ctx):
     n = mid.lower()
     tt = []
@@ -717,75 +587,42 @@ def infer_tags_and_scene(mid, inp, out, ctx):
     else: ss = "日常对话"
     return tt, ss
 
-# ─── 代理平台价格映射 (n1n.ai / ChatAnywhere, 自营定价) ───
 def n1np(mid):
-    """n1n.ai - 国内聚合平台（¥/M tokens，从API获取真实价格）"""
+    """n1n.ai - 国内聚合平台（¥/M tokens，仅使用API获取的真实价格）"""
     if mid in n1n_prices:
         ii, oo = n1n_prices[mid]
         return ii, oo
-    m = mid.lower()
-    if "gpt-5.4" in m: return 17.5, 105.0
-    if "gpt-5.2" in m and "pro" in m: return 147.0, 1176.0
-    if "gpt-5.2" in m: return 12.25, 98.0
-    if "gpt-5.1" in m: return 8.75, 70.0
-    if "gpt-5" in m and "nano" in m: return 0.35, 2.8
-    if "gpt-5" in m and "mini" in m: return 1.75, 14.0
-    if "gpt-5" in m: return 8.75, 70.0
-    if "gpt-4o" in m and "mini" in m: return 1.05, 4.2
-    if "gpt-4o" in m: return 17.5, 70.0
-    if "opus" in m: return 75.0, 375.0
-    if "sonnet" in m: return 15.0, 75.0
-    if "haiku" in m: return 0.5, 2.5
-    if "gemini" in m and "pro" in m: return 7.0, 40.0
-    if "gemini" in m and "flash" in m: return 1.2, 10.0
-    if "deepseek-r1" in m: return 2.0, 8.0
-    if "deepseek-v4-pro" in m: return 6.0, 24.0
-    if "deepseek-v4" in m or "deepseek-chat" in m or "deepseek-reasoner" in m: return 1.0, 2.0
-    if "deepseek" in m: return 1.0, 2.0
-    if "qwen" in m and "72b" in m: return 1.4, 5.6
-    if "qwen" in m: return 1.4, 5.6
-    if "glm-5.1" in m: return 8.0, 24.0
-    if "glm-5" in m: return 6.0, 22.0
-    if "glm-4.7" in m: return 2.0, 8.0
-    if "glm" in m: return 2.4, 9.6
-    if "kimi" in m: return 2.0, 8.0
-    return 1.0, 5.0
+    # 无API价格 → 尝试 official_prices_db.json
+    db_i, db_o, _ = get_db_price("n1n", mid)
+    if db_i > 0 or db_o > 0:
+        return db_i, db_o
+    print("  ⚠️ PRICE_MISSING: [n1n] %s → 价格为0" % mid, file=sys.stderr)
+    return 0, 0
+
 
 def cap(mid):
-    """ChatAnywhere - 国内中转平台（¥/M tokens，从网页获取真实价格）"""
+    """ChatAnywhere - 国内中转平台（¥/M tokens，仅使用API获取的真实价格）"""
     if mid in ca_prices:
         ii, oo = ca_prices[mid]
         return ii, oo
-    m = mid.lower()
-    if "gpt-5.4" in m: return 17.5, 105.0
-    if "gpt-5.2" in m: return 12.25, 98.0
-    if "gpt-5.1" in m: return 8.75, 70.0
-    if "gpt-5" in m and "nano" in m: return 0.35, 2.8
-    if "gpt-5" in m and "mini" in m: return 1.75, 14.0
-    if "gpt-5" in m: return 8.75, 70.0
-    if "gpt-4o" in m and "mini" in m: return 1.05, 4.2
-    if "gpt-4o" in m: return 17.5, 70.0
-    if "sonnet" in m: return 15.0, 75.0
-    if "deepseek-r1" in m: return 2.0, 8.0
-    if "deepseek-v4-pro" in m: return 6.0, 24.0
-    if "deepseek-v4" in m or "deepseek-chat" in m or "deepseek-reasoner" in m: return 1.2, 2.4
-    if "deepseek" in m: return 1.2, 2.4
-    if "gemini" in m and "pro" in m: return 7.0, 40.0
-    if "gemini" in m and "flash" in m: return 1.2, 10.0
-    if "glm-5.1" in m: return 8.0, 24.0
-    if "glm-5" in m: return 6.0, 22.0
-    if "glm-4.7" in m: return 2.0, 8.0
-    if "qwen" in m: return 1.4, 5.6
-    return 1.0, 5.0
+    # 无API价格 → 尝试 official_prices_db.json
+    db_i, db_o, _ = get_db_price("ca", mid)
+    if db_i > 0 or db_o > 0:
+        return db_i, db_o
+    print("  ⚠️ PRICE_MISSING: [ca] %s → 价格为0" % mid, file=sys.stderr)
+    return 0, 0
 
 
-# ─── 统一价格解析（7 层 fallback 链） ───
-# 注意：此函数在 or_prices 构建后才能使用，否则 OpenRouter 回填不生效
-def resolve_model_price(platform, model_name, or_lookup, api_price=None):
+
+def get_absolute_price(platform, model_name, api_price=None):
     """
-    统一价格解析，7 层 fallback。
-    Returns (input, output, context, source_tag)
-    source_tag: "A"=API, "S"=官方爬取, "SP"=SPA爬取, "H"=手动, "OR"=OpenRouter回填, "L"=LiteLLM, ""=未知
+    统一价格解析 - 严格 3 层 SSOT:
+    1. API 直接返回的价格（T1 平台）
+    2. 官方爬取结果（fetch_official_prices, 硅基流动 RSC 等）
+    3. official_prices_db.json（精确匹配 → 前缀匹配）
+    
+    找不到 → 返回 (0, 0, "N/A", "") 并打印 WARNING
+    source_tag: "A"=API, "S"=官方爬取, "DB"=官方价格数据库, ""=未知
     """
     # 1. API 直接返回的价格
     if api_price and (api_price[0] > 0 or api_price[1] > 0):
@@ -804,43 +641,15 @@ def resolve_model_price(platform, model_name, or_lookup, api_price=None):
     if official and (official.get("input", 0) > 0 or official.get("output", 0) > 0):
         return official["input"], official["output"], official.get("context", "N/A"), "S"
 
-    # 3. SPA 爬取结果 (spa_prices.json)
-    spa_platform = SPA_PRICES.get(platform, {})
-    spa_entry = spa_platform.get(mn_lower)
-    if not spa_entry:
-        for k in sorted(spa_platform.keys(), key=len, reverse=True):
-            if mn_lower.startswith(k):
-                spa_entry = spa_platform[k]
-                break
-    if spa_entry and (spa_entry.get("input", 0) > 0 or spa_entry.get("output", 0) > 0):
-        return spa_entry["input"], spa_entry["output"], spa_entry.get("context", "N/A"), "SP"
+    # 3. official_prices_db.json
+    db_i, db_o, db_c = get_db_price(platform, model_name)
+    if db_i > 0 or db_o > 0:
+        return db_i, db_o, db_c, "DB"
 
-    # 4. domestic_prices.json
-    dom_i, dom_o, dom_c, _, _ = get_domestic_price(platform, model_name)
-    if dom_i > 0 or dom_o > 0:
-        return dom_i, dom_o, dom_c, "H"
-
-    # 5. OpenRouter 交叉回填 (USD→CNY)
-    if or_lookup:
-        norm = normalize_for_match(model_name)
-        or_ref = or_lookup.get(norm)
-        if not or_ref:
-            for or_pfx in ["deepseek/", "qwen/", "bytedance/"]:
-                or_ref = or_lookup.get(normalize_for_match(or_pfx + model_name))
-                if or_ref:
-                    break
-        if or_ref and (or_ref.get("input_per_1m", 0) > 0 or or_ref.get("output_per_1m", 0) > 0):
-            cny_i = round(or_ref["input_per_1m"] * USD_TO_CNY, 4)
-            cny_o = round(or_ref["output_per_1m"] * USD_TO_CNY, 4)
-            return cny_i, cny_o, "N/A", "OR"
-
-    # 6. LiteLLM 兜底
-    ll_i, ll_o, ll_c, _, _ = get_dynamic_price(platform, model_name)
-    if ll_i > 0 or ll_o > 0:
-        return ll_i, ll_o, ll_c if ll_c != "N/A" else "N/A", "L"
-
-    # 7. 未知
+    # 未找到 → 0 + WARNING
+    print("  ⚠️ PRICE_MISSING: [%s] %s → 价格为0，请在 official_prices_db.json 中添加" % (platform, model_name), file=sys.stderr)
     return 0, 0, "N/A", ""
+
 
 
 # ═══════════════════════════════════════════════════════════
@@ -942,8 +751,8 @@ if os.path.exists(MODELS_JSON):
                             })
                         inp_orig = new_i
                         out_orig = new_o
-                # 用 resolve_model_price 确定价格来源标签
-                _, _, _, _src_tag = resolve_model_price(pid, mname, or_prices)
+                # 用 get_absolute_price 确定价格来源标签
+                _, _, _, _src_tag = get_absolute_price(pid, mname)
                 _effective_src = _src_tag or m.get("price_src","") or "H"
                 cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=_effective_src))
             all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur, "src": m.get("price_src","") or _src_tag})
@@ -1111,7 +920,7 @@ if not USE_JSON_DATA:
             except: pass
     print("  OpenRouter:", len(OR), file=sys.stderr)
 
-    # 构建 OpenRouter 价格查找表（供 resolve_model_price 使用）
+    # 构建 OpenRouter 价格查找表
     or_prices = {}
     for _m in OR:
         _mid = _m.get("id", "")
@@ -1306,30 +1115,51 @@ if not USE_JSON_DATA:
                        {"id":"qwen/qwen3.5-122b-a10b","i":0.4,"o":3.2,"c":262144}]
     print("  Novita:", len(novita_list), file=sys.stderr)
 
-    # DeepInfra
+    # DeepInfra (使用专用 /models/list API，包含真实定价数据)
     di_list = []
     di_prices = {}
-    if DEEPINFRA:
-        d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
-        if d:
-            raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-            for m in raw:
-                mid = m.get("id","")
-                if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "flux" not in mid.lower() and "remove" not in mid.lower() and "enhance" not in mid.lower():
-                    di_list.append(mid)
-                    pricing = (m.get("metadata") or {}).get("pricing") or {}
-                    inp_p = pricing.get("input_tokens")
-                    out_p = pricing.get("output_tokens")
-                    ctx_l = (m.get("metadata") or {}).get("context_length")
-                    if inp_p is not None and out_p is not None and inp_p > 0:
-                        di_prices[mid] = (round(inp_p,6), round(out_p,6), str(ctx_l) if ctx_l else "32k")
+    try:
+        req = urllib.request.Request("https://api.deepinfra.com/models/list",
+                                     headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            di_raw = json.loads(r.read().decode("utf-8", errors="ignore"))
+        for m in di_raw:
+            mn = m.get("model_name", "")
+            mtype = m.get("type", "")
+            pricing = m.get("pricing", {})
+            ptype = pricing.get("type", "")
+            deprecated = m.get("deprecated")
+            # 只保留文本生成模型，跳过已废弃
+            if mtype != "text-generation" or deprecated:
+                continue
+            if ptype == "tokens":
+                cents_in = float(pricing.get("cents_per_input_token", 0) or 0)
+                cents_out = float(pricing.get("cents_per_output_token", 0) or 0)
+                max_tok = m.get("max_tokens", 0) or 0
+                # 转换: cents/token → $/1M tokens
+                inp_1m = round(cents_in * 10000, 6)  # cents/token * 1e6 / 100
+                out_1m = round(cents_out * 10000, 6)
+                if inp_1m > 0 or out_1m > 0:
+                    ctx_str = str(max_tok // 1000) + "k" if max_tok >= 1000 else str(max_tok)
+                    di_list.append(mn)
+                    di_prices[mn] = (inp_1m, out_1m, ctx_str)
+    except Exception as e:
+        print("  DeepInfra models/list error:", str(e)[:80], file=sys.stderr)
     if not di_list:
-        di_list = ["Qwen/Qwen3.5-27B","Qwen/Qwen3.5-4B","meta-llama/Llama-3.3-70B-Instruct",
-                   "meta-llama/Llama-3.1-8B-Instruct","deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
-                   "google/gemma-3-27b-it","mistralai/Mixtral-8x7B-Instruct-v0.1",
-                   "microsoft/phi-4","Qwen/QwQ-32B",
-                   "zai-org/glm-5.1","zai-org/glm-5","zai-org/glm-4.7"]
+        # Fallback: 尝试 OpenAI 兼容接口
+        if DEEPINFRA:
+            d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
+            if d:
+                for m in (d.get("data",[]) if isinstance(d, dict) else []):
+                    mid = m.get("id","")
+                    if mid and "embed" not in mid.lower() and "rerank" not in mid.lower():
+                        di_list.append(mid)
+        if not di_list:
+            di_list = ["Qwen/Qwen3.5-27B","meta-llama/Llama-3.3-70B-Instruct",
+                       "deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
+                       "google/gemma-3-27b-it","microsoft/phi-4"]
     print("  DeepInfra:", len(di_list), "with pricing:", len(di_prices), file=sys.stderr)
+
 
     # AiHubMix
     ahm_list = []
@@ -1416,7 +1246,7 @@ if not USE_JSON_DATA:
     for m in ali:
         fam = get_family(m["n"])
         api_price = (m["i"], m["o"], m["c"]) if (m["i"] > 0 or m["o"] > 0) else None
-        ii, oo, cc, src = resolve_model_price("aliyun", m["n"], or_prices, api_price=api_price)
+        ii, oo, cc, src = get_absolute_price("aliyun", m["n"], api_price=api_price)
         tt, ss = m["t"], m["s"]
         if src != "A":
             tt2, ss2 = infer_tags_and_scene(m["n"], ii, oo, cc)
@@ -1428,7 +1258,7 @@ if not USE_JSON_DATA:
 
     # 硅基流动
     for mid in sf_ids:
-        ii, oo, cc, src = resolve_model_price("siliconflow", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("siliconflow", mid)
         if not cc or cc == "N/A":
             cc = "32k"
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
@@ -1440,7 +1270,7 @@ if not USE_JSON_DATA:
     # 月之暗面
     for m in ms_list:
         mid = m["id"]
-        ii, oo, cc, src = resolve_model_price("moonshot", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("moonshot", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
@@ -1449,7 +1279,7 @@ if not USE_JSON_DATA:
 
     # 智谱AI
     for mid in zh_ids:
-        ii, oo, cc, src = resolve_model_price("zhipu", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("zhipu", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("zhipu","智谱 AI","#00c4b4",Te(mid),ii,oo,cc,tt,ss,
@@ -1459,7 +1289,7 @@ if not USE_JSON_DATA:
     # 火山引擎
     for m in vc_list:
         mid = m["id"]; st = m.get("st","")
-        ii, oo, cc, src = resolve_model_price("volcengine", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("volcengine", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         tt = tt[:]
         if st == "Shutdown":  tt = ["已下线"] + tt
@@ -1474,7 +1304,7 @@ if not USE_JSON_DATA:
         mid = m["n"]
         fam = get_family(mid)
         api_price = (m["i"], m["o"], m["c"]) if (m["i"] > 0 and m["o"] > 0) else None
-        ii, oo, cc, src = resolve_model_price("baidu", mid, or_prices, api_price=api_price)
+        ii, oo, cc, src = get_absolute_price("baidu", mid, api_price=api_price)
         if not cc or cc == "N/A":
             cc = m["c"]
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
@@ -1510,7 +1340,7 @@ if not USE_JSON_DATA:
 
     # 腾讯混元
     for mid in tx_ids:
-        ii, oo, cc, src = resolve_model_price("tencent", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("tencent", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
@@ -1519,7 +1349,7 @@ if not USE_JSON_DATA:
 
     # 讯飞星火
     for mid in xh_ids:
-        ii, oo, cc, src = resolve_model_price("spark", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("spark", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("spark","讯飞星火","#ff6a00",Te(mid),ii,oo,cc,tt,ss,
@@ -1528,7 +1358,7 @@ if not USE_JSON_DATA:
 
     # MiniMax
     for mid in mm_ids:
-        ii, oo, cc, src = resolve_model_price("minimax", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("minimax", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("minimax","MiniMax","#6366f1",Te(mid),ii,oo,cc,tt,ss,
@@ -1537,7 +1367,7 @@ if not USE_JSON_DATA:
 
     # 零一万物
     for mid in yw_ids:
-        ii, oo, cc, src = resolve_model_price("yi", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("yi", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("yi","零一万物","#3b82f6",Te(mid),ii,oo,cc,tt,ss,
@@ -1546,7 +1376,7 @@ if not USE_JSON_DATA:
 
     # 百川智能
     for mid in bc_ids:
-        ii, oo, cc, src = resolve_model_price("baichuan", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("baichuan", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("baichuan","百川智能","#ef4444",Te(mid),ii,oo,cc,tt,ss,
@@ -1555,7 +1385,7 @@ if not USE_JSON_DATA:
 
     # 阶跃星辰
     for mid in jc_ids:
-        ii, oo, cc, src = resolve_model_price("jieyue", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("jieyue", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("jieyue","阶跃星辰","#8b5cf6",Te(mid),ii,oo,cc,tt,ss,
@@ -1564,7 +1394,7 @@ if not USE_JSON_DATA:
 
     # DeepSeek 官方
     for mid in ds_ids:
-        ii, oo, cc, src = resolve_model_price("deepseek", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("deepseek", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("deepseek","DeepSeek","#4d6dff",Te(mid),ii,oo,cc,tt,ss,
@@ -1573,7 +1403,7 @@ if not USE_JSON_DATA:
 
     # Groq
     for mid in gq_ids:
-        ii, oo, cc, src = resolve_model_price("groq", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("groq", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("groq","Groq","#f55036",Te(mid),ii,oo,cc,tt,ss,
@@ -1586,7 +1416,8 @@ if not USE_JSON_DATA:
         api_inp = m.get("i", 0)
         api_out = m.get("o", 0)
         api_ctx = m.get("c", 0)
-        ii, oo, cc, tt, ss = get_dynamic_price("together", mid)
+        ii, oo, cc = get_db_price("together", mid)
+        tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         if api_inp > 0 and api_out > 0:
             ii, oo = api_inp, api_out
             cc = str(int(api_ctx)//1000)+"k" if api_ctx else cc
@@ -1599,7 +1430,7 @@ if not USE_JSON_DATA:
     # Fireworks AI
     for m in fw_list:
         mid = m["id"]
-        ii, oo, cc, src = resolve_model_price("fireworks", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("fireworks", mid)
         api_ctx = m.get("c", 0)
         if api_ctx > 0:
             cc = str(int(api_ctx)//1000)+"k"
@@ -1612,7 +1443,7 @@ if not USE_JSON_DATA:
     # Cohere
     for m in co_list:
         mid = m["id"]
-        ii, oo, cc, src = resolve_model_price("cohere", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("cohere", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("cohere","Cohere","#39d989",Te(mid),ii,oo,cc,tt,ss,
@@ -1621,7 +1452,7 @@ if not USE_JSON_DATA:
 
     # 无问芯穹 (InfiniAI)
     for mid in infini_list:
-        ii, oo, cc, src = resolve_model_price("infini", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("infini", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("infini","无问芯穹","#ff6b9d",Te(mid),ii,oo,cc,tt,ss,
@@ -1639,7 +1470,8 @@ if not USE_JSON_DATA:
             cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
             tt, ss = infer_tags_and_scene(mid, ii, oo, api_ctx)
         else:
-            ii, oo, cc, tt, ss = get_dynamic_price("novita", mid)
+            ii, oo, cc = get_db_price("novita", mid)
+            tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
                      "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
@@ -1647,24 +1479,26 @@ if not USE_JSON_DATA:
 
     # DeepInfra
     for mid in di_list:
-        ii, oo, cc, tt, ss = get_dynamic_price("deepinfra", mid)
         if mid in di_prices:
-            ii2, oo2, cc2 = di_prices[mid]
-            if ii2 > 0 and oo2 > 0:
-                ii, oo = ii2, oo2
-            try:
-                cc_int = int(cc2)
-                cc = str(cc_int // 1000) + "k" if cc_int >= 1000 else str(cc_int)
-            except (ValueError, TypeError):
-                pass
+            # API 直接返回的价格（最高优先级）
+            ii, oo, cc = di_prices[mid]
+            tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
+            src = "A"
+        else:
+            # 没有API价格，尝试 official_prices_db.json
+            ii, oo, cc = get_db_price("deepinfra", mid)
+            tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
+            src = "DB" if (ii > 0 or oo > 0) else ""
+            if src == "":
+                print("  ⚠️ PRICE_MISSING: [deepinfra] %s → 价格为0" % mid, file=sys.stderr)
         fam = get_family(mid)
         cards.append(make_card("deepinfra","DeepInfra","#7c3aed",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
-        all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD","src":"A"})
+                     "https://api.deepinfra.com/v1/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"deepinfra","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # AiHubMix
     for mid in ahm_list:
-        ii, oo, cc, src = resolve_model_price("aihubmix", mid, or_prices)
+        ii, oo, cc, src = get_absolute_price("aihubmix", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("aihubmix","AiHubMix","#10b981",Te(mid),ii,oo,cc,tt,ss,
@@ -1713,38 +1547,7 @@ if not USE_JSON_DATA:
                      "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam,price_src="P"))
         all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY","src":"P"})
 
-    # ─── 多源交叉验证（自动修正 price=0 的模型）───
-    try:
-        from cross_validator import cross_validate_all, save_log
-        cv_results = cross_validate_all(all_models, or_prices, LITELLM_DB, SPA_PRICES, OFFICIAL_PRICES)
-        cv_corrections = 0
-        for m in all_models:
-            key = (m["p"], m["n"])
-            if key in cv_results:
-                r = cv_results[key]
-                if r["action"] == "auto_fill" and r["input"] > 0:
-                    m["i"] = r["input"]
-                    m["o"] = r["output"]
-                    m["src"] = "CV"
-                    cv_corrections += 1
-        # 更新卡片中的价格（替换 data-inp/data-out 属性）
-        if cv_corrections > 0:
-            for idx, c in enumerate(cards):
-                _dp = re.search(r'data-p="([^"]*)"', c)
-                _mn = re.search(r'class="mname">([^<]*)', c)
-                if _dp and _mn:
-                    key = (_dp.group(1), _mn.group(1).lower())
-                    if key in cv_results and cv_results[key]["action"] == "auto_fill":
-                        r = cv_results[key]
-                        c = re.sub(r'data-inp="[^"]*"', 'data-inp="%s"' % str(r["input"]), c)
-                        c = re.sub(r'data-out="[^"]*"', 'data-out="%s"' % str(r["output"]), c)
-                        # 更新价格显示
-                        c = re.sub(r'class="price-val"[^>]*>[^<]*', 'class="price-val">¥%.4f' % r["input"], c, count=1)
-                        cards[idx] = c
-            print("  Cross-validation: %d models auto-corrected" % cv_corrections, file=sys.stderr)
-        save_log(cv_results)
-    except Exception as e:
-        print("  Cross-validation error:", str(e)[:80], file=sys.stderr)
+    # ─── 多源交叉验证已移除（不再依赖多源交叉验证）───
 
     # ─── 价格变动检测 ───
     price_changes = []
@@ -1772,15 +1575,8 @@ print("Generated:", total, file=sys.stderr)
 if price_changes:
     print("  Price changes detected:", len(price_changes), file=sys.stderr)
 
-# ─── 多层级价格源: Tier 2 OpenRouter 交叉验证 + Tier 3 LiteLLM 兜底 ───
-# or_prices 和 litellm_db 已在数据抓取阶段构建，此处直接复用
+# ─── 价格漂移检测已移除（不再依赖第三方数据源交叉验证）───
 drift_list = []
-try:
-    drift_list = detect_price_drift(all_models, or_prices, LITELLM_DB)
-    if drift_list:
-        print("  Price drift detected: %d models" % len(drift_list), file=sys.stderr)
-except Exception as e:
-    print("  Price drift detection error:", str(e)[:80], file=sys.stderr)
 
 # ─── Telegram 通知（每次运行都发送）───
 def send_telegram_notification(total_models, changes):
