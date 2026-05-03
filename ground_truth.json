@@ -1,0 +1,41 @@
+{
+  "_meta": {
+    "description": "Ground Truth 基准测试集 — 核心模型的准确价格（CNY/M tokens）",
+    "updated": "2026-04-29",
+    "sources": "各平台官网定价页，详见每个模型的 source 字段",
+    "tolerance_pct": 5,
+    "note": "input/output 单位为 CNY/1M tokens，与 domestic_prices.json / LiteLLM 中价格一致"
+  },
+  "models": [
+    {"platform": "deepseek",  "model": "deepseek-v4-flash",      "input": 1,   "output": 2,   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"},
+    {"platform": "deepseek",  "model": "deepseek-v4-pro",        "input": 3,   "output": 6,   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"},
+    {"platform": "deepseek",  "model": "deepseek-chat",          "input": 1,   "output": 2,   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"},
+
+    {"platform": "moonshot",  "model": "moonshot-v1-8k",         "input": 2,   "output": 10,  "source": "https://platform.moonshot.cn/docs/pricing"},
+    {"platform": "moonshot",  "model": "moonshot-v1-32k",        "input": 5,   "output": 20,  "source": "https://platform.moonshot.cn/docs/pricing"},
+    {"platform": "moonshot",  "model": "moonshot-v1-128k",       "input": 10,  "output": 30,  "source": "https://platform.moonshot.cn/docs/pricing"},
+
+    {"platform": "zhipu",     "model": "glm-5",                  "input": 6,   "output": 22,  "source": "https://bigmodel.cn/pricing"},
+    {"platform": "zhipu",     "model": "glm-4.7",                "input": 2,   "output": 8,   "source": "https://bigmodel.cn/pricing"},
+    {"platform": "zhipu",     "model": "glm-5.1",                "input": 8,   "output": 24,  "source": "https://bigmodel.cn/pricing"},
+
+    {"platform": "volcengine","model": "doubao-pro-32k",         "input": 0.5, "output": 2,   "source": "https://www.volcengine.com/product/doubao"},
+    {"platform": "volcengine","model": "doubao-lite-32k",        "input": 0.15,"output": 0.6, "source": "https://www.volcengine.com/product/doubao"},
+
+    {"platform": "baidu",     "model": "ernie-4.0-8k",           "input": 24,  "output": 48,  "source": "https://qianfan.baidubce.com/pricing"},
+    {"platform": "baidu",     "model": "ernie-3.5-8k",           "input": 1.2,"output": 1.2, "source": "https://qianfan.baidubce.com/pricing"},
+
+    {"platform": "tencent",   "model": "hunyuan-turbos",         "input": 0.8, "output": 2,   "source": "https://cloud.tencent.com/product/hunyuan"},
+    {"platform": "tencent",   "model": "hunyuan-pro",            "input": 4,   "output": 16,  "source": "https://cloud.tencent.com/product/hunyuan"},
+
+    {"platform": "minimax",   "model": "MiniMax-M2.7",           "input": 2.1, "output": 8.4, "source": "https://www.minimaxi.com/pricing"},
+    {"platform": "minimax",   "model": "MiniMax-M2.1",           "input": 1,   "output": 4,   "source": "https://www.minimaxi.com/pricing"},
+
+    {"platform": "siliconflow","model": "deepseek-ai/DeepSeek-V3","input": 1,   "output": 2,   "source": "https://siliconflow.cn/pricing"},
+    {"platform": "siliconflow","model": "Qwen/Qwen2.5-72B-Instruct","input": 1.4,"output": 4.13,"source": "https://siliconflow.cn/pricing"},
+
+    {"platform": "aliyun",    "model": "qwen-max",               "input": 20,  "output": 60,  "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"},
+    {"platform": "aliyun",    "model": "qwen-plus",              "input": 0.8, "output": 2,   "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"},
+    {"platform": "aliyun",    "model": "qwen-turbo",             "input": 0.3, "output": 0.6, "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"}
+  ]
+}

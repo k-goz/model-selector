@@ -117,7 +117,27 @@ def fetch_official_prices():
     except Exception as e:
         print("  fetch_official_prices: Moonshot error:", str(e)[:80], file=sys.stderr)
 
-    # 3. 腾讯混元 - 腾讯云文档为 SPA，纯 HTTP 爬取不到表格数据，跳过
+    # 3. 腾讯混元 - 通过 Jina Reader 提取 SPA 页面
+    try:
+        jina_url = "https://r.jina.ai/https://cloud.tencent.com/document/product/1729"
+        jina_h = {"User-Agent": "Mozilla/5.0", "Accept": "text/plain"}
+        jina_req = urllib.request.Request(jina_url, headers=jina_h)
+        with urllib.request.urlopen(jina_req, timeout=20) as jina_r:
+            jina_text = jina_r.read().decode("utf-8", errors="ignore")
+        # 在 markdown 文本中寻找价格表格行 (如 "hunyuan-turbos 0.8 2")
+        for line in jina_text.split("\n"):
+            if "hunyuan" in line.lower() and "|" in line:
+                parts = [p.strip() for p in line.split("|") if p.strip()]
+                if len(parts) >= 3:
+                    _mn = parts[0].strip().lower()
+                    _iv = re.search(r'([\d.]+)', parts[1])
+                    _ov = re.search(r'([\d.]+)', parts[2]) if len(parts) > 2 else None
+                    if _iv and _ov:
+                        prices[_mn] = {"input": float(_iv.group(1)), "output": float(_ov.group(1)), "currency": "CNY", "source": "jina:腾讯混元"}
+        if any("hunyuan" in k for k in prices):
+            print("  fetch_official_prices: Tencent (Jina) %d models" % sum(1 for k in prices if "hunyuan" in k), file=sys.stderr)
+    except Exception as e:
+        print("  fetch_official_prices: Tencent Jina error:", str(e)[:60], file=sys.stderr)
     # 如需爬取，需使用 headless browser（selenium/playwright）
     # try:
     #     h = _fh("https://cloud.tencent.com/document/product/1729/97731")
@@ -516,7 +536,8 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     ts = th(tags)
     bg = bc(inp, out) if cur == "CNY" else bo(inp, out, price_unit)
     src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
-               "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据", "CV": "交叉验证修正"}
+               "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据",
+               "D": "国内官方价格库", "DB": "官方价格数据库", "CV": "交叉验证修正"}
     src_title = src_map.get(price_src, price_src or "硬编码")
     src_cls = "price-src price-src-proxy" if price_src == "P" else ("price-src price-src-or" if price_src == "OR" else "price-src")
     src_tag = '<span class="' + src_cls + '" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
@@ -553,7 +574,8 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     tts = th(tt)
     bg = bo(inp, out, price_unit)
     src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
-               "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据", "CV": "交叉验证修正"}
+               "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据",
+               "D": "国内官方价格库", "DB": "官方价格数据库", "CV": "交叉验证修正"}
     src_title = src_map.get(price_src, price_src or "硬编码")
     src_cls = "price-src price-src-proxy" if price_src == "P" else ("price-src price-src-or" if price_src == "OR" else "price-src")
     src_tag = '<span class="' + src_cls + '" title="价格来源: ' + src_title + '">' + (price_src[:1] if price_src else "") + '</span>' if price_src else ''
@@ -648,14 +670,48 @@ def get_family(mid):
     return 'Other'
 
 # ═══════════════════════════════════════════════════════════
-# 双轨制价格获取：海外走 LiteLLM，国内走 domestic_prices.json
+# 双轨制价格获取：海外走 LiteLLM，国内走 official_prices_db.json
 # ═══════════════════════════════════════════════════════════
 
-# domestic_prices.json 已被 official_prices_db.json 取代
+# LiteLLM 社区价格数据（第4层兜底）
+LITELLM_DB = {}
+LITELLM_KEY_MAP = {
+    "together": "together_ai", "fireworks": "fireworks_ai",
+    "cohere": "cohere", "groq": "groq", "novita": "novita", "deepinfra": "deepinfra",
+}
+try:
+    _llm_url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
+    _llm_req = urllib.request.Request(_llm_url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(_llm_req, timeout=30) as _r:
+        _llm_data = json.loads(_r.read().decode("utf-8", errors="ignore"))
+    for _rn, _info in _llm_data.items():
+        if not isinstance(_info, dict): continue
+        _prov = _info.get("litellm_provider", "")
+        if not _prov: continue
+        _li = float(_info.get("input_cost_per_token", 0) or 0) * 1e6
+        _lo = float(_info.get("output_cost_per_token", 0) or 0) * 1e6
+        if _li == 0: _li = float(_info.get("input_cost_per_million_tokens", 0) or 0)
+        if _lo == 0: _lo = float(_info.get("output_cost_per_million_tokens", 0) or 0)
+        if _li > 0 or _lo > 0:
+            if _prov not in LITELLM_DB: LITELLM_DB[_prov] = {}
+            _mk = _rn.replace(_prov + "/", "").lower()
+            _ctx = _info.get("max_input_tokens", 0)
+            LITELLM_DB[_prov][_mk] = {"input": _li, "output": _lo, "context": ("%dk" % (_ctx // 1000)) if _ctx else "N/A"}
+    _llm_total = sum(len(v) for v in LITELLM_DB.values())
+    print("  LiteLLM: %d providers, %d entries" % (len(LITELLM_DB), _llm_total), file=sys.stderr)
+except Exception as _e:
+    print("  LiteLLM fetch skipped:", str(_e)[:60], file=sys.stderr)
 
-# SPA 爬取价格已移除（不再作为 fallback 源）
-
-# get_domestic_price 已被 get_db_price 取代
+def get_litellm_price(platform_key, model_name):
+    provider = LITELLM_KEY_MAP.get(platform_key, platform_key)
+    if provider not in LITELLM_DB: return 0, 0, "N/A"
+    ml = model_name.lower()
+    norm = normalize_for_match(model_name)
+    for k in (ml, norm):
+        if k in LITELLM_DB[provider]:
+            e = LITELLM_DB[provider][k]
+            return e["input"], e["output"], e["context"]
+    return 0, 0, "N/A"
 def infer_tags_and_scene(mid, inp, out, ctx):
     n = mid.lower()
     tt = []
@@ -703,13 +759,14 @@ def cap(mid):
 
 def get_absolute_price(platform, model_name, api_price=None):
     """
-    统一价格解析 - 严格 3 层 SSOT:
+    统一价格解析 - 严格 4 层 SSOT:
     1. API 直接返回的价格（T1 平台）
     2. 官方爬取结果（fetch_official_prices, 硅基流动 RSC 等）
     3. official_prices_db.json（精确匹配 → 前缀匹配）
+    4. LiteLLM 社区价格数据（海外平台兜底）
     
     找不到 → 返回 (0, 0, "N/A", "") 并打印 WARNING
-    source_tag: "A"=API, "S"=官方爬取, "DB"=官方价格数据库, ""=未知
+    source_tag: "A"=API, "S"=官方爬取, "DB"=官方价格数据库, "L"=LiteLLM社区, ""=未知
     """
     # 1. API 直接返回的价格
     if api_price and (api_price[0] > 0 or api_price[1] > 0):
@@ -732,6 +789,11 @@ def get_absolute_price(platform, model_name, api_price=None):
     db_i, db_o, db_c = get_db_price(platform, model_name)
     if db_i > 0 or db_o > 0:
         return db_i, db_o, db_c, "DB"
+
+    # 4. LiteLLM 社区价格（海外平台兜底）
+    ll_i, ll_o, ll_c = get_litellm_price(platform, model_name)
+    if ll_i > 0 or ll_o > 0:
+        return ll_i, ll_o, ll_c, "L"
 
     # 未找到 → 0 + WARNING
     print("  ⚠️ PRICE_MISSING: [%s] %s → 价格为0，请在 official_prices_db.json 中添加" % (platform, model_name), file=sys.stderr)
@@ -788,7 +850,10 @@ or_prices = {}  # OpenRouter 价格查找表（始终可用）
 OR = []         # OpenRouter 原始数据
 
 if os.path.exists(MODELS_JSON):
-    print("Loading models from JSON:", MODELS_JSON, file=sys.stderr)
+    _json_age_hours = (time.time() - os.path.getmtime(MODELS_JSON)) / 3600
+    print("Loading models from JSON:", MODELS_JSON, "(age: %.1fh)" % _json_age_hours, file=sys.stderr)
+    if _json_age_hours > 24:
+        print("  ⚠️ models_data.json 已超过24小时，将重新生成", file=sys.stderr)
     try:
         with open(MODELS_JSON, "r", encoding="utf-8") as jf:
             jdata = json.load(jf)
@@ -870,7 +935,9 @@ if os.path.exists(MODELS_JSON):
                 cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=_effective_src))
             all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur, "src": m.get("price_src","") or _src_tag})
         price_changes = jmeta.get("price_changes", [])
-        USE_JSON_DATA = True
+        USE_JSON_DATA = _json_age_hours <= 24
+        if not USE_JSON_DATA:
+            print("  缓存过期，将重新从API生成", file=sys.stderr)
         print("  Loaded %d models from JSON" % len(jmodels), file=sys.stderr)
         # 加载 OpenRouter 缓存用于交叉验证
         _or_cache = os.path.join(CACHE_DIR, "openrouter_full.json")
@@ -2976,11 +3043,12 @@ var cnyInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
 if(priceMin!==null&&cnyInp<priceMin)sh=false;
 if(priceMax!==null&&cnyInp>priceMax)sh=false;
 }
-// 搜索 (支持高级语法)
-if(q){
-var adv=parseAdvancedSearch(q);
-// 文本匹配
-if(adv.text&&mn.toLowerCase().indexOf(adv.text)===-1&&pn.toLowerCase().indexOf(adv.text)===-1)sh=false;
+ // 搜索 (支持高级语法)
+ if(q){
+ var adv=parseAdvancedSearch(q);
+ // 模糊匹配: 搜索词每个字符按序出现即可 (如 "dsk" 匹配 "deepseek")
+ function fuzzyMatch(text,query){var t=text.toLowerCase(),q2=query.toLowerCase(),ti=0;for(var qi=0;qi<q2.length;qi++){ti=t.indexOf(q2[qi],ti);if(ti===-1)return false;ti++;}return true;}
+ if(adv.text&&!fuzzyMatch(mn,adv.text)&&!fuzzyMatch(pn,adv.text))sh=false;
 // 高级价格筛选
 if(adv.priceMin!==null){
 var cInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
@@ -4155,7 +4223,7 @@ HDR = (
     '<div class="content-area">\n'
     + cmp_panel + '\n'
 
-    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型 <span style="font-weight:400;color:#94a3b8;font-size:10px;margin-left:8px">价格来源: <span class="price-src" title="API实时返回">A</span>=API实时 <span class="price-src" title="硬编码,可能过时">H</span>=硬编码 <span class="price-src price-src-proxy" title="代理平台自营价,非官方价">P</span>=代理自营</span></div>\n'
+    '<div class="filter-count" id="filterCount">显示 <strong>' + str(total) + '</strong> / ' + str(total) + ' 个模型 <span style="font-weight:400;color:#94a3b8;font-size:10px;margin-left:8px">价格来源: <span class="price-src" title="API实时返回">A</span>=API <span class="price-src" title="官方定价页爬取">S</span>=爬取 <span class="price-src" title="官方价格数据库">DB</span>=数据库 <span class="price-src" title="LiteLLM社区数据">L</span>=LiteLLM <span class="price-src price-src-proxy" title="代理平台自营价,非官方价">P</span>=代理自营</span></div>\n'
         '<div class="loading" id="ld"><div class="sp"></div>加载中...</div>\n'
     '<div class="grid" id="grid">\n'
 )
