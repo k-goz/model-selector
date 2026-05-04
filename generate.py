@@ -2666,6 +2666,9 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .drift-green .drift-pct{color:#4ade80}
 .drift-yellow .drift-pct{color:#fbbf24}
 .drift-red .drift-pct{color:#f87171}
+.drift-legend .drift-green{color:#4ade80}
+.drift-legend .drift-yellow{color:#fbbf24}
+.drift-legend .drift-red{color:#f87171}
 .drift-list{max-height:300px;overflow-y:auto}
 
 /* ─── Token 计价器模态框 ─── */
