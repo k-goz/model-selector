@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About AI Model Selector | Real-time AI Pricing Comparison Tool</title>
+<meta name="description" content="AI Model Selector compares real-time pricing from 25+ AI platforms including DeepSeek, GPT-4o, Claude, Qwen, and more. Built for developers who need accurate, up-to-date API pricing.">
+<meta name="keywords" content="AI model selector, AI pricing tool, API price comparison, AI model comparison tool">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://ai-model-selector-eight.vercel.app/about.html">
+<style>
+:root{--bg:#050506;--surface:#0a0a0b;--surface2:#111113;--border:rgba(255,255,255,.08);--text:#ededf0;--text2:#8a8f98;--text3:#55585e;--accent:#6366f1;--radius:10px}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6}a{color:var(--accent);text-decoration:none}
+.topnav{position:sticky;top:0;z-index:1000;background:var(--surface);border-bottom:1px solid var(--border);backdrop-filter:blur(12px)}.topnav-inner{max-width:900px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px}.topnav-brand{font-size:16px;font-weight:700;color:var(--accent)}.topnav-links{display:flex;gap:4px}.topnav-link{font-size:13px;color:var(--text2);padding:6px 14px;border-radius:6px;transition:all .2s}.topnav-link:hover{color:var(--text);background:var(--surface2)}.topnav-link.active{color:var(--accent);background:rgba(99,102,241,.1)}.topnav-burger{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer}
+.container{max-width:700px;margin:0 auto;padding:40px 20px}h1{font-size:28px;font-weight:700;margin-bottom:8px}h2{font-size:18px;font-weight:600;margin:28px 0 10px;color:var(--text)}p{font-size:14px;color:var(--text2);margin-bottom:12px;line-height:1.7}
+ul{margin:8px 0 16px 20px;font-size:14px;color:var(--text2);line-height:1.8}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin:16px 0}.feature-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;text-align:center}.feature-card h3{font-size:13px;font-weight:600;margin-bottom:4px}.feature-card p{font-size:11px;color:var(--text3);margin:0}
+.ftr{text-align:center;padding:24px 12px;border-top:1px solid var(--border);margin-top:40px;font-size:11px;color:var(--text3)}
+@media(max-width:768px){.topnav-links{display:none;position:absolute;top:48px;left:0;right:0;background:var(--surface);flex-direction:column;padding:8px;border-bottom:1px solid var(--border)}.topnav-links.open{display:flex}.topnav-burger{display:block}.feature-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<nav class="topnav"><div class="topnav-inner">
+<a href="/" class="topnav-brand">AI Model Selector</a>
+<div class="topnav-links" id="navLinks">
+<a href="/" class="topnav-link">Home</a>
+<a href="/reviews.html" class="topnav-link">Reviews</a>
+<a href="/about.html" class="topnav-link active">About</a>
+<a href="/privacy.html" class="topnav-link">Privacy</a>
+</div>
+<button class="topnav-burger" onclick="document.getElementById('navLinks').classList.toggle('open')">&#9776;</button>
+</div></nav>
+<div class="container">
+<h1>About AI Model Selector</h1>
+<p>The most comprehensive real-time AI model pricing comparison tool on the web. We help developers find the best AI API for their needs and budget.</p>
+
+<h2>What We Do</h2>
+<p>AI Model Selector aggregates pricing and capability data from <strong>25+ AI platforms</strong> in real-time, giving you an always up-to-date view of the AI landscape. No more guessing which model is cheapest or manually checking dozens of pricing pages.</p>
+
+<h2>Key Features</h2>
+<div class="feature-grid">
+<div class="feature-card"><h3>&#128176; Price Comparison</h3><p>Side-by-side pricing across all platforms in CNY and USD</p></div>
+<div class="feature-card"><h3>&#128269; Cross-Platform</h3><p>Find the same model on different platforms at different prices</p></div>
+<div class="feature-card"><h3>&#9889; API Speed Test</h3><p>Measure TTFB latency for any model across platforms</p></div>
+<div class="feature-card"><h3>&#128187; One-Click Connect</h3><p>Copy ready-to-use API commands in Python, cURL, and more</p></div>
+<div class="feature-card"><h3>&#128270; Token Calculator</h3><p>Estimate real costs by pasting your actual text content</p></div>
+<div class="feature-card"><h3>&#127919; Smart Filters</h3><p>Filter by price range, context window, tags, and model family</p></div>
+</div>
+
+<h2>Data Sources</h2>
+<p>Our pricing data comes from multiple sources, prioritized for accuracy:</p>
+<ul>
+<li><strong>API Real-time (A)</strong> — Directly from platform APIs, always current</li>
+<li><strong>Official Scraping (S)</strong> — Parsed from official pricing pages</li>
+<li><strong>Price Database (DB)</strong> — Curated local database with prefix matching</li>
+<li><strong>LiteLLM Community (L)</strong> — Open-source pricing data as fallback</li>
+<li><strong>Proxy Pricing (P)</strong> — Self-hosted proxy platform pricing</li>
+</ul>
+
+<h2>Platforms Covered</h2>
+<p>OpenRouter, Alibaba (Qwen), SiliconFlow, Moonshot (Kimi), Zhipu (GLM), Volcengine (Doubao), Baidu (ERNIE), Tencent (Hunyuan), iFlytek (Spark), MiniMax, 01.AI, Baichuan, Jieyue, DeepSeek, Groq, Together AI, Fireworks AI, Cohere, InfiniAI, Novita AI, DeepInfra, AiHubMix, n1n.ai, ChatAnywhere</p>
+
+<h2>Open Source</h2>
+<p>This project is open source! Contribute on <a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a>. We welcome PRs for new platforms, price corrections, and feature ideas.</p>
+
+<h2>Contact</h2>
+<p>Questions or suggestions? Reach out via GitHub Issues or scan the WeChat QR code on the home page to join our community.</p>
+</div>
+<div class="ftr"><p>&copy; 2026 AI Model Selector &middot; <a href="/">Home</a> &middot; <a href="/reviews.html">Reviews</a> &middot; <a href="/privacy.html">Privacy</a></p></div>
+</body>
+</html>

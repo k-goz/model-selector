@@ -2227,6 +2227,33 @@ a{color:var(--accent);text-decoration:none}
 .ftr{text-align:center;padding:24px 12px;border-top:1px solid var(--border);margin-top:28px}
 .ftr p{font-size:11px;color:var(--text3);line-height:2}
 .invite-link{color:var(--accent);text-decoration:none;font-weight:500;transition:opacity .2s}
+.topnav{position:sticky;top:0;z-index:1000;background:var(--surface);border-bottom:1px solid var(--border);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.topnav-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;padding:0 20px;height:48px}
+.topnav-brand{font-size:16px;font-weight:700;color:var(--accent);text-decoration:none;letter-spacing:-.5px}
+.topnav-links{display:flex;gap:4px}
+.topnav-link{font-size:13px;color:var(--text2);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all .2s}
+.topnav-link:hover{color:var(--text);background:var(--surface2)}
+.topnav-link.active{color:var(--accent);background:rgba(99,102,241,.1)}
+.topnav-burger{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer}
+.ad-container{max-width:1400px;margin:0 auto;padding:8px 20px;min-height:0}
+.ad-top{margin-top:4px}
+.ad-bottom{margin-top:20px;margin-bottom:10px}
+.insights-section{max-width:1400px;margin:28px auto 0;padding:0 20px}
+.insights-title{font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px}
+.insights-subtitle{font-size:12px;color:var(--text3);margin-bottom:16px}
+.insights-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.insight-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:14px;transition:all .2s}
+.insight-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.3)}
+.insight-card h3{font-size:13px;font-weight:600;color:var(--text);margin:6px 0 4px;line-height:1.4}
+.insight-excerpt{font-size:11px;color:var(--text3);line-height:1.5;margin:0}
+.insight-date{font-size:10px;color:var(--accent);font-weight:600}
+@media(max-width:768px){
+.topnav-links{display:none;position:absolute;top:48px;left:0;right:0;background:var(--surface);flex-direction:column;padding:8px;border-bottom:1px solid var(--border)}
+.topnav-links.open{display:flex}
+.topnav-burger{display:block}
+.ad-container{padding:4px 10px}
+.insights-grid{grid-template-columns:1fr}
+}
 .invite-link:hover{opacity:.7;text-decoration:underline}
 .wechat-qr{margin-bottom:16px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;display:inline-block}
 .qr-img{width:140px;height:140px;border-radius:8px;image-rendering:pixelated}
@@ -4133,12 +4160,37 @@ function toggleSidebar(){
 # ═══════════════════════════════════════════════════════════
 
 HDR = (
-    '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n'
-    '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-    '<title>AI 模型选择器 - 全网价格对比 2026</title>\n'
-    '<style>\n' + CSS + '\n</style>\n'
-    '</head>\n<body>\n<div class="wrap">\n'
-    '<div class="hdr"><h1>AI 模型选择器</h1>'
+     '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n'
+     '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
+     '<title>AI 模型选择器 - 全网价格对比 2026 | DeepSeek vs GPT-4o vs Claude</title>\n'
+     '<meta name="description" content="实时对比25+平台AI模型价格：DeepSeek、GPT-4o、Claude、Qwen等，一键复制API接入命令，支持跨平台比价、Token计价器、接口测速">\n'
+     '<meta name="keywords" content="AI模型价格对比,DeepSeek价格,GPT-4o价格,Claude价格,大模型选择器,AI API定价,2026最佳AI模型,免费AI模型,廉价AI模型">\n'
+     '<meta name="robots" content="index, follow">\n'
+     '<link rel="canonical" href="https://ai-model-selector-eight.vercel.app/">\n'
+     '<meta property="og:title" content="AI 模型选择器 - 全网价格对比 2026">\n'
+     '<meta property="og:description" content="实时对比25+平台AI模型价格，支持跨平台比价、Token计价">\n'
+     '<meta property="og:type" content="website">\n'
+     '<meta property="og:url" content="https://ai-model-selector-eight.vercel.app/">\n'
+     '<!-- Google AdSense (替换为真实 publisher ID) -->\n'
+     '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>\n'
+     '<style>\n' + CSS + '\n</style>\n'
+     '</head>\n<body>\n'
+     '<nav class="topnav">\n'
+     '<div class="topnav-inner">\n'
+     '<a href="/" class="topnav-brand">AI Model Selector</a>\n'
+     '<div class="topnav-links" id="navLinks">\n'
+     '<a href="/" class="topnav-link active">Home</a>\n'
+     '<a href="/reviews.html" class="topnav-link">Reviews</a>\n'
+     '<a href="/about.html" class="topnav-link">About</a>\n'
+     '<a href="/privacy.html" class="topnav-link">Privacy</a>\n'
+     '</div>\n'
+     '<button class="topnav-burger" onclick="document.getElementById(\'navLinks\').classList.toggle(\'open\')">&#9776;</button>\n'
+     '</div>\n'
+     '</nav>\n'
+     '<!-- AdSense 横幅广告位 -->\n'
+     '<div class="ad-container ad-top"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>\n'
+     '<div class="wrap">\n'
+     '<div class="hdr"><h1>AI 模型选择器</h1>'
     '<p>一键对比全网价格 &middot; 点击卡片复制切换命令 &middot; 按 / 搜索 &middot; 按 D 暗色 &middot; 按 V 切换视图</p>'
     '<div class="brow">'
     '<span class="bd">&#128202; ' + str(total) + ' 个模型</span>'
@@ -4249,6 +4301,19 @@ FTR = (
     '<p>快捷键: / 搜索 | Esc 清空 | D 暗色 | V 视图 | 1-9 切换平台</p>'
     '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a> &middot; <a href="https://cloud.siliconflow.cn/i/exbVXMa4" target="_blank" class="invite-link">&#9734; 支持开发者 — 注册硅基流动领代金券</a></p>'
     '</div>\n'
+    # My Insights 板块（小红书同步内容）
+    '<div class="insights-section" id="insightsSection">\n'
+    '<h2 class="insights-title">&#128161; My Insights</h2>\n'
+    '<p class="insights-subtitle">从小红书同步的 AI 模型使用心得与技巧</p>\n'
+    '<div class="insights-grid" id="insightsGrid">\n'
+    '<div class="insight-card"><div class="insight-date">2026-04</div><h3>DeepSeek R1 实测：推理能力接近 o1，价格仅1/30</h3><p class="insight-excerpt">在实际编码任务中测试了 DeepSeek-R1 的推理链，发现其代码生成质量与 GPT-4o 相当，但价格仅为 $1/M vs $30/M，性价比极高...</p></div>\n'
+    '<div class="insight-card"><div class="insight-date">2026-03</div><h3>Qwen3-Coder-480B 体验：国产代码模型的新天花板</h3><p class="insight-excerpt">Qwen3-Coder 在 HumanEval 和 SWE-Bench 上表现亮眼，480B 参数的代码补全能力已逼近 Claude Sonnet 4...</p></div>\n'
+    '<div class="insight-card"><div class="insight-date">2026-03</div><h3>5个免费AI API推荐：零成本玩转大模型</h3><p class="insight-excerpt">SiliconFlow、Groq、Together AI 均提供免费额度，本文对比了各平台的免费模型列表和限制条件，帮你零成本开始 AI 开发...</p></div>\n'
+    '<div class="insight-card"><div class="insight-date">2026-02</div><h3>硅基流动 vs 火山引擎：国内推理服务横评</h3><p class="insight-excerpt">同为国内热门推理平台，硅基流动的 RSC 接口响应更快，火山引擎的 Doubao 系列价格更低，不同场景选择不同...</p></div>\n'
+    '</div>\n'
+    '</div>\n'
+    # AdSense 底部广告位
+    '<div class="ad-container ad-bottom"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>\n'
     '<div id="toast" class=""></div>\n'
     # Token 计价器模态框
     '<div class="tk-modal" id="tkModal" onclick="if(event.target===this)closeTokenCalc()">'
