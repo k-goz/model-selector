@@ -2234,6 +2234,8 @@ a{color:var(--accent);text-decoration:none}
 .topnav-link{font-size:13px;color:var(--text2);text-decoration:none;padding:6px 14px;border-radius:6px;transition:all .2s}
 .topnav-link:hover{color:var(--text);background:var(--surface2)}
 .topnav-link.active{color:var(--accent);background:rgba(99,102,241,.1)}
+.topnav-lang{font-size:11px;font-weight:700;color:var(--text2);text-decoration:none;padding:4px 10px;border-radius:4px;border:1px solid var(--border);margin-left:8px;transition:all .2s;letter-spacing:.5px}
+.topnav-lang:hover{color:var(--accent);border-color:var(--accent);background:rgba(99,102,241,.1)}
 .topnav-burger{display:none;background:none;border:none;color:var(--text);font-size:20px;cursor:pointer}
 .ad-container{max-width:1400px;margin:0 auto;padding:8px 20px;min-height:0}
 .ad-top{margin-top:4px}
@@ -4171,6 +4173,8 @@ HDR = (
      '<meta property="og:description" content="实时对比25+平台AI模型价格，支持跨平台比价、Token计价">\n'
      '<meta property="og:type" content="website">\n'
      '<meta property="og:url" content="https://ai-model-selector-eight.vercel.app/">\n'
+     '<link rel="alternate" hreflang="en" href="https://ai-model-selector-eight.vercel.app/en/">\n'
+     '<link rel="alternate" hreflang="zh" href="https://ai-model-selector-eight.vercel.app/">\n'
      '<!-- Google AdSense (替换为真实 publisher ID) -->\n'
      '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>\n'
      '<style>\n' + CSS + '\n</style>\n'
@@ -4179,10 +4183,11 @@ HDR = (
      '<div class="topnav-inner">\n'
      '<a href="/" class="topnav-brand">AI Model Selector</a>\n'
      '<div class="topnav-links" id="navLinks">\n'
-     '<a href="/" class="topnav-link active">Home</a>\n'
-     '<a href="/reviews.html" class="topnav-link">Reviews</a>\n'
-     '<a href="/about.html" class="topnav-link">About</a>\n'
-     '<a href="/privacy.html" class="topnav-link">Privacy</a>\n'
+     '<a href="/" class="topnav-link active">首页</a>\n'
+     '<a href="/reviews.html" class="topnav-link">评测</a>\n'
+     '<a href="/about.html" class="topnav-link">关于</a>\n'
+     '<a href="/privacy.html" class="topnav-link">隐私</a>\n'
+     '<a href="/en/" class="topnav-lang" title="English">EN</a>\n'
      '</div>\n'
      '<button class="topnav-burger" onclick="document.getElementById(\'navLinks\').classList.toggle(\'open\')">&#9776;</button>\n'
      '</div>\n'

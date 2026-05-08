@@ -1,7 +1,7 @@
 {
   "meta": {
-    "updated_at": "2026-05-03 14:41",
-    "days": 7
+    "updated_at": "2026-05-08 09:37",
+    "days": 13
   },
   "daily": [
     {
@@ -978,6 +978,834 @@
           "platform_id": "deepinfra",
           "model": "deepseek-ai/DeepSeek-V3-0324",
           "ms": 1035,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-04",
+      "time": "13:40",
+      "results": [
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 98,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-32k",
+          "ms": 135,
+          "status": "ok"
+        },
+        {
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "ms": 155,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 203,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "qwen2.5-7b-instruct",
+          "ms": 236,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 256,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 267,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 286,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 312,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M2.7",
+          "ms": 322,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-8k",
+          "ms": 354,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 423,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "llama-3.3-70b-versatile",
+          "ms": 825,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 888,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "ms": 894,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "c4ai-aya-expanse-32b",
+          "ms": 907,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "xAI: Grok 4.3",
+          "ms": 941,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "deepseek-ai/DeepSeek-V3-0324",
+          "ms": 967,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "grok-4.3",
+          "ms": 975,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/flux-1-schnell-fp8",
+          "ms": 986,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.5",
+          "ms": 1015,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-3-5-sonnet-20240620",
+          "ms": 1174,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-07",
+      "time": "22:10",
+      "results": [
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 83,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 86,
+          "status": "ok"
+        },
+        {
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "ms": 97,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M2.7",
+          "ms": 151,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "megrez-3b-instruct",
+          "ms": 172,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 179,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 188,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-32k",
+          "ms": 194,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-32k",
+          "ms": 216,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 287,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 380,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 448,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "c4ai-aya-expanse-32b",
+          "ms": 823,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/kimi-k2p5",
+          "ms": 835,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 857,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "llama-3.3-70b-versatile",
+          "ms": 859,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "gpt-image-2",
+          "ms": 879,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "Baidu Qianfan: CoBuddy (free)",
+          "ms": 884,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.5",
+          "ms": 892,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "ms": 952,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "openai/gpt-oss-20b",
+          "ms": 952,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-haiku-4-5-20251001",
+          "ms": 1046,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-07",
+      "time": "23:25",
+      "results": [
+        {
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "ms": 118,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "megrez-3b-instruct",
+          "ms": 164,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M2.7",
+          "ms": 185,
+          "status": "ok"
+        },
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 195,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-32k",
+          "ms": 238,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-32k",
+          "ms": 239,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 246,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 248,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 261,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 279,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 298,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 310,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-haiku-4-5-20251001",
+          "ms": 776,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "gpt-image-2",
+          "ms": 893,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "c4ai-aya-expanse-32b",
+          "ms": 934,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.5",
+          "ms": 972,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "llama-3.3-70b-versatile",
+          "ms": 984,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "Baidu Qianfan: CoBuddy (free)",
+          "ms": 1015,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/kimi-k2p5",
+          "ms": 1057,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "ms": 1059,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "openai/gpt-oss-20b",
+          "ms": 1128,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 1137,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-07",
+      "time": "23:26",
+      "results": [
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 99,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 105,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-32k",
+          "ms": 121,
+          "status": "ok"
+        },
+        {
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "ms": 123,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M2.7",
+          "ms": 143,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 185,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 186,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 186,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 213,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-32k",
+          "ms": 234,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "megrez-3b-instruct",
+          "ms": 294,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 345,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "Baidu Qianfan: CoBuddy (free)",
+          "ms": 832,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "llama-3.3-70b-versatile",
+          "ms": 872,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 883,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.5",
+          "ms": 909,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "ms": 943,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-haiku-4-5-20251001",
+          "ms": 959,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/kimi-k2p5",
+          "ms": 980,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "openai/gpt-oss-20b",
+          "ms": 983,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "gpt-image-2",
+          "ms": 1059,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "c4ai-aya-expanse-32b",
+          "ms": 1176,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-07",
+      "time": "23:28",
+      "results": [
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 99,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-32k",
+          "ms": 109,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M2.7",
+          "ms": 146,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "megrez-3b-instruct",
+          "ms": 157,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 173,
+          "status": "ok"
+        },
+        {
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "ms": 191,
+          "status": "ok"
+        },
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 196,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 245,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 246,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 270,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-32k",
+          "ms": 301,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 333,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "llama-3.3-70b-versatile",
+          "ms": 804,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "gpt-image-2",
+          "ms": 896,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "c4ai-aya-expanse-32b",
+          "ms": 911,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 912,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/kimi-k2p5",
+          "ms": 921,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "openai/gpt-oss-20b",
+          "ms": 960,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.5",
+          "ms": 1028,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-haiku-4-5-20251001",
+          "ms": 1035,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "Baidu Qianfan: CoBuddy (free)",
+          "ms": 1048,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "ms": 1503,
+          "status": "ok"
+        }
+      ]
+    },
+    {
+      "date": "2026-05-08",
+      "time": "09:37",
+      "results": [
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 88,
+          "status": "ok"
+        },
+        {
+          "platform_id": "zhipu",
+          "model": "glm-4.5",
+          "ms": 109,
+          "status": "ok"
+        },
+        {
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V4-Flash",
+          "ms": 127,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepseek",
+          "model": "deepseek-v4-flash",
+          "ms": 137,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-1-32k",
+          "ms": 176,
+          "status": "ok"
+        },
+        {
+          "platform_id": "infini",
+          "model": "megrez-3b-instruct",
+          "ms": 201,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M2.7",
+          "ms": 223,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 264,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aliyun",
+          "model": "Qwen3.6-Plus",
+          "ms": 277,
+          "status": "ok"
+        },
+        {
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 314,
+          "status": "ok"
+        },
+        {
+          "platform_id": "moonshot",
+          "model": "moonshot-v1-32k",
+          "ms": 316,
+          "status": "ok"
+        },
+        {
+          "platform_id": "yi",
+          "model": "yi-light",
+          "ms": 414,
+          "status": "ok"
+        },
+        {
+          "platform_id": "groq",
+          "model": "llama-3.3-70b-versatile",
+          "ms": 819,
+          "status": "ok"
+        },
+        {
+          "platform_id": "cohere",
+          "model": "c4ai-aya-expanse-32b",
+          "ms": 820,
+          "status": "ok"
+        },
+        {
+          "platform_id": "fireworks",
+          "model": "accounts/fireworks/models/kimi-k2p5",
+          "ms": 829,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-4.7-flash",
+          "ms": 899,
+          "status": "ok"
+        },
+        {
+          "platform_id": "openrouter",
+          "model": "Baidu Qianfan: CoBuddy (free)",
+          "ms": 918,
+          "status": "ok"
+        },
+        {
+          "platform_id": "ca",
+          "model": "gpt-5.5",
+          "ms": 919,
+          "status": "ok"
+        },
+        {
+          "platform_id": "aihubmix",
+          "model": "gpt-image-2",
+          "ms": 953,
+          "status": "ok"
+        },
+        {
+          "platform_id": "deepinfra",
+          "model": "openai/gpt-oss-20b",
+          "ms": 981,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "deepseek-ai/DeepSeek-V4-Pro",
+          "ms": 982,
+          "status": "ok"
+        },
+        {
+          "platform_id": "n1n",
+          "model": "claude-haiku-4-5-20251001",
+          "ms": 1046,
           "status": "ok"
         }
       ]
