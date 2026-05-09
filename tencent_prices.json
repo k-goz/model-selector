@@ -1,0 +1,49 @@
+{
+  "hy3 preview": {
+    "name": "Hy3 preview",
+    "brand": "混元",
+    "model_id": "hy3-preview",
+    "series": "hy3",
+    "type": "Text",
+    "tags": [
+      "深度思考",
+      "文本生成"
+    ],
+    "input_price": 1.2,
+    "output_price": 4.0,
+    "unit": "百万tokens",
+    "max_context": "256k",
+    "status": "online"
+  },
+  "hy 2.0 instruct": {
+    "name": "HY 2.0 Instruct",
+    "brand": "混元",
+    "model_id": "hunyuan-2.0-instruct-20251111",
+    "series": "hunyuan-2.0",
+    "type": "Text",
+    "tags": [
+      "文本生成"
+    ],
+    "input_price": 3.18,
+    "output_price": 7.95,
+    "unit": "百万tokens",
+    "max_context": "128k",
+    "status": "online"
+  },
+  "hy 2.0 think": {
+    "name": "HY 2.0 Think",
+    "brand": "混元",
+    "model_id": "hunyuan-2.0-thinking-20251109",
+    "series": "hunyuan-2.0",
+    "type": "Text",
+    "tags": [
+      "深度思考",
+      "文本生成"
+    ],
+    "input_price": 3.975,
+    "output_price": 15.9,
+    "unit": "百万tokens",
+    "max_context": "192k",
+    "status": "online"
+  }
+}

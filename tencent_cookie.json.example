@@ -1,0 +1,9 @@
+[
+  {"domain": ".cloud.tencent.com", "path": "/", "name": "ownerUin", "value": "YOUR_OWNER_UIN"},
+  {"domain": ".cloud.tencent.com", "path": "/", "name": "skey", "value": "YOUR_SKEY"},
+  {"domain": ".cloud.tencent.com", "path": "/", "name": "uin", "value": "YOUR_UIN"},
+  {"domain": ".cloud.tencent.com", "path": "/", "name": "tinyid", "value": "YOUR_TINYID"},
+  {"domain": ".cloud.tencent.com", "path": "/", "name": "qcmainCSRFToken", "value": "YOUR_CSRF_TOKEN"},
+  {"domain": ".tencent.com", "path": "/", "name": "hunyuan_token", "value": "YOUR_HUNYUAN_TOKEN"},
+  {"domain": ".tencent.com", "path": "/", "name": "hunyuan_user", "value": "YOUR_HUNYUAN_USER"}
+]

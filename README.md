@@ -141,17 +141,87 @@
 
 ## 技术架构
 
-- 纯 HTML + CSS + JS，零依赖，单文件可离线使用
-- Python 数据抓取脚本（`generate.py`），从各平台 API 拉取模型数据生成静态 HTML
-- `models_data.json` 作为数据中间层，保证页面修改不丢数据
-- CSS 变量体系 + Linear Aesthetic 设计风格（shimmer / glow / micro-border / glassmorphism）
-- API Key 通过环境变量注入，支持本地缓存和重试
-- GitHub Actions 每日自动更新（北京时间 06:00）
-- 部署于 Vercel（静态站点）
+### 核心架构
+- **前端**：纯 HTML + CSS + JS，零依赖，单文件可离线使用
+- **后端**：Python 数据抓取脚本（`generate.py`），从各平台 API 拉取模型数据生成静态 HTML
+- **数据层**：`models_data.json` 作为数据中间层，保证页面修改不丢数据
+- **设计**：CSS 变量体系 + Linear Aesthetic 设计风格（shimmer / glow / micro-border / glassmorphism）
+- **部署**：GitHub Actions 每日自动更新（北京时间 08:00）→ Vercel 静态站点
+
+### 模块化结构 (v6.5+)
+```
+/src/
+├── models/          # 数据模型定义 (Model, PriceInfo, PlatformInfo)
+├── pricing/         # SSOT 四层价格解析系统
+│   ├── normalize_for_match()  # 模型名称标准化
+│   ├── PriceDatabase          # 价格数据库管理
+│   └── SSOTPriceResolver      # 四层价格解析
+└── platforms/       # 平台数据获取基类
+    ├── BasePlatform           # 平台基类
+    └── OpenAICompatiblePlatform # OpenAI 兼容平台基类
+
+/tests/              # 单元测试
+├── test_pricing.py  # 价格解析测试
+└── test_models.py   # 数据模型测试
+```
+
+### 安全配置
+- API Key 仅从环境变量读取，无硬编码默认值
+- 支持 `.env` 文件本地开发
+- GitHub Actions 通过 Secrets 注入
+
+## 开发指南
+
+### 本地开发
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/your-repo/ai-model-selector.git
+cd ai-model-selector
+
+# 2. 配置环境变量
+cp .env.example .env
+# 编辑 .env 填入你的 API Key
+
+# 3. 运行数据抓取
+python3 generate.py
+
+# 4. 本地预览
+# 直接用浏览器打开 index.html
+# 或使用 Python HTTP 服务器
+python3 -m http.server 8080
+```
+
+### 运行测试
+
+```bash
+# 安装测试依赖
+pip install pytest
+
+# 运行所有测试
+python3 -m pytest tests/ -v
+
+# 运行特定测试
+python3 -m pytest tests/test_pricing.py -v
+```
+
+### 添加新平台
+
+1. 在 `src/platforms/` 创建新平台类，继承 `BasePlatform`
+2. 实现 `fetch_models()` 方法
+3. 在 `official_prices_db.json` 添加价格数据
+4. 在 `generate.py` 中注册新平台
 
 ## 更新日志
 
-- **v6.4** (2026-04-30): 彻底重构定价架构，引入 SSOT (单一真实来源) 三层解析系统。移除所有猜测性爬虫和硬编码兜底；建立统一 `official_prices_db.json`；修复样式兼容性 bug。
+- **v6.5** (2026-05-09): 
+  - 🏗️ 模块化重构：拆分 `src/models/`、`src/pricing/`、`src/platforms/` 模块
+  - 🔒 安全加固：移除所有硬编码 API Key，改为纯环境变量
+  - 📝 添加类型注解和文档字符串
+  - 🧪 添加单元测试（34 个测试用例全部通过）
+  - 📊 改进日志系统（logging 模块）
+  - ⚠️ 改进错误处理（自定义异常类）
+- **v6.4** (2026-04-30): 彻底重构定价架构，引入 SSOT (单一真实来源) 四层解析系统。移除所有猜测性爬虫和硬编码兜底；建立统一 `official_prices_db.json`；修复样式兼容性 bug。
 - **v6.3** (2026-04-27): 全平台价格检查修复 — 百度文心添加bp()映射；硅基流动补充新模型价格；DeepInfra从API提取真实价格；修复JSON加载双重除法bug；修复OpenRouter负价格；修复上下文格式；价格待确认从358降至279
 - **v6.2** (2026-04-26): 修复分页bug(JSON加载后未重新filter导致每页显示全部模型)；每页66个模型；左侧筛选栏默认全部折叠
 - **v6.1** (2026-04-25): 修复6个 bug — clearAllFilters 场景筛选器类名(.sc-btn→.sc) + 缺少重置价格分级/货币切换；updatePrices/calcTokens/价格筛选正确处理 per_1m price_unit；JS 动态卡片添加 data-pu 属性；GitHub Actions 密钥名拼写修正(TOGATHER→TOGETHER)

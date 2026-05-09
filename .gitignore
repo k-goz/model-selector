@@ -2,5 +2,31 @@
 .cache/
 .arts/
 .codeartsdoer/
+.env
 # models_data.json is now tracked for data sync
 .vercel
+tencent_cookie.json
+
+# Python
+__pycache__/
+.pytest_cache/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Backup files
+*.bak
+
+# Logs
+error.log
+
+# Test outputs
+ground_truth_report.json
+price_audit_report.json
+missing_prices_summary.txt
+
+# Temporary files
+prev_commit.diff
+tencent_api_raw.json
+tencent_models.txt

@@ -2,36 +2,153 @@
 """AI 模型选择器 - 数据抓取与页面生成脚本
 支持平台: 阿里百炼, 硅基流动, 月之暗面, 智谱AI, 火山引擎, 百度文心, OpenRouter,
            腾讯混元, 讯飞星火, MiniMax, 零一万物, 百川智能, 阶跃星辰, DeepSeek, Groq,
-           Together AI, Fireworks AI, Cohere
+           Together AI, Fireworks AI, Cohere, 无问芯穹, Novita AI, DeepInfra, AiHubMix, n1n.ai, ChatAnywhere
+
+架构: SSOT (Single Source of Truth) 四层价格解析系统
+- T1: API 直接返回的价格（最高优先级）
+- T2: 官方定价页爬取
+- T3: official_prices_db.json 价格数据库
+- T4: LiteLLM 社区价格数据（海外平台兜底）
 """
-import os, time, json, sys, urllib.request, hashlib, re, html
+import os
+import time
+import json
+import sys
+import urllib.request
+import hashlib
+import re
+import html
+import logging
 from datetime import datetime
 from collections import Counter
+from typing import Dict, List, Tuple, Optional, Any
 
-# ─── API Keys (仅从环境变量读取，无硬编码默认值) ───
-SF  = os.environ.get("SF_KEY", "sk-lvhjyumsmqidzpmwtmkcyxrhetbmaodfjklenoomnlsjbqha")
-ALI = os.environ.get("ALIYUN_KEY", "sk-5521c543f8f74954a027ddd41edafa08")
-MS  = os.environ.get("MS_KEY", "sk-ok4u4zjqFLYquLDmBwc1QOxE6PPNG0KSDOj3EnDfmR7QVxXw")
-ZH  = os.environ.get("ZH_KEY", "ff71a2ef7fbb431fb519d10df953b674.gMVnjHX5SgqgZy4Q")
-VC  = os.environ.get("VOLC_KEY", "e5786517-18a1-439d-98b3-b065e3d720e7")
-TX  = os.environ.get("TENCENT_KEY", "sk-4xNokvGYiRrADPB1WHiwjjEnUE0iMFxfvMUCfBy6bxmYVkbg")
-XH  = os.environ.get("SPARK_KEY", "0381a68ee99a4bbc3da267d0bfbf08cf")
-MM  = os.environ.get("MINIMAX_KEY", "sk-api-3iypJ-Xec0i0WuQMKWLnZi_C1fR8tvc1RpVcZt9p3xGbodYuHKAZUVTw5pZOFBpwEN5U6WlZj4EzwC6n5tiGiEwlJzrrYrkk066m7-tUaGfo_Wh3eg8XzKI")
-YW  = os.environ.get("YI_KEY", "")
-BC  = os.environ.get("BAICHUAN_KEY", "sk-4c5aa451a070f58a6d3ad25b6c42d434")
-JC  = os.environ.get("JIEYUE_KEY", "6JfnHf4rhV6LSlpzRGEWQNzg7VOLRuv5VN13Bdq4xIgk8bGOCvRAj4aVoPJRzgN0R")
-DS  = os.environ.get("DEEPSEEK_KEY", "sk-dc8b3ef2d3c842eb8c9e5ea151b1367a")
-GQ  = os.environ.get("GROQ_KEY", "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")
-BDK = os.environ.get("BAIDU_KEY", "bce-v3/ALTAK-piVBdsHZQxU761iH0Jotf/36ba69629da2e1101940c1fd39e8654959855d4a")
-TG  = os.environ.get("TOGETHER_KEY", "tgp_v1_yz89M-nyIWNcC00hgZkAYZxEhslQC6T6AoB0mDU1m3I")
-FW  = os.environ.get("FIREWORKS_KEY", "fw_54N6JXjHHKPrCH9SahRDDB")
-CO  = os.environ.get("COHERE_KEY", "E23E1dX2YvvcsxdaKARuq9IjOdGClrA715yxCVfn")
-INFINI = os.environ.get("INFINI_KEY", "sk-dpkybedmc3yih33b")
-NOVITA = os.environ.get("NOVITA_KEY", "sk_RV_Ef_cKS3h8aIlkTlothOgRu44IMbd0TkbVOjezk")
-DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "moYWp7VPn3bHfETA8eU9eMGIw3zNN3b0")
-AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "sk-didEDQ9AUphGO6dQA1088e775f184895958637123c0aD360")
-N1N = os.environ.get("N1N_KEY", "sk-1XBLDQydkPenJgJbaiXS6MWDOQsTFPiHHxBLDGPidV33jfQi")
-CA = os.environ.get("CA_KEY", "sk-hUrKIhasRZTnLZFi4jYI5S82ojAXNbO7elcyUOULQv2ff05Z")
+# ═══════════════════════════════════════════════════════════════════════════
+# 日志配置
+# ═══════════════════════════════════════════════════════════════════════════
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stderr)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+# ═══════════════════════════════════════════════════════════════════════════
+# API Keys 配置（仅从环境变量读取，无硬编码默认值）
+# ═══════════════════════════════════════════════════════════════════════════
+# 国内平台
+SF  = os.environ.get("SF_KEY", "")           # 硅基流动
+ALI = os.environ.get("ALIYUN_KEY", "")       # 阿里百炼
+MS  = os.environ.get("MS_KEY", "")           # 月之暗面
+ZH  = os.environ.get("ZH_KEY", "")           # 智谱 AI
+VC  = os.environ.get("VOLC_KEY", "")         # 火山引擎
+TX  = os.environ.get("TENCENT_KEY", "")      # 腾讯混元
+XH  = os.environ.get("SPARK_KEY", "")        # 讯飞星火
+MM  = os.environ.get("MINIMAX_KEY", "")      # MiniMax
+YW  = os.environ.get("YI_KEY", "")           # 零一万物
+BC  = os.environ.get("BAICHUAN_KEY", "")     # 百川智能
+JC  = os.environ.get("JIEYUE_KEY", "")       # 阶跃星辰
+DS  = os.environ.get("DEEPSEEK_KEY", "")     # DeepSeek
+BDK = os.environ.get("BAIDU_KEY", "")        # 百度文心
+
+# 国外平台
+GQ  = os.environ.get("GROQ_KEY", "")         # Groq
+TG  = os.environ.get("TOGETHER_KEY", "")     # Together AI
+FW  = os.environ.get("FIREWORKS_KEY", "")    # Fireworks AI
+CO  = os.environ.get("COHERE_KEY", "")       # Cohere
+DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "")  # DeepInfra
+AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "")    # AiHubMix
+
+# 聚合平台
+INFINI = os.environ.get("INFINI_KEY", "")    # 无问芯穹
+NOVITA = os.environ.get("NOVITA_KEY", "")    # Novita AI
+N1N = os.environ.get("N1N_KEY", "")          # n1n.ai
+CA = os.environ.get("CA_KEY", "")            # ChatAnywhere
+
+def check_api_keys() -> Dict[str, bool]:
+    """检查各平台 API Key 配置状态"""
+    keys_status = {
+        "硅基流动": bool(SF),
+        "阿里百炼": bool(ALI),
+        "月之暗面": bool(MS),
+        "智谱AI": bool(ZH),
+        "火山引擎": bool(VC),
+        "腾讯混元": bool(TX),
+        "讯飞星火": bool(XH),
+        "MiniMax": bool(MM),
+        "零一万物": bool(YW),
+        "百川智能": bool(BC),
+        "阶跃星辰": bool(JC),
+        "DeepSeek": bool(DS),
+        "百度文心": bool(BDK),
+        "Groq": bool(GQ),
+        "Together AI": bool(TG),
+        "Fireworks AI": bool(FW),
+        "Cohere": bool(CO),
+        "DeepInfra": bool(DEEPINFRA),
+        "AiHubMix": bool(AIHUBMIX),
+        "无问芯穹": bool(INFINI),
+        "Novita AI": bool(NOVITA),
+        "n1n.ai": bool(N1N),
+        "ChatAnywhere": bool(CA),
+    }
+    configured = sum(1 for v in keys_status.values() if v)
+    total = len(keys_status)
+    logger.info(f"API Key 配置状态: {configured}/{total} 个平台已配置")
+    
+    # 显示未配置的平台（仅显示有对应 API 的平台）
+    unconfigured = [k for k, v in keys_status.items() if not v]
+    if unconfigured:
+        logger.info(f"未配置的平台将使用缓存数据或硬编码列表: {', '.join(unconfigured)}")
+    
+    return keys_status
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 自定义异常类
+# ═══════════════════════════════════════════════════════════════════════════
+class ModelSelectorError(Exception):
+    """模型选择器基础异常"""
+    pass
+
+class PriceNotFoundError(ModelSelectorError):
+    """价格未找到异常"""
+    def __init__(self, platform: str, model: str, message: str = ""):
+        self.platform = platform
+        self.model = model
+        self.message = message or f"价格未找到: [{platform}] {model}"
+        super().__init__(self.message)
+
+class APIFetchError(ModelSelectorError):
+    """API 获取失败异常"""
+    def __init__(self, platform: str, url: str, original_error: Exception = None):
+        self.platform = platform
+        self.url = url
+        self.original_error = original_error
+        message = f"API 获取失败: [{platform}] {url}"
+        if original_error:
+            message += f" - {str(original_error)[:100]}"
+        super().__init__(message)
+
+class PriceParseError(ModelSelectorError):
+    """价格解析异常"""
+    def __init__(self, source: str, raw_data: str = "", message: str = ""):
+        self.source = source
+        self.raw_data = raw_data[:200] if raw_data else ""  # 限制长度
+        self.message = message or f"价格解析失败: {source}"
+        super().__init__(self.message)
+
+class CacheError(ModelSelectorError):
+    """缓存操作异常"""
+    def __init__(self, operation: str, path: str, original_error: Exception = None):
+        self.operation = operation
+        self.path = path
+        self.original_error = original_error
+        message = f"缓存{operation}失败: {path}"
+        if original_error:
+            message += f" - {str(original_error)[:80]}"
+        super().__init__(message)
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -468,9 +585,24 @@ def get_db_price(platform_key, raw_model_id):
 # ─── 价格漂移检测（已移除：不再依赖第三方数据源交叉验证） ───
 
 # ─── 通用请求函数 (带重试和缓存) ───
-def fj(url, tok="", to=20, retries=3):
+def fj(url: str, tok: str = "", to: int = 20, retries: int = 3, platform: str = "") -> Optional[Dict]:
+    """
+    通用 JSON API 请求函数，带重试和缓存机制
+    
+    Args:
+        url: API URL
+        tok: Bearer Token（可选）
+        to: 超时时间（秒）
+        retries: 重试次数
+        platform: 平台名称（用于日志）
+    
+    Returns:
+        JSON 数据字典，失败返回 None
+    """
     h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
-    if tok: h["Authorization"] = "Bearer " + tok
+    if tok: 
+        h["Authorization"] = "Bearer " + tok
+    
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers=h)
@@ -478,59 +610,99 @@ def fj(url, tok="", to=20, retries=3):
                 data = r.read()
                 # 缓存到本地
                 ch = hashlib.md5(url.encode()).hexdigest()
-                with open(os.path.join(CACHE_DIR, ch + ".json"), "wb") as cf:
-                    cf.write(data)
+                cache_path = os.path.join(CACHE_DIR, ch + ".json")
+                try:
+                    with open(cache_path, "wb") as cf:
+                        cf.write(data)
+                except IOError as e:
+                    logger.warning(f"缓存写入失败: {cache_path} - {e}")
                 return json.loads(data)
+        except urllib.error.URLError as e:
+            logger.warning(f"网络请求失败 (尝试 {attempt + 1}/{retries}): [{platform}] {url} - {e}")
+            if attempt < retries - 1:
+                wait_time = 1 * (attempt + 1)
+                logger.info(f"等待 {wait_time} 秒后重试...")
+                time.sleep(wait_time)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON 解析失败: [{platform}] {url} - {e}")
+            return None
         except Exception as e:
+            logger.error(f"未知错误 (尝试 {attempt + 1}/{retries}): [{platform}] {url} - {e}")
             if attempt < retries - 1:
                 time.sleep(1 * (attempt + 1))
-            else:
-                print("  WARN: %s (after %d retries)" % (e, retries), file=sys.stderr)
-                # 尝试从缓存读取
-                ch = hashlib.md5(url.encode()).hexdigest()
-                cp = os.path.join(CACHE_DIR, ch + ".json")
-                if os.path.exists(cp):
-                    try:
-                        print("  Using cache for: %s" % url, file=sys.stderr)
-                        return json.load(open(cp))
-                    except:
-                        pass
-                return None
+    
+    # 所有重试失败，尝试从缓存读取
+    ch = hashlib.md5(url.encode()).hexdigest()
+    cp = os.path.join(CACHE_DIR, ch + ".json")
+    if os.path.exists(cp):
+        try:
+            logger.info(f"使用缓存数据: {url}")
+            with open(cp, "r", encoding="utf-8") as cf:
+                return json.load(cf)
+        except (IOError, json.JSONDecodeError) as e:
+            logger.warning(f"缓存读取失败: {cp} - {e}")
+    
+    logger.warning(f"API 获取失败且无缓存: [{platform}] {url}")
+    return None
 
 # ─── 价格分级 ───
-def PT(inp, out, cur="CNY", price_unit="per_token"):
-    inp = float(inp or 0); out = float(out or 0)
-    if inp == 0 and out == 0: return "free"
+def PT(inp: float, out: float, cur: str = "CNY", price_unit: str = "per_token") -> str:
+    """
+    价格分级函数
+    
+    Args:
+        inp: 输入价格
+        out: 输出价格
+        cur: 货币类型 (CNY/USD)
+        price_unit: 价格单位 (per_token/per_1m)
+    
+    Returns:
+        价格级别: free/cheap/mid/high/ultra
+    """
+    inp = float(inp or 0)
+    out = float(out or 0)
+    if inp == 0 and out == 0:
+        return "free"
     if cur == "USD" and price_unit == "per_token":
         p = inp * 1e6
     else:
         p = inp
-    if p < 0.1:   return "cheap"
-    elif p < 10:   return "mid"
-    elif p < 100:  return "high"
-    else:           return "ultra"
+    if p < 0.1:
+        return "cheap"
+    elif p < 10:
+        return "mid"
+    elif p < 100:
+        return "high"
+    else:
+        return "ultra"
 
 # ─── HTML 转义 ───
-def Te(s):
-    return str(s or "").replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace('"',"&quot;")
+def Te(s: str) -> str:
+    """HTML 转义函数"""
+    return str(s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
 
 # ─── 标签 HTML ───
-def th(tags):
-    m = {"免费":"free","免费额度":"free","便宜":"cheap","极便宜":"cheap","性价比":"cheap",
-         "旗舰":"hot","主力":"hot","最新版":"hot","2025新":"hot","2026新":"hot",
-         "视觉":"vision","推理":"reason","长上下文":"long","超长上下文":"long",
-         "开源":"other","代码":"other","图片生成":"other","视频生成":"other",
-         "快速":"other","高性能":"hot","Pro订阅":"other","蒸馏":"other",
-         "轻量":"other","已下线":"other","即将下线":"other","价格待确认":"other",
-         "语音":"other","TTS":"other","ASR":"other","向量":"other","排序":"other",
-         "OCR":"other","多模态":"vision","Turbo":"hot","降价后":"cheap","降价90%":"cheap",
-         "超低价":"cheap","编程":"other","智能路由":"other","免费":"free",
-          "满血版":"hot","价格变动":"other","涨价":"hot","降价":"cheap","按次计费":"other"}
-    return "".join('<span class="tg tg-' + m.get(x,"other") + '">' + x + '</span>' for x in (tags or []))
+def th(tags: List[str]) -> str:
+    """生成标签 HTML"""
+    m = {
+        "免费": "free", "免费额度": "free", "便宜": "cheap", "极便宜": "cheap", "性价比": "cheap",
+        "旗舰": "hot", "主力": "hot", "最新版": "hot", "2025新": "hot", "2026新": "hot",
+        "视觉": "vision", "推理": "reason", "长上下文": "long", "超长上下文": "long",
+        "开源": "other", "代码": "other", "图片生成": "other", "视频生成": "other",
+        "快速": "other", "高性能": "hot", "Pro订阅": "other", "蒸馏": "other",
+        "轻量": "other", "已下线": "other", "即将下线": "other", "价格待确认": "other",
+        "语音": "other", "TTS": "other", "ASR": "other", "向量": "other", "排序": "other",
+        "OCR": "other", "多模态": "vision", "Turbo": "hot", "降价后": "cheap", "降价90%": "cheap",
+        "超低价": "cheap", "编程": "other", "智能路由": "other", "满血版": "hot",
+        "价格变动": "other", "涨价": "hot", "降价": "cheap", "按次计费": "other"
+    }
+    return "".join('<span class="tg tg-' + m.get(x, "other") + '">' + x + '</span>' for x in (tags or []))
 
 # ─── 价格徽章 (CNY) ───
-def bc(inp, out):
-    inp = float(inp or 0); out = float(out or 0)
+def bc(inp: float, out: float) -> str:
+    """生成 CNY 价格徽章 HTML"""
+    inp = float(inp or 0)
+    out = float(out or 0)
     if inp == 0 and out == 0:
         return '<span class="price-badge price-free">免费额度</span>'
     if inp == out:
@@ -539,13 +711,22 @@ def bc(inp, out):
     return '<span class="price-badge price-mid">IN:¥' + ("%.2f" % inp) + ' OUT:¥' + ("%.2f" % out) + '/M</span>'
 
 # ─── 价格徽章 (USD) ───
-# price_unit: "per_token" = $/token (multiply 1e6 to display), "per_1m" = already $/1M tokens
-def bo(inp, out, price_unit="per_token"):
-    inp = float(inp or 0); out = float(out or 0)
+def bo(inp: float, out: float, price_unit: str = "per_token") -> str:
+    """
+    生成 USD 价格徽章 HTML
+    
+    Args:
+        inp: 输入价格
+        out: 输出价格
+        price_unit: "per_token" = $/token (multiply 1e6 to display), "per_1m" = already $/1M tokens
+    """
+    inp = float(inp or 0)
+    out = float(out or 0)
     if inp == 0 and out == 0:
         return '<span class="price-badge price-free">$0 (免费)</span>'
     if price_unit == "per_token":
-        p = inp * 1e6; q = out * 1e6
+        p = inp * 1e6
+        q = out * 1e6
     else:
         p = inp; q = out
     if inp == out:
