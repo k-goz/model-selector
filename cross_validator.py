@@ -153,10 +153,13 @@ def cross_validate_model(platform, model_name, current_input, current_output, cu
 
     # 5. LiteLLM
     if litellm_db:
-        ll_i, ll_o, ll_c, _, _ = get_dynamic_price(platform, model_name)
+        try:
+            ll_i, ll_o, ll_c = get_dynamic_price(platform, model_name)
+        except ValueError:
+            ll_i, ll_o, ll_c, _, _ = get_dynamic_price(platform, model_name)
         if ll_i > 0 or ll_o > 0:
             sources.append({"input": ll_i, "output": ll_o,
-                            "currency": "USD" if ll_c != "N/A" else "CNY", "source_type": "litellm"})
+                            "currency": "USD", "source_type": "litellm"})
             all_sources["litellm"] = {"input": ll_i, "output": ll_o}
 
     # 进行共识投票
@@ -223,7 +226,10 @@ def cross_validate_all(all_models, or_lookup, litellm_db, spa_prices, official_p
 
 def save_log(results):
     """保存交叉验证日志"""
+    from datetime import timezone
     log = {}
+    high_conf = 0
+    low_conf = 0
     for (p, mn), result in results.items():
         key = "%s/%s" % (p, mn)
         log[key] = {
@@ -234,8 +240,16 @@ def save_log(results):
             "flags": result["flags"],
             "action": result["action"],
         }
+        if result["confidence"] >= 4:
+            high_conf += 1
+        elif result["confidence"] <= 2:
+            low_conf += 1
     with open(LOG_PATH, "w", encoding="utf-8") as f:
-        json.dump({"validated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        json.dump({"timestamp": datetime.now(timezone.utc).isoformat(),
+                    "version": "1.0.0",
+                    "summary": {"total_models": len(log),
+                                "high_confidence_count": high_conf,
+                                "low_confidence_count": low_conf},
                     "total": len(log),
                     "corrections": sum(1 for v in log.values() if "zero_price_auto_corrected" in v.get("flags", [])),
                     "models": log}, f, ensure_ascii=False, indent=2)
