@@ -411,6 +411,29 @@ if os.path.exists(_opdb_path):
         print("  official_prices_db.json: %d platforms, %d entries" % (len([k for k in OFFICIAL_PRICES_DB if k != "_meta"]), _opdb_count), file=sys.stderr)
     except Exception as e:
         print("  official_prices_db.json load error:", e, file=sys.stderr)
+
+TENCENT_PRICES = {}
+_tp_path = os.path.join(SCRIPT_DIR, "tencent_prices.json")
+if os.path.exists(_tp_path):
+    try:
+        with open(_tp_path, "r", encoding="utf-8") as _f:
+            _tp_raw = json.load(_f)
+        for _k, _v in _tp_raw.items():
+            _mid = _v.get("model_id", _k).lower()
+            TENCENT_PRICES[_mid] = _v
+        print("  tencent_prices.json: %d models" % len(TENCENT_PRICES), file=sys.stderr)
+    except Exception as _e:
+        print("  tencent_prices.json load error:", _e, file=sys.stderr)
+
+def get_tencent_price(model_id):
+    mid = model_id.lower()
+    norm = normalize_for_match(model_id)
+    for k in (mid, norm):
+        if k in TENCENT_PRICES:
+            e = TENCENT_PRICES[k]
+            return e["input_price"], e["output_price"], e.get("max_context", "32k")
+    return 0, 0, "N/A"
+
 def get_db_price(platform_key, raw_model_id):
     """从 official_prices_db.json 查找价格（精确匹配 → 前缀匹配）"""
     if platform_key not in OFFICIAL_PRICES_DB:
@@ -1520,7 +1543,11 @@ if not USE_JSON_DATA:
 
     # 腾讯混元
     for mid in tx_ids:
-        ii, oo, cc, src = get_absolute_price("tencent", mid)
+        t_i, t_o, t_c = get_tencent_price(mid)
+        if t_i > 0:
+            ii, oo, cc, src = t_i, t_o, t_c, "T"
+        else:
+            ii, oo, cc, src = get_absolute_price("tencent", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("tencent","腾讯混元","#07c160",Te(mid),ii,oo,cc,tt,ss,
@@ -1884,7 +1911,7 @@ tabs_bar = (
     '<button class="pt" data-p="cohere" style="--c:#39d989;--bg:#eefbf4">Cohere <span class="pc">' + str(coc) + '</span></button>'
     '<button class="pt" data-p="infini" style="--c:#ff6b9d;--bg:#fff0f6">无问芯穹 <span class="pc">' + str(ic) + '</span></button>'
     '<button class="pt" data-p="novita" style="--c:#6366f1;--bg:#eef2ff">Novita AI <span class="pc">' + str(nc) + '</span></button>'
-    '<button class="pt" data-p="deepinfra" style="--c:#7!c3aed;--bg:#f5f0ff">DeepInfra <span class="pc">' + str(dic) + '</span></button>'
+    '<button class="pt" data-p="deepinfra" style="--c:#7c3aed;--bg:#f5f0ff">DeepInfra <span class="pc">' + str(dic) + '</span></button>'
     '<button class="pt" data-p="aihubmix" style="--c:#10b981;--bg:#ecfdf5">AiHubMix <span class="pc">' + str(ahmc) + '</span></button>'
     '<button class="pt" data-p="n1n" style="--c:#f59e0b;--bg:#fffbeb">n1n.ai <span class="pc">' + str(n1nc) + '</span></button>'
     '<button class="pt" data-p="ca" style="--c:#06b6d4;--bg:#ecfeff">ChatAnywhere <span class="pc">' + str(cac) + '</span></button>'
@@ -2124,7 +2151,7 @@ body.light{--bg:#f8f9fb;--surface:#fff;--surface2:#f4f5f7;--border:rgba(0,0,0,.0
 a{color:var(--accent);text-decoration:none}
 .wrap{max-width:1200px;margin:0 auto;padding:0 16px 40px}
 .hdr{text-align:center;padding:32px 12px 20px}
-.hdr h1{font-size:clamp(22px,5vw,32px);font-weight:700;background:linear-gradient(135deg,#6366f1,#a855f7,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;letter-spacing:-.03em}
+.hdr h1{font-size:clamp(22px,5vw,32px);font-weight:700;background:linear-gradient(135deg,#6366f1,#a855f7,#ec4899);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;letter-spacing:-.03em}
 .hdr p{font-size:12px;color:var(--text2);letter-spacing:.01em}
 .brow{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:10px}
 .bd{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:10px;color:var(--text2);font-weight:500}
@@ -3066,12 +3093,12 @@ var fam=c.dataset.family||'';
 if(fam!==curFamily)sh=false;
 }
 // 价格区间筛选
-if(priceMin!==null||priceMax!==null){
 var inp=parseFloat(c.dataset.inp||0);
 var cur=c.dataset.cur||'CNY';
 var pu2=c.dataset.pu||'per_token';
 var mul=cur==='USD'?(pu2==='per_1m'?1:1e6):1;
 var cnyInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
+if(priceMin!==null||priceMax!==null){
 if(priceMin!==null&&cnyInp<priceMin)sh=false;
 if(priceMax!==null&&cnyInp>priceMax)sh=false;
 }
@@ -3083,12 +3110,10 @@ if(priceMax!==null&&cnyInp>priceMax)sh=false;
  if(adv.text&&!fuzzyMatch(mn,adv.text)&&!fuzzyMatch(pn,adv.text))sh=false;
 // 高级价格筛选
 if(adv.priceMin!==null){
-var cInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
-if(cInp<adv.priceMin)sh=false;
+if(cnyInp<adv.priceMin)sh=false;
 }
 if(adv.priceMax!==null){
-var cInp2=cur==='USD'?inp*mul*USD_TO_CNY:inp;
-if(cInp2>adv.priceMax)sh=false;
+if(cnyInp>adv.priceMax)sh=false;
 }
 // 高级上下文筛选
 if(adv.ctxMin!==null){
@@ -4181,13 +4206,13 @@ HDR = (
      '</head>\n<body>\n'
      '<nav class="topnav">\n'
      '<div class="topnav-inner">\n'
-     '<a href="/" class="topnav-brand">AI Model Selector</a>\n'
+     '<a href="./index.html" class="topnav-brand">AI Model Selector</a>\n'
      '<div class="topnav-links" id="navLinks">\n'
-     '<a href="/" class="topnav-link active">首页</a>\n'
-     '<a href="/reviews.html" class="topnav-link">评测</a>\n'
-     '<a href="/about.html" class="topnav-link">关于</a>\n'
-     '<a href="/privacy.html" class="topnav-link">隐私</a>\n'
-     '<a href="/en/" class="topnav-lang" title="English">EN</a>\n'
+     '<a href="./index.html" class="topnav-link active">首页</a>\n'
+     '<a href="./reviews.html" class="topnav-link">评测</a>\n'
+     '<a href="./about.html" class="topnav-link">关于</a>\n'
+     '<a href="./privacy.html" class="topnav-link">隐私</a>\n'
+     '<a href="./en/index.html" class="topnav-lang" title="English">EN</a>\n'
      '</div>\n'
      '<button class="topnav-burger" onclick="document.getElementById(\'navLinks\').classList.toggle(\'open\')">&#9776;</button>\n'
      '</div>\n'
