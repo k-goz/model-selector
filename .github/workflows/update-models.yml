@@ -54,14 +54,14 @@ jobs:
       - name: Check for changes
         id: check_changes
         run: |
-          git diff --quiet index.html || echo "has_changes=true" >> $GITHUB_OUTPUT
+          git diff --quiet index.html en/index.html || echo "has_changes=true" >> $GITHUB_OUTPUT
       
       - name: Commit and push changes
         if: steps.check_changes.outputs.has_changes == 'true'
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add index.html .cache/
+          git add index.html en/index.html .cache/
           git commit -m "🔄 自动更新模型价格数据 - $(date '+%Y-%m-%d %H:%M')"
           git push
       
