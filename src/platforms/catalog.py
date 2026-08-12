@@ -382,6 +382,84 @@ class InfiniPlatform(BasePlatform):
         return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
 
 
+class TencentPlatform(OpenAICompatiblePlatform):
+    platform_id = "tencent"
+    platform_name = "腾讯混元"
+    platform_color = "#07c160"
+    base_url = "https://hunyuan.tencentcloudapi.com/compatible-mode/v1"
+    model_source_url = "https://hunyuan.tencentcloudapi.com/v1/models"
+    FALLBACK_IDS = [
+        "hunyuan-turbos", "hunyuan-turbo", "hunyuan-pro", "hunyuan-large", "hunyuan-lite",
+        "hunyuan-standard", "hunyuan-standard-vision", "hunyuan-vision", "hunyuan-coder",
+        "hunyuan-t1", "hunyuan-turbos-vision",
+    ]
+
+    @property
+    def models_endpoint(self) -> str:
+        return self.model_source_url
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class SparkPlatform(BasePlatform):
+    platform_id = "spark"
+    platform_name = "讯飞星火"
+    platform_color = "#ff6a00"
+    base_url = "https://spark-api.xf-yun.com/v1"
+    model_source_url = "https://www.xfyun.cn/doc/spark/Web.html"
+    FALLBACK_IDS = [
+        "generalv3.5", "generalv3", "4.0Ultra", "generalv2", "spark-lite", "generalv3.5-vision",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        raise ValueError("讯飞星火没有公开模型目录 API")
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class YiPlatform(OpenAICompatiblePlatform):
+    platform_id = "yi"
+    platform_name = "零一万物"
+    platform_color = "#3b82f6"
+    base_url = "https://api.lingyiwanwu.com/v1"
+    FALLBACK_IDS = [
+        "yi-light", "yi-medium", "yi-large", "yi-vision", "yi-large-turbo", "yi-spark", "yi-lightning",
+    ]
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class BaichuanPlatform(OpenAICompatiblePlatform):
+    platform_id = "baichuan"
+    platform_name = "百川智能"
+    platform_color = "#ef4444"
+    base_url = "https://api.baichuan-ai.com/v1"
+    FALLBACK_IDS = [
+        "baichuan2-turbo", "baichuan2-53b", "baichuan-14b",
+        "baichuan4", "baichuan4-vision", "baichuan-m1",
+    ]
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class JieyuePlatform(OpenAICompatiblePlatform):
+    platform_id = "jieyue"
+    platform_name = "阶跃星辰"
+    platform_color = "#8b5cf6"
+    base_url = "https://api.stepfun.com/v1"
+    FALLBACK_IDS = [
+        "step-1-8k", "step-1-32k", "step-1-128k", "step-1-flash", "step-1v-8k",
+        "step-1v-32k", "step-2-16k", "step-2-mini", "step-r1",
+    ]
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
 class N1NPlatform(BasePlatform):
     platform_id = "n1n"
     platform_name = "n1n.ai"

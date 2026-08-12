@@ -27,6 +27,7 @@ from src.pricing import classify_price
 from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
+    BaichuanPlatform,
     ChatAnywherePlatform,
     CoherePlatform,
     DeepInfraPlatform,
@@ -34,15 +35,19 @@ from src.platforms import (
     FireworksPlatform,
     GroqPlatform,
     InfiniPlatform,
+    JieyuePlatform,
     MiniMaxPlatform,
     MoonshotPlatform,
     N1NPlatform,
     NovitaPlatform,
     OpenRouterPlatform,
     SiliconFlowPlatform,
+    SparkPlatform,
+    TencentPlatform,
     TogetherPlatform,
     VolcenginePlatform,
     ZhipuPlatform,
+    YiPlatform,
 )
 from src.history import upsert_daily_history
 
@@ -1290,24 +1295,15 @@ if not USE_JSON_DATA:
     print("  OpenRouter prices lookup: %d models" % len(or_prices), file=sys.stderr)
 
     # ─── 腾讯混元 ───
-    tx_ids = []
-    if TX:
-        d = fj("https://hunyuan.tencentcloudapi.com/v1/models", TX)
-        if d:
-            tx_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not tx_ids:
-        # 使用硬编码列表
-        tx_ids = ["hunyuan-turbos","hunyuan-turbo","hunyuan-pro","hunyuan-large","hunyuan-lite",
-                  "hunyuan-standard","hunyuan-standard-vision","hunyuan-vision","hunyuan-coder",
-                  "hunyuan-t1","hunyuan-turbos-vision"]
+    tencent_result = TencentPlatform(api_key=TX).fetch_result()
+    source_runs["tencent"] = tencent_result.metadata.to_dict()
+    tx_ids = [model["id"] for model in tencent_result.models]
     print("  Tencent:", len(tx_ids), file=sys.stderr)
 
     # ─── 讯飞星火 ───
-    xh_ids = []
-    if XH:
-        # 讯飞没有标准模型列表API，使用硬编码
-        pass
-    xh_ids = ["generalv3.5","generalv3","4.0Ultra","generalv2","spark-lite","generalv3.5-vision"]
+    spark_result = SparkPlatform(api_key=XH).fetch_result()
+    source_runs["spark"] = spark_result.metadata.to_dict()
+    xh_ids = [model["id"] for model in spark_result.models]
     print("  Spark:", len(xh_ids), file=sys.stderr)
 
     # ─── MiniMax ───
@@ -1317,36 +1313,24 @@ if not USE_JSON_DATA:
     print("  MiniMax:", len(mm_ids), file=sys.stderr)
 
     # ─── 零一万物 ───
-    yw_ids = []
-    if YW:
-        d = fj("https://api.lingyiwanwu.com/v1/models", YW)
-        if d:
-            yw_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not yw_ids:
-        yw_ids = ["yi-light","yi-medium","yi-large","yi-vision","yi-large-turbo","yi-spark","yi-lightning"]
+    yi_result = YiPlatform(api_key=YW).fetch_result()
+    source_runs["yi"] = yi_result.metadata.to_dict()
+    yw_ids = [model["id"] for model in yi_result.models]
     print("  Yi:", len(yw_ids), file=sys.stderr)
 
     # ─── 百度文心（已弃用API，用 domestic_prices.json 兜底） ───
     BD = []
 
     # ─── 百川智能 ───
-    bc_ids = []
-    if BC:
-        d = fj("https://api.baichuan-ai.com/v1/models", BC)
-        if d:
-            bc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not bc_ids:
-        bc_ids = ["baichuan2-turbo","baichuan2-53b","baichuan-14b","baichuan4","baichuan4-vision","baichuan-m1"]
+    baichuan_result = BaichuanPlatform(api_key=BC).fetch_result()
+    source_runs["baichuan"] = baichuan_result.metadata.to_dict()
+    bc_ids = [model["id"] for model in baichuan_result.models]
     print("  Baichuan:", len(bc_ids), file=sys.stderr)
 
     # ─── 阶跃星辰 ───
-    jc_ids = []
-    if JC:
-        d = fj("https://api.stepfun.com/v1/models", JC)
-        if d:
-            jc_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not jc_ids:
-        jc_ids = ["step-1-8k","step-1-32k","step-1-128k","step-1-flash","step-1v-8k","step-1v-32k","step-2-16k","step-2-mini","step-r1"]
+    jieyue_result = JieyuePlatform(api_key=JC).fetch_result()
+    source_runs["jieyue"] = jieyue_result.metadata.to_dict()
+    jc_ids = [model["id"] for model in jieyue_result.models]
     print("  Jieyue:", len(jc_ids), file=sys.stderr)
 
     # ─── DeepSeek 官方 ───

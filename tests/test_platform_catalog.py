@@ -5,6 +5,7 @@ from datetime import datetime
 from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
+    BaichuanPlatform,
     ChatAnywherePlatform,
     CoherePlatform,
     DeepInfraPlatform,
@@ -12,15 +13,19 @@ from src.platforms import (
     FireworksPlatform,
     GroqPlatform,
     InfiniPlatform,
+    JieyuePlatform,
     MiniMaxPlatform,
     MoonshotPlatform,
     N1NPlatform,
     NovitaPlatform,
     OpenRouterPlatform,
     SiliconFlowPlatform,
+    SparkPlatform,
+    TencentPlatform,
     TogetherPlatform,
     VolcenginePlatform,
     ZhipuPlatform,
+    YiPlatform,
     parse_chatanywhere_pricing_html,
 )
 
@@ -165,6 +170,36 @@ def test_infini_filters_non_chat_models_and_records_api_source():
 
 def test_phase_six_platforms_without_keys_use_explicit_fallbacks():
     for platform in (FireworksPlatform(), CoherePlatform(), InfiniPlatform()):
+        result = platform.fetch_result()
+        assert result.metadata.source_type == "fallback"
+        assert "API Key 未配置" in result.metadata.error
+        assert result.models
+
+
+def test_remaining_openai_compatible_platforms_normalize_model_ids():
+    payload = {"data": [{"id": "chat-model"}, {"id": ""}]}
+    platforms = (
+        TencentPlatform(api_key="secret", json_fetcher=lambda _url, _key: payload),
+        YiPlatform(api_key="secret", json_fetcher=lambda _url, _key: payload),
+        BaichuanPlatform(api_key="secret", json_fetcher=lambda _url, _key: payload),
+        JieyuePlatform(api_key="secret", json_fetcher=lambda _url, _key: payload),
+    )
+    for platform in platforms:
+        result = platform.fetch_result()
+        assert result.metadata.source_type == "api"
+        assert result.models == [{"id": "chat-model", "name": "chat-model"}]
+
+
+def test_spark_uses_documented_static_catalog():
+    result = SparkPlatform().fetch_result()
+    assert result.metadata.source_type == "fallback"
+    assert result.metadata.source_url == "https://www.xfyun.cn/doc/spark/Web.html"
+    assert result.metadata.error == "讯飞星火没有公开模型目录 API"
+    assert len(result.models) == len(SparkPlatform.FALLBACK_IDS)
+
+
+def test_phase_seven_keyed_platforms_without_keys_use_explicit_fallbacks():
+    for platform in (TencentPlatform(), YiPlatform(), BaichuanPlatform(), JieyuePlatform()):
         result = platform.fetch_result()
         assert result.metadata.source_type == "fallback"
         assert "API Key 未配置" in result.metadata.error
