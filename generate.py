@@ -49,7 +49,7 @@ from src.platforms import (
     ZhipuPlatform,
     YiPlatform,
 )
-from src.history import upsert_daily_history
+from src.monitoring import update_ping_history
 from src.models.context import enrich_context_metadata
 from src.rendering import compose_page, load_asset, render_template
 
@@ -2445,98 +2445,15 @@ except Exception as _e:
     print("  models_data.json update failed:", str(_e)[:80], file=sys.stderr)
 
 # ─── 每日测速并保存历史数据 ───
-PING_DATA_FILE = os.path.join(CACHE_DIR, "ping_history.json")
 try:
-    import urllib.request as _ureq
-    import concurrent.futures
-    
-    # 从 models_data.json 读取模型数据
     with open(MODELS_JSON, "r", encoding="utf-8") as _pf:
-        _pdata = json.load(_pf)
-    
-    # 收集需要测速的接口：每个平台的 base_url + 代表性模型
-    _ping_targets = []
-    _seen_base = {}
-    for _pm in _pdata.get("models", []):
-        _burl = _pm.get("base_url", "")
-        _pid = _pm.get("platform_id", "")
-        _mname = _pm.get("name", "")
-        if not _burl or not _mname: continue
-        # 每个平台只测一个代表性模型（避免太多请求）
-        if _pid in _seen_base: continue
-        _seen_base[_pid] = 1
-        _ping_targets.append({
-            "platform_id": _pid,
-            "platform_name": _pm.get("platform_name", ""),
-            "model": _mname,
-            "base_url": _burl
-        })
-    
-    def _ping_one(target, timeout=8):
-        """测单个接口的 TTFB（即使返回 401/403，TTFB 仍然有效）"""
-        url = target["base_url"]
-        body = json.dumps({"model": target["model"], "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1}).encode()
-        headers = {"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
-        try:
-            req = _ureq.Request(url, data=body, headers=headers, method="POST")
-            t0 = time.time()
-            try:
-                with _ureq.urlopen(req, timeout=timeout) as resp:
-                    resp.read(1)
-                ttfb = int((time.time() - t0) * 1000)
-                return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "ok"}
-            except _ureq.HTTPError as e:
-                # 401/403/429 等：TTFB 仍然有效（网络通了，只是认证失败）
-                ttfb = int((time.time() - t0) * 1000)
-                if e.code in (401, 403, 429, 402, 400):
-                    return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "ok"}
-                return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "error"}
-        except Exception as e:
-            ttfb = int((time.time() - t0) * 1000) if 't0' in dir() else -1
-            if "timed out" in str(e).lower():
-                return {"platform_id": target["platform_id"], "model": target["model"], "ms": -1, "status": "timeout"}
-            return {"platform_id": target["platform_id"], "model": target["model"], "ms": ttfb, "status": "error"}
-    
-    # 并发测速
-    _ping_results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-        futures = {executor.submit(_ping_one, t): t for t in _ping_targets}
-        for future in concurrent.futures.as_completed(futures, timeout=30):
-            try:
-                result = future.result()
-                _ping_results.append(result)
-            except:
-                pass
-    
-    # 保存历史数据
-    _history = []
-    if os.path.exists(PING_DATA_FILE):
-        try:
-            with open(PING_DATA_FILE, "r") as hf:
-                _history = json.load(hf)
-        except:
-            _history = []
-    
-    _today_entry = {
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "time": datetime.now().strftime("%H:%M"),
-        "results": sorted(_ping_results, key=lambda x: x.get("ms", 99999) if x.get("ms", -1) > 0 else 99999)
-    }
-    _history = upsert_daily_history(_history, _today_entry, limit=30)
-    
-    with open(PING_DATA_FILE, "w", encoding="utf-8") as hf:
-        json.dump(_history, hf, ensure_ascii=False, separators=(',', ':'))
-    
-    # 同时保存一份完整的历史数据到项目目录（用于综合分析）
-    _analysis_file = os.path.join(SCRIPT_DIR, "ping_analysis.json")
-    with open(_analysis_file, "w", encoding="utf-8") as af:
-        json.dump({
-            "meta": {"updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"), "days": len(_history)},
-            "daily": _history
-        }, af, ensure_ascii=False, indent=2)
-    
-    _ok_count = sum(1 for r in _ping_results if r.get("status") == "ok")
-    print("  Ping: %d/%d platforms tested" % (_ok_count, len(_ping_targets)), file=sys.stderr)
+        _ping_models = json.load(_pf).get("models", [])
+    _ok_count, _target_count = update_ping_history(
+        _ping_models,
+        os.path.join(CACHE_DIR, "ping_history.json"),
+        os.path.join(SCRIPT_DIR, "ping_analysis.json"),
+    )
+    print("  Ping: %d/%d platforms tested" % (_ok_count, _target_count), file=sys.stderr)
 except Exception as _e:
     print("  Ping skipped:", str(_e)[:60], file=sys.stderr)
 
