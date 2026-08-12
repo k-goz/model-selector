@@ -118,6 +118,10 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ├── src/pricing/                      # 价格解析与价格状态分类
 ├── src/platforms/base.py             # 统一抓取结果、来源元数据和 OpenAI 兼容基类
 ├── src/platforms/catalog.py          # 已接入生产的关键平台抓取器
+├── src/rendering/                     # 前端资源读取与页面组合
+├── assets/styles.css                  # 页面样式源码，生成时内联
+├── assets/app.js                      # 浏览器交互源码，生成时内联
+├── templates/page.html                # 页面组合模板
 ├── scripts/normalize_official_prices_db.py
 ├── tests/
 └── .github/workflows/update-models.yml
@@ -133,7 +137,7 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 
 ## 下一阶段
 
-- 将 HTML 样式、浏览器脚本和页面渲染从 `generate.py` 拆出，并建立浏览器级回归测试。
+- 建立浏览器级回归测试和静态页面门禁，并接入每日 CI。
 - 将 HTML 模板和内联 JavaScript 从 `generate.py` 拆出，建立浏览器级回归测试。
 - 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
 - 恢复并验证自定义域名，补充部署健康检查和失败通知。
