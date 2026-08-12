@@ -25,6 +25,8 @@ class Model:
     currency: str = "CNY"            # 货币类型 (CNY/USD)
     price_unit: str = "per_token"    # 价格单位 (per_token/per_1m)
     price_source: str = ""           # 价格来源标签 (A/S/DB/L/P)
+    price_status: str = "unknown"    # priced/free/free_tier/non_token/unknown
+    billing_unit: str = "token"      # token/request/unknown
     
     # 模型属性
     context: str = "N/A"             # 上下文长度 (如 32k, 128k)
@@ -93,6 +95,8 @@ class Model:
             "currency": self.currency,
             "price_unit": self.price_unit,
             "price_source": self.price_source,
+            "price_status": self.price_status,
+            "billing_unit": self.billing_unit,
             "context": self.context,
             "context_tokens": self.context_tokens,
             "family": self.family,

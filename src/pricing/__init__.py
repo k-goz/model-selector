@@ -13,7 +13,7 @@ import re
 import json
 import logging
 import urllib.request
-from typing import Dict, Tuple, Optional
+from typing import Any, Dict, Mapping, Tuple, Optional, Sequence
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -30,6 +30,112 @@ class PriceResult:
     @property
     def is_valid(self) -> bool:
         return self.input_price > 0 or self.output_price > 0
+
+
+@dataclass(frozen=True)
+class PriceClassification:
+    """面向展示层的价格语义，避免把未知的零价格误判为免费。"""
+
+    status: str
+    billing_unit: str
+    tier: str
+    label: str
+
+
+def classify_price(
+    input_price: float,
+    output_price: float,
+    tags: Optional[Sequence[str]] = None,
+    scene: str = "",
+    currency: str = "CNY",
+    price_unit: str = "per_token",
+) -> PriceClassification:
+    """把价格数值转换为明确的产品语义。
+
+    ``0`` 只表示缺少可比较的 token 价格，不能单独证明模型免费。
+    免费、免费额度、非 token 计费和不可用状态必须由显式标签确认。
+    """
+
+    input_price = float(input_price or 0)
+    output_price = float(output_price or 0)
+    tag_set = {str(tag).strip() for tag in (tags or []) if str(tag).strip()}
+
+    if input_price > 0 or output_price > 0:
+        return PriceClassification(
+            status="priced",
+            billing_unit="token",
+            tier=get_price_tier(input_price, output_price, currency, price_unit),
+            label="",
+        )
+
+    if "已下线" in tag_set:
+        return PriceClassification("unavailable", "unknown", "unknown", "已下线")
+    if "即将下线" in tag_set:
+        return PriceClassification("retiring", "unknown", "unknown", "即将下线")
+    if "按次计费" in tag_set:
+        return PriceClassification("non_token", "request", "unknown", "按次计费")
+    if "免费" in tag_set:
+        return PriceClassification("free", "token", "free", "免费")
+    if "免费额度" in tag_set:
+        return PriceClassification("free_tier", "unknown", "free", "有免费额度 · 价格待确认")
+
+    # 图片、视频等场景经常按张、秒或次计费；没有明确单位时不可猜测。
+    if scene in {"图片生成", "视频生成"}:
+        return PriceClassification("non_token", "unknown", "unknown", "非 Token 计费 · 待确认")
+
+    return PriceClassification("unknown", "unknown", "unknown", "价格待确认")
+
+
+def parse_n1n_token_prices(payload: Any) -> Dict[str, Tuple[float, float]]:
+    """兼容 n1n 新旧价格接口，返回 CNY/1M token 的输入输出价。"""
+
+    if not isinstance(payload, Mapping):
+        return {}
+
+    data = payload.get("data")
+    prices: Dict[str, Tuple[float, float]] = {}
+
+    # 2026-08 接口：data 是逐模型记录列表。
+    if isinstance(data, list):
+        for item in data:
+            if not isinstance(item, Mapping) or item.get("available") is False:
+                continue
+            if item.get("quota_type") != 0:  # 1 表示按次计费，不是 token 单价。
+                continue
+            model = str(item.get("model_name") or "").strip()
+            try:
+                input_price = float(item.get("model_ratio") or 0)
+                completion_ratio = float(item.get("completion_ratio") or 0)
+            except (TypeError, ValueError):
+                continue
+            if model and input_price > 0 and completion_ratio > 0:
+                prices[model] = (input_price, round(input_price * completion_ratio, 4))
+        return prices
+
+    # 旧接口：data 由 model_group 和 model_completion_ratio 组成。
+    if not isinstance(data, Mapping):
+        return prices
+    completion_ratios = data.get("model_completion_ratio", {})
+    groups = data.get("model_group", {})
+    if not isinstance(completion_ratios, Mapping) or not isinstance(groups, Mapping):
+        return prices
+    for group in groups.values():
+        if not isinstance(group, Mapping):
+            continue
+        model_prices = group.get("ModelPrice", {})
+        if not isinstance(model_prices, Mapping):
+            continue
+        for model, price_info in model_prices.items():
+            if model in prices or not isinstance(price_info, Mapping):
+                continue
+            try:
+                input_price = float(price_info.get("price") or 0)
+                completion_ratio = float(completion_ratios.get(model, 1) or 1)
+            except (TypeError, ValueError):
+                continue
+            if input_price > 0:
+                prices[str(model)] = (input_price, round(input_price * completion_ratio, 4))
+    return prices
 
 
 # ═══════════════════════════════════════════════════════════════════════════

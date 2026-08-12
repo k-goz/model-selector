@@ -18,7 +18,66 @@ from src.pricing import (
     PriceDatabase,
     PriceResult,
     SSOTPriceResolver,
+    classify_price,
+    parse_n1n_token_prices,
 )
+
+
+class TestClassifyPrice:
+    """零价格必须依赖明确语义，不能默认免费。"""
+
+    def test_unknown_zero_price_is_not_free(self):
+        result = classify_price(0, 0)
+        assert result.status == "unknown"
+        assert result.tier == "unknown"
+        assert result.label == "价格待确认"
+
+    def test_explicit_free_model(self):
+        result = classify_price(0, 0, tags=["免费"])
+        assert result.status == "free"
+        assert result.tier == "free"
+
+    def test_free_quota_is_not_zero_price_claim(self):
+        result = classify_price(0, 0, tags=["免费额度"])
+        assert result.status == "free_tier"
+        assert "价格待确认" in result.label
+
+    def test_non_token_billing(self):
+        result = classify_price(0, 0, tags=["按次计费"], scene="视频生成")
+        assert result.status == "non_token"
+        assert result.billing_unit == "request"
+        assert result.tier == "unknown"
+
+    def test_positive_price_uses_normal_tier(self):
+        result = classify_price(1, 2)
+        assert result.status == "priced"
+        assert result.billing_unit == "token"
+        assert result.tier == "mid"
+
+
+class TestN1NPricingParser:
+    def test_current_list_response(self):
+        payload = {"data": [
+            {"model_name": "gpt-4o-mini", "quota_type": 0, "model_ratio": 0.075,
+             "completion_ratio": 4, "available": True},
+            {"model_name": "image-model", "quota_type": 1, "model_price": 0.1,
+             "completion_ratio": 0, "available": True},
+            {"model_name": "disabled", "quota_type": 0, "model_ratio": 1,
+             "completion_ratio": 2, "available": False},
+        ]}
+        assert parse_n1n_token_prices(payload) == {"gpt-4o-mini": (0.075, 0.3)}
+
+    def test_legacy_grouped_response(self):
+        payload = {"data": {
+            "model_completion_ratio": {"legacy-model": 3},
+            "model_group": {"default": {"ModelPrice": {
+                "legacy-model": {"price": 0.2}
+            }}},
+        }}
+        assert parse_n1n_token_prices(payload) == {"legacy-model": (0.2, 0.6)}
+
+    def test_invalid_response(self):
+        assert parse_n1n_token_prices([]) == {}
 
 
 class TestNormalizeForMatch:
