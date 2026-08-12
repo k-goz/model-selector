@@ -6,9 +6,12 @@ from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
     ChatAnywherePlatform,
+    CoherePlatform,
     DeepInfraPlatform,
     DeepSeekPlatform,
+    FireworksPlatform,
     GroqPlatform,
+    InfiniPlatform,
     MiniMaxPlatform,
     MoonshotPlatform,
     N1NPlatform,
@@ -122,6 +125,46 @@ def test_volcengine_preserves_retirement_status():
 
 def test_phase_five_platforms_without_keys_use_explicit_fallbacks():
     for platform in (MoonshotPlatform(), ZhipuPlatform(), VolcenginePlatform(), GroqPlatform()):
+        result = platform.fetch_result()
+        assert result.metadata.source_type == "fallback"
+        assert "API Key 未配置" in result.metadata.error
+        assert result.models
+
+
+def test_fireworks_preserves_context_length():
+    payload = {"data": [{"id": "accounts/test/model", "context_length": 131072}]}
+    result = FireworksPlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.models == [{
+        "id": "accounts/test/model", "name": "accounts/test/model",
+        "context_tokens": 131072, "context": "131k",
+    }]
+
+
+def test_cohere_filters_embedding_and_rerank_models():
+    payload = {"models": [
+        {"name": "command-a"}, {"name": "embed-v4"}, {"name": "rerank-v3"},
+    ]}
+    result = CoherePlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.models == [{"id": "command-a", "name": "command-a"}]
+
+
+def test_infini_filters_non_chat_models_and_records_api_source():
+    payload = {"data": [
+        {"id": "qwen-chat"}, {"id": "bge-reranker"}, {"id": "text-embedding"},
+    ]}
+    result = InfiniPlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.metadata.source_type == "api"
+    assert result.models == [{"id": "qwen-chat", "name": "qwen-chat"}]
+
+
+def test_phase_six_platforms_without_keys_use_explicit_fallbacks():
+    for platform in (FireworksPlatform(), CoherePlatform(), InfiniPlatform()):
         result = platform.fetch_result()
         assert result.metadata.source_type == "fallback"
         assert "API Key 未配置" in result.metadata.error

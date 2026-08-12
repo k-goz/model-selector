@@ -8,7 +8,7 @@
 
 - 当前仓库快照：22 个有数据的平台、2345 个模型；页面数字由 `models_data.json` 动态生成，不再在文档中承诺固定数量。
 - 前端是生成后的纯 HTML/CSS/JavaScript，中文页与英文页均可独立部署。
-- `generate.py` 仍是生产编排入口；阿里百炼、硅基流动、月之暗面、智谱 AI、火山引擎、MiniMax、DeepSeek、Groq、AiHubMix、n1n、ChatAnywhere、OpenRouter、Together AI、Novita AI、DeepInfra 已由 `src/platforms/` 中的生产抓取器负责，其余平台继续迁移。
+- `generate.py` 仍是生产编排入口；阿里百炼、硅基流动、月之暗面、智谱 AI、火山引擎、MiniMax、DeepSeek、Groq、Fireworks AI、Cohere、无问芯穹、AiHubMix、n1n、ChatAnywhere、OpenRouter、Together AI、Novita AI、DeepInfra 已由 `src/platforms/` 中的生产抓取器负责，其余平台继续迁移。
 - 数据缓存的采集时间与页面生成时间分开记录，缓存重建页面不会伪装成一次新采集。
 - 每日 CI 已收敛为单一工作流，依次执行测试、刷新、数据校验、价格基准校验和静态产物提交。
 
@@ -133,7 +133,7 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 
 ## 下一阶段
 
-- 继续迁移 Fireworks AI、Cohere、无问芯穹等仍由旧生成器维护的平台。
+- 继续迁移腾讯混元、讯飞星火、零一万物、百川智能、阶跃星辰，清零旧生成器血缘。
 - 将 HTML 模板和内联 JavaScript 从 `generate.py` 拆出，建立浏览器级回归测试。
 - 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
 - 恢复并验证自定义域名，补充部署健康检查和失败通知。

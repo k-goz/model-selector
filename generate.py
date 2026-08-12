@@ -28,9 +28,12 @@ from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
     ChatAnywherePlatform,
+    CoherePlatform,
     DeepInfraPlatform,
     DeepSeekPlatform,
+    FireworksPlatform,
     GroqPlatform,
+    InfiniPlatform,
     MiniMaxPlatform,
     MoonshotPlatform,
     N1NPlatform,
@@ -1368,53 +1371,21 @@ if not USE_JSON_DATA:
     print("  Together:", len(tg_list), file=sys.stderr)
 
     # ─── Fireworks AI ───
-    fw_list = []
-    if FW:
-        d = fj("https://api.fireworks.ai/inference/v1/models", FW)
-        if d:
-            for m in (d.get("data",[]) if d else []):
-                mid = m.get("id","")
-                ctx = m.get("context_length", 0) or 0
-                fw_list.append({"id": mid, "c": ctx})
-    if not fw_list:
-        fw_list = [{"id":x,"c":0} for x in [
-            "accounts/fireworks/models/llama-v3p3-70b-instruct",
-            "accounts/fireworks/models/llama-v3p1-8b-instruct",
-            "accounts/fireworks/models/llama-v3p1-70b-instruct",
-            "accounts/fireworks/models/llama-v3p2-3b-instruct",
-            "accounts/fireworks/models/qwen2p5-72b-instruct",
-            "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
-            "accounts/fireworks/models/deepseek-v3",
-            "accounts/fireworks/models/deepseek-r1",
-            "accounts/fireworks/models/mixtral-8x7b-instruct"]]
+    fireworks_result = FireworksPlatform(api_key=FW).fetch_result()
+    source_runs["fireworks"] = fireworks_result.metadata.to_dict()
+    fw_list = fireworks_result.models
     print("  Fireworks:", len(fw_list), file=sys.stderr)
 
     # ─── Cohere ───
-    co_list = []
-    if CO:
-        d = fj("https://api.cohere.com/v1/models", CO)
-        if d:
-            co_list = [{"id":m.get("name",m.get("id",""))} for m in (d.get("models",d.get("data",[])) if d else [])]
-    if not co_list:
-        co_list = [{"id":x} for x in [
-            "command-r-plus","command-r","command-r7b","command-a",
-            "c4ai-aya-expanse-8b","c4ai-aya-expanse-32b","embed-v3","rerank-v3"]]
+    cohere_result = CoherePlatform(api_key=CO).fetch_result()
+    source_runs["cohere"] = cohere_result.metadata.to_dict()
+    co_list = cohere_result.models
     print("  Cohere:", len(co_list), file=sys.stderr)
 
     # 无问芯穹 (InfiniAI)
-    infini_list = []
-    if INFINI:
-        d = fj("https://cloud.infini-ai.com/maas/v1/models", INFINI)
-        if d:
-            raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-            for m in raw:
-                mid = m.get("id","")
-                if mid and "embed" not in mid.lower() and "rerank" not in mid.lower():
-                    infini_list.append(mid)
-    if not infini_list:
-        infini_list = ["qwen2.5-72b-instruct","qwen2.5-32b-instruct","qwen2.5-14b-instruct","qwen2.5-7b-instruct",
-                       "glm-5.1","glm-5","glm-4.7","glm-4-9b-chat","deepseek-v3","deepseek-r1",
-                       "kimi-k2","yi-lightning","qwen2.5-coder-32b-instruct","qwq-32b","glm-4-plus","glm-4-flash"]
+    infini_result = InfiniPlatform(api_key=INFINI).fetch_result()
+    source_runs["infini"] = infini_result.metadata.to_dict()
+    infini_list = [model["id"] for model in infini_result.models]
     print("  InfiniAI:", len(infini_list), file=sys.stderr)
 
     # Novita AI
@@ -1671,9 +1642,9 @@ if not USE_JSON_DATA:
     for m in fw_list:
         mid = m["id"]
         ii, oo, cc, src = get_absolute_price("fireworks", mid)
-        api_ctx = m.get("c", 0)
+        api_ctx = m.get("context_tokens", 0)
         if api_ctx > 0:
-            cc = str(int(api_ctx)//1000)+"k"
+            cc = m.get("context") or cc
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("fireworks","Fireworks AI","#ff6b35",Te(mid),ii,oo,cc,tt,ss,

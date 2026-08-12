@@ -279,6 +279,109 @@ class GroqPlatform(OpenAICompatiblePlatform):
         return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
 
 
+class FireworksPlatform(BasePlatform):
+    platform_id = "fireworks"
+    platform_name = "Fireworks AI"
+    platform_color = "#ff6b35"
+    base_url = "https://api.fireworks.ai/inference/v1"
+    model_source_url = "https://api.fireworks.ai/inference/v1/models"
+
+    FALLBACK_IDS = [
+        "accounts/fireworks/models/llama-v3p3-70b-instruct",
+        "accounts/fireworks/models/llama-v3p1-8b-instruct",
+        "accounts/fireworks/models/llama-v3p1-70b-instruct",
+        "accounts/fireworks/models/llama-v3p2-3b-instruct",
+        "accounts/fireworks/models/qwen2p5-72b-instruct",
+        "accounts/fireworks/models/qwen2p5-coder-32b-instruct",
+        "accounts/fireworks/models/deepseek-v3", "accounts/fireworks/models/deepseek-r1",
+        "accounts/fireworks/models/mixtral-8x7b-instruct",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        if not self.is_configured:
+            raise ValueError("Fireworks AI API Key 未配置")
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            context_tokens = _as_int(raw.get("context_length"))
+            if model_id:
+                models.append({
+                    "id": model_id, "name": model_id,
+                    "context_tokens": context_tokens, "context": _context_label(context_tokens),
+                })
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id, "context_tokens": 0, "context": "N/A"}
+                for model_id in self.FALLBACK_IDS]
+
+
+class CoherePlatform(BasePlatform):
+    platform_id = "cohere"
+    platform_name = "Cohere"
+    platform_color = "#39d989"
+    base_url = "https://api.cohere.com/v2"
+    model_source_url = "https://api.cohere.com/v1/models"
+    SKIP_KEYWORDS = {"embed", "rerank"}
+    FALLBACK_IDS = [
+        "command-r-plus", "command-r", "command-r7b", "command-a",
+        "c4ai-aya-expanse-8b", "c4ai-aya-expanse-32b",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        if not self.is_configured:
+            raise ValueError("Cohere API Key 未配置")
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("models", payload.get("data", [])) if isinstance(payload, dict) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("name") or raw.get("id") or "").strip()
+            if model_id and not any(keyword in model_id.lower() for keyword in self.SKIP_KEYWORDS):
+                models.append({"id": model_id, "name": model_id})
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class InfiniPlatform(BasePlatform):
+    platform_id = "infini"
+    platform_name = "无问芯穹"
+    platform_color = "#ff6b9d"
+    base_url = "https://cloud.infini-ai.com/maas/v1"
+    model_source_url = "https://cloud.infini-ai.com/maas/v1/models"
+    SKIP_KEYWORDS = {"embed", "rerank"}
+    FALLBACK_IDS = [
+        "qwen2.5-72b-instruct", "qwen2.5-32b-instruct", "qwen2.5-14b-instruct",
+        "qwen2.5-7b-instruct", "glm-5.1", "glm-5", "glm-4.7", "glm-4-9b-chat",
+        "deepseek-v3", "deepseek-r1", "kimi-k2", "yi-lightning",
+        "qwen2.5-coder-32b-instruct", "qwq-32b", "glm-4-plus", "glm-4-flash",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        if not self.is_configured:
+            raise ValueError("无问芯穹 API Key 未配置")
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            if model_id and not any(keyword in model_id.lower() for keyword in self.SKIP_KEYWORDS):
+                models.append({"id": model_id, "name": model_id})
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
 class N1NPlatform(BasePlatform):
     platform_id = "n1n"
     platform_name = "n1n.ai"
