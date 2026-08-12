@@ -11,7 +11,16 @@ from .base import (
     PlatformConfig,
     PlatformFetchResult,
 )
-from .catalog import AliyunPlatform, DeepSeekPlatform, MiniMaxPlatform, N1NPlatform
+from .catalog import (
+    AiHubMixPlatform,
+    AliyunPlatform,
+    ChatAnywherePlatform,
+    DeepSeekPlatform,
+    MiniMaxPlatform,
+    N1NPlatform,
+    SiliconFlowPlatform,
+    parse_chatanywhere_pricing_html,
+)
 
 __all__ = [
     "BasePlatform",
@@ -23,4 +32,8 @@ __all__ = [
     "DeepSeekPlatform",
     "MiniMaxPlatform",
     "N1NPlatform",
+    "SiliconFlowPlatform",
+    "AiHubMixPlatform",
+    "ChatAnywherePlatform",
+    "parse_chatanywhere_pricing_html",
 ]

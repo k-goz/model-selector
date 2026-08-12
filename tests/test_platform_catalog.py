@@ -2,7 +2,16 @@
 
 from datetime import datetime
 
-from src.platforms import AliyunPlatform, DeepSeekPlatform, MiniMaxPlatform, N1NPlatform
+from src.platforms import (
+    AiHubMixPlatform,
+    AliyunPlatform,
+    ChatAnywherePlatform,
+    DeepSeekPlatform,
+    MiniMaxPlatform,
+    N1NPlatform,
+    SiliconFlowPlatform,
+    parse_chatanywhere_pricing_html,
+)
 
 
 def test_aliyun_normalizes_api_model_and_records_lineage():
@@ -99,3 +108,56 @@ def test_n1n_network_failure_keeps_auditable_fallback_error():
     assert result.metadata.source_type == "fallback"
     assert result.metadata.error == "upstream unavailable"
     assert len(result.models) == len(N1NPlatform.FALLBACK_IDS)
+
+
+def test_siliconflow_requires_key_and_records_fallback():
+    result = SiliconFlowPlatform().fetch_result()
+    assert result.metadata.source_type == "fallback"
+    assert result.metadata.source_url == "https://api.siliconflow.cn/v1/models"
+    assert len(result.models) == len(SiliconFlowPlatform.FALLBACK_IDS)
+
+
+def test_aihubmix_public_catalog_filters_non_chat_models():
+    payload = {"data": [
+        {"id": "gpt-4o"},
+        {"id": "text-embedding-3-large"},
+        {"id": "whisper-1"},
+        {"id": ""},
+    ]}
+    result = AiHubMixPlatform(json_fetcher=lambda _url, _key: payload).fetch_result()
+    assert result.metadata.source_type == "api"
+    assert result.models == [{"id": "gpt-4o", "name": "gpt-4o"}]
+
+
+def test_chatanywhere_parser_uses_rows_and_rejects_tier_ranges():
+    document = """
+    <table>
+      <tr><td>deepseek-v4-flash</td><td>0.0008 / 1K Tokens</td><td>0.0016 / 1K Tokens</td><td>支持</td></tr>
+      <tr><td>0 - 272K</td><td>0.001 / 1K Tokens</td><td>0.002 / 1K Tokens</td></tr>
+      <tr><td>32K - 128K</td><td>0.001 / 1K Tokens</td><td>0.002 / 1K Tokens</td></tr>
+      <tr><td>&gt;512K</td><td>0.001 / 1K Tokens</td><td>0.002 / 1K Tokens</td></tr>
+      <tr><td>text-embedding-3</td><td>0.001 / 1K Tokens</td><td>0.001 / 1K Tokens</td></tr>
+      <tr><td>o3-mini [5]</td><td>0.0011 / 1K Tokens</td><td>0.0044 / 1K Tokens</td></tr>
+    </table>
+    """
+    assert parse_chatanywhere_pricing_html(document) == [{
+        "id": "deepseek-v4-flash",
+        "name": "deepseek-v4-flash",
+        "input_price": 0.8,
+        "output_price": 1.6,
+        "context": "128k",
+    }, {
+        "id": "o3-mini",
+        "name": "o3-mini",
+        "input_price": 1.1,
+        "output_price": 4.4,
+        "context": "128k",
+    }]
+
+
+def test_chatanywhere_records_scrape_lineage():
+    document = "<tr><td>gpt-4o</td><td>0.002 / 1K</td><td>0.008 / 1K</td></tr>"
+    result = ChatAnywherePlatform(text_fetcher=lambda _url: document).fetch_result()
+    assert result.metadata.source_type == "scrape"
+    assert result.metadata.source_url == "https://chatanywhere.apifox.cn/doc-2694962"
+    assert result.models[0]["input_price"] == 2.0

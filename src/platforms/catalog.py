@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import html as html_lib
+import re
 from typing import Any, Dict, List
 
 from src.pricing import parse_n1n_token_prices
 
-from .base import BasePlatform, OpenAICompatiblePlatform
+from .base import BasePlatform, OpenAICompatiblePlatform, TextFetcher, fetch_text
 
 
 class AliyunPlatform(BasePlatform):
@@ -174,3 +176,128 @@ class N1NPlatform(BasePlatform):
     def get_fallback_models(self) -> List[Dict[str, Any]]:
         return [{"id": model_id, "name": model_id, "context": "128k"} for model_id in self.FALLBACK_IDS]
 
+
+class SiliconFlowPlatform(OpenAICompatiblePlatform):
+    platform_id = "siliconflow"
+    platform_name = "硅基流动"
+    platform_color = "#7C3AED"
+    base_url = "https://api.siliconflow.cn/v1"
+
+    FALLBACK_IDS = [
+        "deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1",
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", "Qwen/Qwen3-235B-A22B",
+        "Qwen/Qwen3-32B", "Qwen/Qwen3-14B", "Qwen/Qwen3-8B", "Qwen/Qwen3-4B",
+        "Qwen/Qwen3-Coder-480B-A35B-Instruct", "Qwen/Qwen3-235B-A22B-Thinking", "Qwen/QwQ-32B",
+        "Qwen/Qwen2.5-72B-Instruct", "Qwen/Qwen2.5-32B-Instruct", "Qwen/Qwen2.5-14B-Instruct",
+        "Qwen/Qwen2.5-7B-Instruct", "Qwen/Qwen2.5-Coder-32B-Instruct",
+        "Qwen/Qwen2.5-VL-72B-Instruct", "Qwen/Qwen2.5-VL-32B-Instruct",
+        "Qwen/Qwen2-VL-72B-Instruct", "Qwen/Qwen2-VL-7B-Instruct",
+        "Qwen/Qwen2.5-3B-Instruct", "Qwen/Qwen2.5-1.5B-Instruct", "Qwen/Qwen2.5-0.5B-Instruct",
+        "GLM-4-32B", "GLM-4-9B", "GLM-4.5-Air", "GLM-Z1-32B", "GLM-Z1-9B", "GLM-4.1V-9B",
+        "THUDM/GLM-4.7", "THUDM/GLM-5", "THUDM/GLM-5.1",
+        "Pro/deepseek-ai/DeepSeek-V3", "Pro/deepseek-ai/DeepSeek-R1",
+        "moonshotai/Kimi-K2-Instruct", "inclusionAI/Ling-flash", "inclusionAI/Ling-mini",
+    ]
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class AiHubMixPlatform(BasePlatform):
+    platform_id = "aihubmix"
+    platform_name = "AiHubMix"
+    platform_color = "#10b981"
+    base_url = "https://api.aihubmix.com/v1"
+    model_source_url = "https://api.aihubmix.com/v1/models"
+
+    FALLBACK_IDS = ["gpt-4o", "gpt-4o-mini", "claude-sonnet-4-5", "deepseek-chat", "qwen-plus", "glm-4-plus"]
+    SKIP_KEYWORDS = {"embed", "rerank", "tts", "whisper", "dall-e", "midjourney"}
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            lowered = model_id.lower()
+            if not model_id or any(keyword in lowered for keyword in self.SKIP_KEYWORDS):
+                continue
+            models.append({"id": model_id, "name": model_id})
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+def parse_chatanywhere_pricing_html(document: str) -> List[Dict[str, Any]]:
+    """逐表格行解析 ChatAnywhere 文档，避免跨表格错位产生伪模型。"""
+
+    models: List[Dict[str, Any]] = []
+    seen = set()
+    skip_keywords = {
+        "-ca", "-search", "-image", "-audio", "-realtime", "moderation",
+        "embed", "bge-", "rerank", "tts", "whisper", "dall", "instruct-0",
+        "codex-ca", "chat-latest-ca",
+    }
+
+    def clean_cell(value: str) -> str:
+        without_tags = re.sub(r"<[^>]+>", "", value)
+        return re.sub(r"\s+", " ", html_lib.unescape(without_tags)).replace("\x00", "").strip()
+
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", document or "", re.DOTALL | re.IGNORECASE):
+        cells = re.findall(r"<td[^>]*>(.*?)</td>", row, re.DOTALL | re.IGNORECASE)
+        if len(cells) < 3:
+            continue
+        model_id, input_text, output_text = (clean_cell(cell) for cell in cells[:3])
+        model_id = re.sub(r"\s*\[\d+\]\s*$", "", model_id).strip()
+        lowered = model_id.lower()
+        is_tier_range = bool(re.fullmatch(
+            r"[><=]?\s*\d+\s*[kKmM]?(?:\s*-\s*\d+\s*[kKmM]?)?",
+            model_id,
+        ))
+        if not model_id or is_tier_range or model_id in seen or any(keyword in lowered for keyword in skip_keywords):
+            continue
+        input_match = re.search(r"([0-9]+(?:\.[0-9]+)?)", input_text)
+        output_match = re.search(r"([0-9]+(?:\.[0-9]+)?)", output_text)
+        if not input_match or not output_match:
+            continue
+        input_price = float(input_match.group(1)) * 1000
+        output_price = float(output_match.group(1)) * 1000
+        if not (0 < input_price < 100000 and 0 < output_price < 1000000):
+            continue
+        seen.add(model_id)
+        models.append({
+            "id": model_id,
+            "name": model_id,
+            "input_price": round(input_price, 4),
+            "output_price": round(output_price, 4),
+            "context": "128k",
+        })
+    return models
+
+
+class ChatAnywherePlatform(BasePlatform):
+    platform_id = "ca"
+    platform_name = "ChatAnywhere"
+    platform_color = "#06b6d4"
+    base_url = "https://api.chatanywhere.org/v1"
+    model_source_url = "https://chatanywhere.apifox.cn/doc-2694962"
+
+    FALLBACK_IDS = ["gpt-4o", "gpt-4o-mini", "deepseek-chat", "claude-sonnet-4-5", "gemini-2.5-flash"]
+
+    def __init__(self, *args, text_fetcher: TextFetcher = fetch_text, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.text_fetcher = text_fetcher
+
+    @property
+    def fetch_source_type(self) -> str:
+        return "scrape"
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        return parse_chatanywhere_pricing_html(self.text_fetcher(self.model_source_url))
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id, "context": "128k"} for model_id in self.FALLBACK_IDS]

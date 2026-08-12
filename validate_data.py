@@ -19,7 +19,7 @@ PRICE_STATUSES = {
     "priced", "free", "free_tier", "non_token", "unknown", "unavailable", "retiring"
 }
 BILLING_UNITS = {"token", "request", "unknown"}
-MODEL_SOURCE_TYPES = {"api", "fallback", "legacy_generator", "legacy_snapshot"}
+MODEL_SOURCE_TYPES = {"api", "scrape", "fallback", "legacy_generator", "legacy_snapshot"}
 REQUIRED_MODEL_FIELDS = {
     "platform_id", "name", "input_price", "output_price", "currency",
     "price_status", "billing_unit", "price_src", "base_url",
@@ -93,7 +93,7 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
         lineage_counts[model_source] += 1
         if model_source not in MODEL_SOURCE_TYPES:
             errors.append(f"{platform}/{name}: 非法 model_source={model_source!r}")
-        if model_source in {"api", "fallback"} and not str(model.get("source_url", "")).strip():
+        if model_source in {"api", "scrape", "fallback"} and not str(model.get("source_url", "")).strip():
             errors.append(f"{platform}/{name}: {model_source} 模型缺少 source_url")
         try:
             datetime.fromisoformat(str(model.get("collected_at", "")))

@@ -57,6 +57,7 @@ class PlatformFetchResult:
 
 
 JsonFetcher = Callable[[str, str], Optional[Any]]
+TextFetcher = Callable[[str], str]
 
 
 def fetch_json(url: str, api_key: str = "") -> Optional[Any]:
@@ -68,6 +69,17 @@ def fetch_json(url: str, api_key: str = "") -> Optional[Any]:
     request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=20) as response:
         return json.loads(response.read().decode("utf-8"))
+
+
+def fetch_text(url: str) -> str:
+    """默认文本请求器，用于官方文档或价格页。"""
+
+    request = urllib.request.Request(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 (ModelSelector/2.0)"},
+    )
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return response.read().decode("utf-8", errors="ignore")
 
 
 class BasePlatform(ABC):
@@ -128,6 +140,11 @@ class BasePlatform(ABC):
     def model_source_url(self) -> str:
         """模型目录来源；默认使用 API Base URL。"""
         return self.base_url
+
+    @property
+    def fetch_source_type(self) -> str:
+        """成功抓取时的来源类型。"""
+        return "api"
     
     @property
     def is_configured(self) -> bool:
@@ -182,7 +199,7 @@ class BasePlatform(ABC):
                     models=models,
                     metadata=FetchMetadata(
                         platform_id=self.platform_id,
-                        source_type="api",
+                        source_type=self.fetch_source_type,
                         source_url=self.model_source_url,
                         collected_at=collected_at,
                         model_count=len(models),

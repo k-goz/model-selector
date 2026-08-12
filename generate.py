@@ -24,7 +24,15 @@ from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
 
 from src.pricing import classify_price
-from src.platforms import AliyunPlatform, DeepSeekPlatform, MiniMaxPlatform, N1NPlatform
+from src.platforms import (
+    AiHubMixPlatform,
+    AliyunPlatform,
+    ChatAnywherePlatform,
+    DeepSeekPlatform,
+    MiniMaxPlatform,
+    N1NPlatform,
+    SiliconFlowPlatform,
+)
 from src.history import upsert_daily_history
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -961,16 +969,16 @@ def n1np(mid):
 
 
 def cap(mid):
-    """ChatAnywhere - 国内中转平台（¥/M tokens，仅使用API获取的真实价格）"""
+    """ChatAnywhere - 国内中转平台（¥/M tokens，优先使用官方文档自营价）"""
     if mid in ca_prices:
         ii, oo = ca_prices[mid]
-        return ii, oo
+        return ii, oo, "P"
     # 无API价格 → 尝试 official_prices_db.json
     db_i, db_o, _ = get_db_price("ca", mid)
     if db_i > 0 or db_o > 0:
-        return db_i, db_o
+        return db_i, db_o, "DB"
     print("  ⚠️ PRICE_MISSING: [ca] %s → 价格为0" % mid, file=sys.stderr)
-    return 0, 0
+    return 0, 0, ""
 
 
 
@@ -1225,26 +1233,9 @@ if not USE_JSON_DATA:
     } for model in ali_result.models]
     print("  Aliyun:", len(ali), file=sys.stderr)
 
-    # ─── 硅基流动 ───
-    sf_ids = []
-    if SF:
-        d = fj("https://api.siliconflow.cn/v1/models", SF)
-        sf_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
-    if not sf_ids:
-        sf_ids = [
-            "deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1","deepseek-ai/DeepSeek-R1-Distill-Qwen-32B","deepseek-ai/DeepSeek-R1-Distill-Qwen-14B","deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
-            "Qwen/Qwen3-235B-A22B","Qwen/Qwen3-32B","Qwen/Qwen3-14B","Qwen/Qwen3-8B","Qwen/Qwen3-4B",
-            "Qwen/Qwen3-Coder-480B-A35B-Instruct","Qwen/Qwen3-235B-A22B-Thinking","Qwen/QwQ-32B",
-            "Qwen/Qwen2.5-72B-Instruct","Qwen/Qwen2.5-32B-Instruct","Qwen/Qwen2.5-14B-Instruct","Qwen/Qwen2.5-7B-Instruct",
-            "Qwen/Qwen2.5-Coder-32B-Instruct","Qwen/Qwen2.5-VL-72B-Instruct","Qwen/Qwen2.5-VL-32B-Instruct",
-            "Qwen/Qwen2-VL-72B-Instruct","Qwen/Qwen2-VL-7B-Instruct",
-            "Qwen/Qwen2.5-3B-Instruct","Qwen/Qwen2.5-1.5B-Instruct","Qwen/Qwen2.5-0.5B-Instruct",
-            "GLM-4-32B","GLM-4-9B","GLM-4.5-Air","GLM-Z1-32B","GLM-Z1-9B","GLM-4.1V-9B",
-            "THUDM/GLM-4.7","THUDM/GLM-5","THUDM/GLM-5.1",
-            "Pro/deepseek-ai/DeepSeek-V3","Pro/deepseek-ai/DeepSeek-R1",
-            "moonshotai/Kimi-K2-Instruct",
-            "inclusionAI/Ling-flash","inclusionAI/Ling-mini",
-        ]
+    siliconflow_result = SiliconFlowPlatform(api_key=SF).fetch_result()
+    source_runs["siliconflow"] = siliconflow_result.metadata.to_dict()
+    sf_ids = [model["id"] for model in siliconflow_result.models]
     print("  SF:", len(sf_ids), file=sys.stderr)
 
     # ─── 月之暗面 ───
@@ -1546,16 +1537,9 @@ if not USE_JSON_DATA:
 
 
     # AiHubMix
-    ahm_list = []
-    d = fj("https://api.aihubmix.com/v1/models", AIHUBMIX)
-    if d:
-        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-        for m in raw:
-            mid = m.get("id","")
-            if mid and "embed" not in mid.lower() and "rerank" not in mid.lower() and "tts" not in mid.lower() and "whisper" not in mid.lower() and "dall-e" not in mid.lower() and "midjourney" not in mid.lower():
-                ahm_list.append(mid)
-    if not ahm_list:
-        ahm_list = ["gpt-4o","gpt-4o-mini","claude-sonnet-4-5","deepseek-chat","qwen-plus","glm-4-plus"]
+    aihubmix_result = AiHubMixPlatform(api_key=AIHUBMIX).fetch_result()
+    source_runs["aihubmix"] = aihubmix_result.metadata.to_dict()
+    ahm_list = [model["id"] for model in aihubmix_result.models]
     print("  AiHubMix:", len(ahm_list), file=sys.stderr)
 
     # n1n.ai
@@ -1570,35 +1554,14 @@ if not USE_JSON_DATA:
     print("  n1n.ai:", len(n1n_list), file=sys.stderr)
 
     # ChatAnywhere
-    ca_list = []
-    ca_prices = {}
-    try:
-        import urllib.request as ur2, re as re2
-        req2 = ur2.Request("https://chatanywhere.apifox.cn/doc-2694962")
-        req2.add_header("User-Agent", "Mozilla/5.0")
-        with ur2.urlopen(req2, timeout=15) as r2:
-            html2 = r2.read().decode("utf-8", errors="ignore")
-        cells2 = re2.findall(r'<td[^>]*>(.*?)</td>', html2, re2.DOTALL)
-        for i2 in range(0, len(cells2) - 2, 5):
-            model2 = re2.sub(r'<[^>]+>', '', cells2[i2]).strip()
-            inp_t = re2.sub(r'<[^>]+>', '', cells2[i2+1]).strip()
-            out_t = re2.sub(r'<[^>]+>', '', cells2[i2+2]).strip()
-            inp_m = re2.search(r'^([\d.]+)', inp_t.strip())
-            out_m = re2.search(r'^([\d.]+)', out_t.strip())
-            if inp_m and out_m and model2 and len(model2) > 1:
-                inp2 = float(inp_m.group(1))
-                out2 = float(out_m.group(1))
-                if inp2 > 0 and out2 > 0 and inp2 < 100 and out2 < 1000:
-                    if model2 not in ca_prices:
-                        ca_prices[model2] = (round(inp2 * 1000, 4), round(out2 * 1000, 4))
-        skip_ca = ["-ca","-search","-image","-audio","-realtime","moderation","embed","bge-","rerank","tts","whisper","dall","instruct-0","codex-ca","chat-latest-ca"]
-        for mid2, (ii, oo) in ca_prices.items():
-            if not any(s in mid2.lower() for s in skip_ca):
-                ca_list.append(mid2)
-    except Exception as e2:
-        print("  ChatAnywhere fetch error:", str(e2)[:80], file=sys.stderr)
-    if not ca_list:
-        ca_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","gemini-2.5-flash"]
+    chatanywhere_result = ChatAnywherePlatform().fetch_result()
+    source_runs["ca"] = chatanywhere_result.metadata.to_dict()
+    ca_list = [model["id"] for model in chatanywhere_result.models]
+    ca_prices = {
+        model["id"]: (float(model.get("input_price") or 0), float(model.get("output_price") or 0))
+        for model in chatanywhere_result.models
+        if model.get("input_price") or model.get("output_price")
+    }
     print("  ChatAnywhere:", len(ca_list), file=sys.stderr)
 
     # ═══════════════════════════════════════════════════════════
@@ -1903,7 +1866,7 @@ if not USE_JSON_DATA:
 
     # ChatAnywhere
     for mid in ca_list:
-        ii, oo = cap(mid)
+        ii, oo, src = cap(mid)
         fam = get_family(mid)
         cc = "128k"
         m = mid.lower()
@@ -1919,8 +1882,8 @@ if not USE_JSON_DATA:
         if "r1" in m or "think" in m or "reason" in m: tt.append("推理")
         ss = "深度推理" if "推理" in tt else "日常对话"
         cards.append(make_card("ca","ChatAnywhere","#06b6d4",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam,price_src="P"))
-        all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY","src":"P"})
+                     "https://api.chatanywhere.org/v1/chat/completions","CNY",family=fam,price_src=src))
+        all_models.append({"p":"ca","n":mid,"i":ii,"o":oo,"cur":"CNY","src":src})
 
     # ─── 多源交叉验证已移除（不再依赖多源交叉验证）───
 
