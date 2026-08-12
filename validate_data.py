@@ -133,7 +133,7 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
             if run.get("model_count") != count:
                 errors.append(f"{platform}: source_runs.model_count={run.get('model_count')}，实际为 {count}")
     if missing_price_source_urls:
-        warnings.append(f"{missing_price_source_urls} 个有价格来源标签的模型缺少来源 URL")
+        errors.append(f"{missing_price_source_urls} 个有价格来源标签的模型缺少来源 URL")
     return errors, warnings
 
 

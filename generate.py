@@ -23,7 +23,7 @@ from datetime import datetime
 from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
 
-from src.pricing import classify_price
+from src.pricing import classify_price, resolve_price_source_url
 from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
@@ -2390,21 +2390,21 @@ try:
         "ca":{"name":"ChatAnywhere","color":"#fbbf24"},
     }
     def _price_source_url(platform_id, model_name, source_tag, source_run):
-        if source_tag in ("A", "P"):
-            return source_run.get("source_url", "")
-        if source_tag in ("DB", "D"):
-            return (OFFICIAL_PRICES_DB.get(platform_id) or {}).get("_source", "")
-        if source_tag == "L":
-            return "https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json"
-        if source_tag == "OR":
-            return "https://openrouter.ai/api/v1/models"
+        official_price_url = ""
         if source_tag in ("S", "SP"):
             candidates = [model_name.lower(), "sf:" + model_name.lower()]
             for candidate in candidates:
                 price = OFFICIAL_PRICES.get(candidate)
                 if price and price.get("source"):
-                    return price["source"]
-        return ""
+                    official_price_url = price["source"]
+                    break
+        return resolve_price_source_url(
+            platform_id,
+            source_tag,
+            source_run_url=source_run.get("source_url", ""),
+            database_url=(OFFICIAL_PRICES_DB.get(platform_id) or {}).get("_source", ""),
+            official_price_url=official_price_url,
+        )
 
     _mj = {"meta":{"updated_at":data_updated_at,"generated_at":datetime.now().strftime("%Y-%m-%d %H:%M"),"total_models":total,
         "platform_counts":{},"price_tiers":{},"price_status_counts":{},"lineage_counts":{},

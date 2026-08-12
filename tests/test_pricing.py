@@ -20,7 +20,28 @@ from src.pricing import (
     SSOTPriceResolver,
     classify_price,
     parse_n1n_token_prices,
+    resolve_price_source_url,
 )
+
+
+class TestPriceSourceResolution:
+    def test_prefers_model_specific_official_source(self):
+        assert resolve_price_source_url(
+            "n1n", "S", official_price_url="https://vendor.example/pricing"
+        ) == "https://vendor.example/pricing"
+
+    def test_uses_platform_api_for_api_prices_in_legacy_snapshot(self):
+        assert resolve_price_source_url("openrouter", "A") == "https://openrouter.ai/api/v1/models"
+        assert resolve_price_source_url("n1n", "P") == "https://api.n1n.ai/api/pricing"
+
+    def test_source_run_has_priority_for_live_api_data(self):
+        assert resolve_price_source_url(
+            "together", "A", source_run_url="https://api.example/models"
+        ) == "https://api.example/models"
+
+    def test_unknown_or_hardcoded_source_is_not_invented(self):
+        assert resolve_price_source_url("unknown", "A") == ""
+        assert resolve_price_source_url("aliyun", "H") == ""
 
 
 class TestClassifyPrice:

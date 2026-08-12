@@ -91,3 +91,9 @@ def test_api_lineage_requires_source_url():
     data = model_document([valid_model(source_url="")])
     errors, _ = validate_models(data, max_age_hours=2)
     assert any("api 模型缺少 source_url" in error for error in errors)
+
+
+def test_evidenced_price_requires_source_url():
+    data = model_document([valid_model(price_source_url="")])
+    errors, _ = validate_models(data, max_age_hours=2)
+    assert any("价格来源标签" in error for error in errors)
