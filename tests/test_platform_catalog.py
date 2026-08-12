@@ -6,10 +6,14 @@ from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
     ChatAnywherePlatform,
+    DeepInfraPlatform,
     DeepSeekPlatform,
     MiniMaxPlatform,
     N1NPlatform,
+    NovitaPlatform,
+    OpenRouterPlatform,
     SiliconFlowPlatform,
+    TogetherPlatform,
     parse_chatanywhere_pricing_html,
 )
 
@@ -127,6 +131,109 @@ def test_aihubmix_public_catalog_filters_non_chat_models():
     result = AiHubMixPlatform(json_fetcher=lambda _url, _key: payload).fetch_result()
     assert result.metadata.source_type == "api"
     assert result.models == [{"id": "gpt-4o", "name": "gpt-4o"}]
+
+
+def test_openrouter_normalizes_per_token_prices_and_capabilities(tmp_path):
+    payload = {"data": [{
+        "id": "vendor/reasoning-vision", "name": "Reasoning Vision",
+        "pricing": {"prompt": "0.000001", "completion": "0.000004"},
+        "context_length": 128000,
+        "architecture": {"input_modalities": ["text", "image"]},
+        "reasoning": {"mandatory": True},
+    }]}
+    cache_path = tmp_path / "openrouter.json"
+    result = OpenRouterPlatform(
+        cache_path=str(cache_path), json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.metadata.source_type == "api"
+    assert result.models == [{
+        "id": "vendor/reasoning-vision", "name": "Reasoning Vision",
+        "input_price": 0.000001, "output_price": 0.000004,
+        "context_tokens": 128000, "context": "128k", "vision": True, "reasoning": True,
+    }]
+    assert cache_path.exists()
+
+
+def test_openrouter_network_failure_uses_cached_catalog(tmp_path):
+    cache_path = tmp_path / "openrouter.json"
+    cache_path.write_text('{"data":[{"id":"cached/model","pricing":{"prompt":"0","completion":"0"}}]}')
+
+    def failing_fetcher(_url, _key):
+        raise RuntimeError("network unavailable")
+
+    result = OpenRouterPlatform(
+        cache_path=str(cache_path), json_fetcher=failing_fetcher,
+    ).fetch_result()
+    assert result.metadata.source_type == "fallback"
+    assert result.metadata.error == "network unavailable"
+    assert result.models[0]["id"] == "cached/model"
+
+
+def test_together_requires_key_and_normalizes_priced_text_models():
+    payload = [{
+        "id": "vendor/chat-model",
+        "pricing": {"input": "0.2", "output": "0.6"},
+        "context_length": 131072,
+    }, {
+        "id": "vendor/unpriced-model",
+        "pricing": {"input": 0, "output": 0},
+        "context_length": 131072,
+    }]
+    result = TogetherPlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.metadata.source_type == "api"
+    assert result.models == [{
+        "id": "vendor/chat-model", "name": "vendor/chat-model",
+        "input_price": 0.2, "output_price": 0.6,
+        "context_tokens": 131072, "context": "131k",
+    }]
+
+
+def test_together_without_key_records_static_fallback():
+    result = TogetherPlatform().fetch_result()
+    assert result.metadata.source_type == "fallback"
+    assert "API Key 未配置" in result.metadata.error
+    assert len(result.models) == len(TogetherPlatform.FALLBACK_IDS)
+
+
+def test_novita_converts_price_units_and_filters_non_chat_models():
+    payload = {"data": [{
+        "id": "vendor/chat-model", "display_name": "Chat Model", "model_type": "chat", "status": 1,
+        "input_token_price_per_m": 30000, "output_token_price_per_m": 150000,
+        "context_size": 1048576,
+    }, {
+        "id": "vendor/image-model", "model_type": "image", "status": 1,
+        "input_token_price_per_m": 30000, "output_token_price_per_m": 150000,
+    }]}
+    result = NovitaPlatform(json_fetcher=lambda _url, _key: payload).fetch_result()
+    assert result.models == [{
+        "id": "vendor/chat-model", "name": "Chat Model",
+        "input_price": 3.0, "output_price": 15.0,
+        "context_tokens": 1048576, "context": "1048k",
+    }]
+
+
+def test_deepinfra_converts_cents_per_token_and_excludes_deprecated_models():
+    payload = [{
+        "model_name": "vendor/chat-model", "type": "text-generation", "deprecated": None,
+        "pricing": {"type": "tokens", "cents_per_input_token": 0.00012,
+                    "cents_per_output_token": 0.0006},
+        "max_tokens": 256000,
+    }, {
+        "model_name": "vendor/old-model", "type": "text-generation", "deprecated": 1,
+        "pricing": {"type": "tokens", "cents_per_input_token": 0.0001,
+                    "cents_per_output_token": 0.0002},
+    }, {
+        "model_name": "vendor/embed-model", "type": "embeddings", "deprecated": None,
+        "pricing": {"type": "tokens", "cents_per_input_token": 0.0001},
+    }]
+    result = DeepInfraPlatform(json_fetcher=lambda _url, _key: payload).fetch_result()
+    assert result.models == [{
+        "id": "vendor/chat-model", "name": "vendor/chat-model",
+        "input_price": 1.2, "output_price": 6.0,
+        "context_tokens": 256000, "context": "256k",
+    }]
 
 
 def test_chatanywhere_parser_uses_rows_and_rejects_tier_ranges():

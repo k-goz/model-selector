@@ -4,12 +4,38 @@ from __future__ import annotations
 
 from copy import deepcopy
 import html as html_lib
+import json
+from pathlib import Path
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from src.pricing import parse_n1n_token_prices
 
 from .base import BasePlatform, OpenAICompatiblePlatform, TextFetcher, fetch_text
+
+
+def _as_float(value: Any) -> float:
+    try:
+        return float(value or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _as_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _context_label(tokens: int) -> str:
+    if tokens <= 0:
+        return "N/A"
+    if tokens >= 1_000_000 and tokens % 1_000_000 == 0:
+        return f"{tokens // 1_000_000}M"
+    if tokens >= 1000:
+        return f"{tokens // 1000}k"
+    return str(tokens)
 
 
 class AliyunPlatform(BasePlatform):
@@ -230,6 +256,195 @@ class AiHubMixPlatform(BasePlatform):
 
     def get_fallback_models(self) -> List[Dict[str, Any]]:
         return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class OpenRouterPlatform(BasePlatform):
+    platform_id = "openrouter"
+    platform_name = "OpenRouter"
+    platform_color = "#6366f1"
+    base_url = "https://openrouter.ai/api/v1"
+    model_source_url = "https://openrouter.ai/api/v1/models"
+
+    FALLBACK_IDS = [
+        "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet", "google/gemini-2.5-flash",
+        "deepseek/deepseek-chat", "meta-llama/llama-3.3-70b-instruct", "qwen/qwen-2.5-72b-instruct",
+    ]
+
+    def __init__(self, *args, cache_path: Optional[str] = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.cache_path = Path(cache_path) if cache_path else None
+
+    @staticmethod
+    def _normalize_models(payload: Any) -> List[Dict[str, Any]]:
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            if not model_id:
+                continue
+            architecture = raw.get("architecture") or {}
+            input_modalities = architecture.get("input_modalities") or []
+            reasoning = raw.get("reasoning")
+            context_tokens = _as_int(raw.get("context_length"))
+            pricing = raw.get("pricing") or {}
+            models.append({
+                "id": model_id,
+                "name": str(raw.get("name") or model_id).strip(),
+                "input_price": max(0.0, _as_float(pricing.get("prompt"))),
+                "output_price": max(0.0, _as_float(pricing.get("completion"))),
+                "context_tokens": context_tokens,
+                "context": _context_label(context_tokens),
+                "vision": bool(raw.get("vision") or "image" in input_modalities),
+                "reasoning": bool(reasoning),
+            })
+        return models
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        models = self._normalize_models(payload)
+        if models and self.cache_path:
+            self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            self.cache_path.write_text(json.dumps(payload), encoding="utf-8")
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        if self.cache_path and self.cache_path.exists():
+            try:
+                cached = self._normalize_models(json.loads(self.cache_path.read_text(encoding="utf-8")))
+                if cached:
+                    return cached
+            except (OSError, ValueError, TypeError):
+                pass
+        return [{"id": model_id, "name": model_id, "context": "N/A", "context_tokens": 0}
+                for model_id in self.FALLBACK_IDS]
+
+
+class TogetherPlatform(BasePlatform):
+    platform_id = "together"
+    platform_name = "Together AI"
+    platform_color = "#00d4ff"
+    base_url = "https://api.together.xyz/v1"
+    model_source_url = "https://api.together.xyz/v1/models"
+
+    FALLBACK_IDS = [
+        "meta-llama/Llama-3.3-70B-Instruct-Turbo", "meta-llama/Llama-3.1-8B-Instruct-Turbo",
+        "meta-llama/Llama-3.1-405B-Instruct-Turbo", "meta-llama/Llama-3.2-3B-Instruct-Turbo",
+        "Qwen/Qwen2.5-72B-Instruct-Turbo", "Qwen/Qwen2.5-Coder-32B-Instruct", "Qwen/QwQ-32B",
+        "deepseek-ai/DeepSeek-V3-0324", "deepseek-ai/DeepSeek-R1-Distill-Llama-70B",
+        "mistralai/Mixtral-8x7B-Instruct-v0.1", "mistralai/Mixtral-8x22B-Instruct-v0.3",
+        "google/gemma-2-27b-it",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        if not self.is_configured:
+            raise ValueError("Together AI API Key 未配置")
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            pricing = raw.get("pricing") or {}
+            input_price = _as_float(pricing.get("input"))
+            output_price = _as_float(pricing.get("output"))
+            context_tokens = _as_int(raw.get("context_length"))
+            if model_id and input_price > 0 and output_price > 0 and context_tokens > 0:
+                models.append({
+                    "id": model_id, "name": model_id,
+                    "input_price": input_price, "output_price": output_price,
+                    "context_tokens": context_tokens, "context": _context_label(context_tokens),
+                })
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id, "context": "N/A", "context_tokens": 0}
+                for model_id in self.FALLBACK_IDS]
+
+
+class NovitaPlatform(BasePlatform):
+    platform_id = "novita"
+    platform_name = "Novita AI"
+    platform_color = "#6366f1"
+    base_url = "https://api.novita.ai/v3/openai"
+    model_source_url = "https://api.novita.ai/v3/openai/models"
+
+    FALLBACK_MODELS = [
+        ("zai-org/glm-4.7-flash", 0.07, 0.4, 200000),
+        ("deepseek/deepseek-v3.2", 0.269, 0.4, 163840),
+        ("qwen/qwen3.5-27b", 0.3, 2.4, 262144),
+        ("qwen/qwen3.5-122b-a10b", 0.4, 3.2, 262144),
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else payload if isinstance(payload, list) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            status = raw.get("status")
+            model_type = str(raw.get("model_type") or "chat").lower()
+            input_price = _as_float(raw.get("input_token_price_per_m")) / 10000
+            output_price = _as_float(raw.get("output_token_price_per_m")) / 10000
+            context_tokens = _as_int(raw.get("context_size"))
+            if (model_id and input_price > 0 and output_price > 0 and model_type == "chat"
+                    and status not in ("deprecated", 0, False)):
+                models.append({
+                    "id": model_id, "name": str(raw.get("display_name") or model_id),
+                    "input_price": input_price, "output_price": output_price,
+                    "context_tokens": context_tokens, "context": _context_label(context_tokens),
+                })
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{
+            "id": model_id, "name": model_id, "input_price": input_price, "output_price": output_price,
+            "context_tokens": context_tokens, "context": _context_label(context_tokens),
+        } for model_id, input_price, output_price, context_tokens in self.FALLBACK_MODELS]
+
+
+class DeepInfraPlatform(BasePlatform):
+    platform_id = "deepinfra"
+    platform_name = "DeepInfra"
+    platform_color = "#7c3aed"
+    base_url = "https://api.deepinfra.com/v1/openai"
+    model_source_url = "https://api.deepinfra.com/models/list"
+
+    FALLBACK_IDS = [
+        "Qwen/Qwen3.5-27B", "meta-llama/Llama-3.3-70B-Instruct", "deepseek-ai/DeepSeek-V3",
+        "deepseek-ai/DeepSeek-R1", "google/gemma-3-27b-it", "microsoft/phi-4",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        payload = self.json_fetcher(self.model_source_url, "")
+        raw_models = payload if isinstance(payload, list) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict) or raw.get("type") != "text-generation" or raw.get("deprecated"):
+                continue
+            model_id = str(raw.get("model_name") or "").strip()
+            pricing = raw.get("pricing") or {}
+            if not model_id or pricing.get("type") != "tokens":
+                continue
+            input_price = _as_float(pricing.get("cents_per_input_token")) * 10000
+            output_price = _as_float(pricing.get("cents_per_output_token")) * 10000
+            context_tokens = _as_int(raw.get("max_tokens"))
+            if input_price <= 0 and output_price <= 0:
+                continue
+            models.append({
+                "id": model_id, "name": model_id,
+                "input_price": round(input_price, 6), "output_price": round(output_price, 6),
+                "context_tokens": context_tokens, "context": _context_label(context_tokens),
+            })
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id, "context": "N/A", "context_tokens": 0}
+                for model_id in self.FALLBACK_IDS]
 
 
 def parse_chatanywhere_pricing_html(document: str) -> List[Dict[str, Any]]:

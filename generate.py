@@ -28,10 +28,14 @@ from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
     ChatAnywherePlatform,
+    DeepInfraPlatform,
     DeepSeekPlatform,
     MiniMaxPlatform,
     N1NPlatform,
+    NovitaPlatform,
+    OpenRouterPlatform,
     SiliconFlowPlatform,
+    TogetherPlatform,
 )
 from src.history import upsert_daily_history
 
@@ -1284,31 +1288,21 @@ if not USE_JSON_DATA:
         ]
     print("  Volcengine:", len(vc_list), file=sys.stderr)
 
-    # ─── OpenRouter (实时拉取) ───
-    OR = []
-    d = fj("https://openrouter.ai/api/v1/models", retries=3)
-    if d:
-        OR = d.get("data", [])
-        # 缓存到本地
-        try:
-            with open(os.path.join(CACHE_DIR, "openrouter_full.json"), "w") as cf:
-                json.dump(d, cf)
-        except:
-            pass
-    else:
-        # 回退到缓存
-        cp = os.path.join(CACHE_DIR, "openrouter_full.json")
-        if os.path.exists(cp):
-            try: OR = json.load(open(cp)).get("data",[])
-            except: pass
+    # ─── OpenRouter（公开目录，失败时使用本地缓存） ───
+    openrouter_result = OpenRouterPlatform(
+        cache_path=os.path.join(CACHE_DIR, "openrouter_full.json"),
+        json_fetcher=lambda url, key: fj(url, key, retries=3),
+    ).fetch_result()
+    source_runs["openrouter"] = openrouter_result.metadata.to_dict()
+    OR = openrouter_result.models
     print("  OpenRouter:", len(OR), file=sys.stderr)
 
     # 构建 OpenRouter 价格查找表
     or_prices = {}
     for _m in OR:
         _mid = _m.get("id", "")
-        _ii = float(_m.get("pricing", {}).get("prompt", 0) or 0)
-        _oo = float(_m.get("pricing", {}).get("completion", 0) or 0)
+        _ii = float(_m.get("input_price", 0) or 0)
+        _oo = float(_m.get("output_price", 0) or 0)
         if _ii <= 0 and _oo <= 0:
             continue
         _norm = normalize_for_match(_mid)
@@ -1396,28 +1390,12 @@ if not USE_JSON_DATA:
     print("  Groq:", len(gq_ids), file=sys.stderr)
 
     # ─── Together AI ───
-    tg_list = []
-    if TG:
-        d = fj("https://api.together.xyz/v1/models", TG)
-        if d:
-            raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-            for m in raw:
-                mid = m.get("id","")
-                pricing = m.get("pricing", {})
-                inp = float(pricing.get("input", 0) or 0)
-                out = float(pricing.get("output", 0) or 0)
-                ctx = m.get("context_length", 0) or 0
-                # 只保留有价格且有上下文的文本模型
-                if inp > 0 and out > 0 and ctx > 0:
-                    tg_list.append({"id": mid, "i": inp, "o": out, "c": ctx})
-    if not tg_list:
-        tg_list = [{"id":x,"i":0,"o":0,"c":0} for x in [
-            "meta-llama/Llama-3.3-70B-Instruct-Turbo","meta-llama/Llama-3.1-8B-Instruct-Turbo",
-            "meta-llama/Llama-3.1-405B-Instruct-Turbo","meta-llama/Llama-3.2-3B-Instruct-Turbo",
-            "Qwen/Qwen2.5-72B-Instruct-Turbo","Qwen/Qwen2.5-Coder-32B-Instruct",
-            "Qwen/QwQ-32B","deepseek-ai/DeepSeek-V3-0324",
-            "deepseek-ai/DeepSeek-R1-Distill-Llama-70B","mistralai/Mixtral-8x7B-Instruct-v0.1",
-            "mistralai/Mixtral-8x22B-Instruct-v0.3","google/gemma-2-27b-it"]]
+    together_result = TogetherPlatform(
+        api_key=TG,
+        json_fetcher=lambda url, key: fj(url, key),
+    ).fetch_result()
+    source_runs["together"] = together_result.metadata.to_dict()
+    tg_list = together_result.models
     print("  Together:", len(tg_list), file=sys.stderr)
 
     # ─── Fireworks AI ───
@@ -1471,69 +1449,21 @@ if not USE_JSON_DATA:
     print("  InfiniAI:", len(infini_list), file=sys.stderr)
 
     # Novita AI
-    novita_list = []
-    d = fj("https://api.novita.ai/v3/openai/models", NOVITA)
-    if d:
-        raw = d.get("data",[]) if isinstance(d, dict) else d if isinstance(d, list) else []
-        for m in raw:
-            mid = m.get("id","")
-            inp_p = float(m.get("input_token_price_per_m", 0) or 0)
-            out_p = float(m.get("output_token_price_per_m", 0) or 0)
-            ctx = int(m.get("context_size", 0) or 0)
-            status = m.get("status", "")
-            if mid and inp_p > 0 and out_p > 0 and status != "deprecated":
-                novita_list.append({"id": mid, "i": inp_p / 10000, "o": out_p / 10000, "c": ctx})
-    if not novita_list:
-        novita_list = [{"id":"zai-org/glm-4.7-flash","i":0.07,"o":0.4,"c":200000},
-                       {"id":"deepseek/deepseek-v3.2","i":0.269,"o":0.4,"c":163840},
-                       {"id":"qwen/qwen3.5-27b","i":0.3,"o":2.4,"c":262144},
-                       {"id":"qwen/qwen3.5-122b-a10b","i":0.4,"o":3.2,"c":262144}]
+    novita_result = NovitaPlatform(
+        api_key=NOVITA,
+        json_fetcher=lambda url, key: fj(url, key),
+    ).fetch_result()
+    source_runs["novita"] = novita_result.metadata.to_dict()
+    novita_list = novita_result.models
     print("  Novita:", len(novita_list), file=sys.stderr)
 
-    # DeepInfra (使用专用 /models/list API，包含真实定价数据)
-    di_list = []
-    di_prices = {}
-    try:
-        req = urllib.request.Request("https://api.deepinfra.com/models/list",
-                                     headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=30) as r:
-            di_raw = json.loads(r.read().decode("utf-8", errors="ignore"))
-        for m in di_raw:
-            mn = m.get("model_name", "")
-            mtype = m.get("type", "")
-            pricing = m.get("pricing", {})
-            ptype = pricing.get("type", "")
-            deprecated = m.get("deprecated")
-            # 只保留文本生成模型，跳过已废弃
-            if mtype != "text-generation" or deprecated:
-                continue
-            if ptype == "tokens":
-                cents_in = float(pricing.get("cents_per_input_token", 0) or 0)
-                cents_out = float(pricing.get("cents_per_output_token", 0) or 0)
-                max_tok = m.get("max_tokens", 0) or 0
-                # 转换: cents/token → $/1M tokens
-                inp_1m = round(cents_in * 10000, 6)  # cents/token * 1e6 / 100
-                out_1m = round(cents_out * 10000, 6)
-                if inp_1m > 0 or out_1m > 0:
-                    ctx_str = str(max_tok // 1000) + "k" if max_tok >= 1000 else str(max_tok)
-                    di_list.append(mn)
-                    di_prices[mn] = (inp_1m, out_1m, ctx_str)
-    except Exception as e:
-        print("  DeepInfra models/list error:", str(e)[:80], file=sys.stderr)
-    if not di_list:
-        # Fallback: 尝试 OpenAI 兼容接口
-        if DEEPINFRA:
-            d = fj("https://api.deepinfra.com/v1/openai/models", DEEPINFRA)
-            if d:
-                for m in (d.get("data",[]) if isinstance(d, dict) else []):
-                    mid = m.get("id","")
-                    if mid and "embed" not in mid.lower() and "rerank" not in mid.lower():
-                        di_list.append(mid)
-        if not di_list:
-            di_list = ["Qwen/Qwen3.5-27B","meta-llama/Llama-3.3-70B-Instruct",
-                       "deepseek-ai/DeepSeek-V3","deepseek-ai/DeepSeek-R1",
-                       "google/gemma-3-27b-it","microsoft/phi-4"]
-    print("  DeepInfra:", len(di_list), "with pricing:", len(di_prices), file=sys.stderr)
+    # DeepInfra（公开目录，包含真实定价）
+    deepinfra_result = DeepInfraPlatform(
+        json_fetcher=lambda url, key: fj(url, key),
+    ).fetch_result()
+    source_runs["deepinfra"] = deepinfra_result.metadata.to_dict()
+    di_list = deepinfra_result.models
+    print("  DeepInfra:", len(di_list), file=sys.stderr)
 
 
     # AiHubMix
@@ -1647,14 +1577,12 @@ if not USE_JSON_DATA:
         all_models.append({"p":"baidu","n":mid,"i":ii,"o":oo,"src":src})
 
     # OpenRouter
-    for m in OR[:350]:
-        ii = float(m.get("pricing",{}).get("prompt",0) or 0)
-        oo = float(m.get("pricing",{}).get("completion",0) or 0)
-        if ii < 0: ii = 0
-        if oo < 0: oo = 0
-        nn = Te(m.get("name", m.get("id","")))
-        cc_r = m.get("context_length") or 0
-        cc = str(int(cc_r)//1000)+"k" if cc_r else "N/A"
+    for m in OR:
+        ii = float(m.get("input_price", 0) or 0)
+        oo = float(m.get("output_price", 0) or 0)
+        nn = Te(m.get("name", m.get("id", "")))
+        cc_r = m.get("context_tokens") or 0
+        cc = m.get("context") or "N/A"
         tt = []
         if ii == 0 and oo == 0: tt.append("免费")
         p = ii * 1e6
@@ -1669,8 +1597,9 @@ if not USE_JSON_DATA:
         pv = Te(m.get("id","").split("/")[0].upper())
         mid2 = Te(m["id"])
         fam = get_family(m.get("id",""))
-        cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam, price_src="A"))
-        all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD","src":"A"})
+        src = "A" if openrouter_result.metadata.source_type == "api" else "H"
+        cards.append(make_or_card(pv, nn, ii, oo, cc, tt, ss, mid2, family=fam, price_src=src))
+        all_models.append({"p":"openrouter","n":m.get("id",""),"i":ii,"o":oo,"cur":"USD","src":src})
 
     # 腾讯混元
     for mid in tx_ids:
@@ -1751,19 +1680,21 @@ if not USE_JSON_DATA:
     # Together AI
     for m in tg_list:
         mid = m["id"]
-        api_inp = m.get("i", 0)
-        api_out = m.get("o", 0)
-        api_ctx = m.get("c", 0)
+        api_inp = m.get("input_price", 0)
+        api_out = m.get("output_price", 0)
+        api_ctx = m.get("context_tokens", 0)
         ii, oo, cc = get_db_price("together", mid)
+        src = "DB" if (ii > 0 or oo > 0) else ""
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         if api_inp > 0 and api_out > 0:
             ii, oo = api_inp, api_out
-            cc = str(int(api_ctx)//1000)+"k" if api_ctx else cc
+            cc = m.get("context") or cc
             tt, ss = infer_tags_and_scene(mid, ii, oo, api_ctx)
+            src = "A" if together_result.metadata.source_type == "api" else "H"
         fam = get_family(mid)
         cards.append(make_card("together","Together AI","#00d4ff",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
-        all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD","src":"A"})
+                     "https://api.together.xyz/v1/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"together","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # Fireworks AI
     for m in fw_list:
@@ -1800,30 +1731,33 @@ if not USE_JSON_DATA:
     # Novita AI
     for m in novita_list:
         mid = m["id"]
-        api_inp = m.get("i", 0)
-        api_out = m.get("o", 0)
-        api_ctx = m.get("c", 0)
+        api_inp = m.get("input_price", 0)
+        api_out = m.get("output_price", 0)
+        api_ctx = m.get("context_tokens", 0)
         if api_inp > 0 and api_out > 0:
             ii, oo = api_inp, api_out
-            cc = str(int(api_ctx)//1000)+"k" if api_ctx else "N/A"
+            cc = m.get("context") or "N/A"
             tt, ss = infer_tags_and_scene(mid, ii, oo, api_ctx)
+            src = "A" if novita_result.metadata.source_type == "api" else "H"
         else:
             ii, oo, cc = get_db_price("novita", mid)
             tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
+            src = "DB" if (ii > 0 or oo > 0) else ""
         fam = get_family(mid)
         cards.append(make_card("novita","Novita AI","#6366f1",Te(mid),ii,oo,cc,tt,ss,
-                     "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src="A"))
-        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo,"cur":"USD","src":"A"})
+                     "https://api.novita.ai/v3/openai/chat/completions","USD",family=fam,price_unit="per_1m",price_src=src))
+        all_models.append({"p":"novita","n":mid,"i":ii,"o":oo,"cur":"USD","src":src})
 
     # DeepInfra
-    for mid in di_list:
-        if mid in di_prices:
-            # API 直接返回的价格（最高优先级）
-            ii, oo, cc = di_prices[mid]
+    for m in di_list:
+        mid = m["id"]
+        if m.get("input_price", 0) > 0 or m.get("output_price", 0) > 0:
+            ii = m.get("input_price", 0)
+            oo = m.get("output_price", 0)
+            cc = m.get("context") or "N/A"
             tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
-            src = "A"
+            src = "A" if deepinfra_result.metadata.source_type == "api" else "H"
         else:
-            # 没有API价格，尝试 official_prices_db.json
             ii, oo, cc = get_db_price("deepinfra", mid)
             tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
             src = "DB" if (ii > 0 or oo > 0) else ""

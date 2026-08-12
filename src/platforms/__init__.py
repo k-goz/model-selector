@@ -15,10 +15,14 @@ from .catalog import (
     AiHubMixPlatform,
     AliyunPlatform,
     ChatAnywherePlatform,
+    DeepInfraPlatform,
     DeepSeekPlatform,
     MiniMaxPlatform,
     N1NPlatform,
+    NovitaPlatform,
+    OpenRouterPlatform,
     SiliconFlowPlatform,
+    TogetherPlatform,
     parse_chatanywhere_pricing_html,
 )
 
@@ -35,5 +39,9 @@ __all__ = [
     "SiliconFlowPlatform",
     "AiHubMixPlatform",
     "ChatAnywherePlatform",
+    "DeepInfraPlatform",
+    "NovitaPlatform",
+    "OpenRouterPlatform",
+    "TogetherPlatform",
     "parse_chatanywhere_pricing_html",
 ]
