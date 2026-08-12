@@ -1,6 +1,8 @@
 name: Update Model Data
 
 on:
+  push:
+    branches: [main]
   schedule:
     # 每天北京时间 06:00
     - cron: '0 22 * * *'
@@ -16,6 +18,7 @@ permissions:
 
 jobs:
   update:
+    if: "github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'auto: update model data')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
