@@ -15,7 +15,11 @@ def valid_model(**overrides):
         "price_status": "priced",
         "billing_unit": "token",
         "price_src": "DB",
+        "price_source_url": "https://example.com/pricing",
         "base_url": "https://example.com/v1/chat/completions",
+        "model_source": "api",
+        "source_url": "https://example.com/v1/models",
+        "collected_at": datetime.now().isoformat(timespec="seconds"),
         "context": "32k",
         "tags": [],
     }
@@ -33,6 +37,17 @@ def model_document(models):
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "total_models": len(models),
             "price_status_counts": counts,
+            "lineage_counts": {"api": len(models)},
+            "source_runs": {
+                "demo": {
+                    "platform_id": "demo",
+                    "source_type": "api",
+                    "source_url": "https://example.com/v1/models",
+                    "collected_at": datetime.now().isoformat(timespec="seconds"),
+                    "model_count": len(models),
+                    "error": "",
+                }
+            },
         },
         "models": models,
     }
@@ -63,3 +78,16 @@ def test_flat_ssot_record_is_rejected():
     }
     errors, _ = validate_price_db(data)
     assert any("orphan-model" in error for error in errors)
+
+
+def test_model_lineage_requires_matching_source_run():
+    data = model_document([valid_model()])
+    data["meta"]["source_runs"]["demo"]["model_count"] = 2
+    errors, _ = validate_models(data, max_age_hours=2)
+    assert any("source_runs.model_count" in error for error in errors)
+
+
+def test_api_lineage_requires_source_url():
+    data = model_document([valid_model(source_url="")])
+    errors, _ = validate_models(data, max_age_hours=2)
+    assert any("api 模型缺少 source_url" in error for error in errors)

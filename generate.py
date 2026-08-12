@@ -23,7 +23,9 @@ from datetime import datetime
 from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
 
-from src.pricing import classify_price, parse_n1n_token_prices
+from src.pricing import classify_price
+from src.platforms import AliyunPlatform, DeepSeekPlatform, MiniMaxPlatform, N1NPlatform
+from src.history import upsert_daily_history
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 日志配置
@@ -1085,6 +1087,7 @@ t0 = time.time()
 cards = []
 all_models = []
 price_changes = []
+source_runs = {}
 data_updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 or_prices = {}  # OpenRouter 价格查找表（始终可用）
 OR = []         # OpenRouter 原始数据
@@ -1099,6 +1102,7 @@ if os.path.exists(MODELS_JSON) and not FORCE_REFRESH:
             jdata = json.load(jf)
         jmodels = jdata.get("models", [])
         jmeta = jdata.get("meta", {})
+        source_runs = jmeta.get("source_runs", {}) if isinstance(jmeta.get("source_runs", {}), dict) else {}
         data_updated_at = jmeta.get("updated_at", data_updated_at)
         for m in jmodels:
             pid = m["platform_id"]
@@ -1207,54 +1211,18 @@ if not USE_JSON_DATA:
     t0 = time.time()
     data_updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 
-    # ─── 阿里百炼 ───
-    ali = []
-    if ALI:
-        for pg in range(1, 10):
-            d = fj("https://dashscope.aliyuncs.com/api/v1/models?page_no=%d&page_size=100" % pg, ALI)
-            if not d: break
-            ms2 = d.get("output",{}).get("models",[]); tot = d.get("output",{}).get("total",0)
-            if not ms2: break
-            for m in ms2:
-                p0 = (m.get("prices") or [{}])[0].get("prices", [])
-                ii = oo = 0.0
-                for px in p0:
-                    if px.get("type") == "input_token":   ii = float(px.get("price","0") or 0)
-                    if px.get("type") == "output_token": oo = float(px.get("price","0") or 0)
-                cc = str(int(((m.get("model_info") or {}).get("context_window") or 0) // 1000)) + "k"
-                ca = m.get("capabilities",[]); tt = []
-                if "Reasoning" in ca: tt.append("推理")
-                if "VU" in ca: tt.append("视觉")
-                if "IG" in ca: tt.append("图片生成"); ss = "图片生成"
-                if "VG" in ca: tt.append("视频生成"); ss = "视频生成"
-                elif "VU" in ca: ss = "视觉图片"
-                elif "Reasoning" in ca: ss = "深度推理"
-                else: ss = "日常对话"
-                nn = (m.get("name") or m.get("model") or "")
-                if ii == 0 and oo == 0 and ("IG" in ca or "VG" in ca):
-                    tt = tt[:] + ["按次计费"]
-                ali.append({"n":nn,"i":ii,"o":oo,"c":cc,"t":tt,"s":ss})
-            print("  Aliyun: %d/%d" % (len(ali), tot), file=sys.stderr)
-            if len(ali) >= tot: break
-            time.sleep(0.2)
-    if not ali:
-        ali = [
-            {"n":"qwen-max","i":2.4,"o":9.6,"c":"32k","t":["旗舰"],"s":"深度推理"},
-            {"n":"qwen-plus","i":0.8,"o":2,"c":"128k","t":["主力","性价比"],"s":"日常对话"},
-            {"n":"qwen-turbo","i":0.3,"o":0.6,"c":"1M","t":["快速","极便宜"],"s":"日常对话"},
-            {"n":"qwen-long","i":0.5,"o":2,"c":"1M","t":["长上下文"],"s":"日常对话"},
-            {"n":"qwen-vl-max","i":20,"o":60,"c":"32k","t":["视觉","旗舰"],"s":"视觉图片"},
-            {"n":"qwen-vl-plus","i":0.8,"o":2,"c":"128k","t":["视觉","性价比"],"s":"视觉图片"},
-            {"n":"qwen-coder-plus","i":0.8,"o":2,"c":"128k","t":["代码"],"s":"编程代码"},
-            {"n":"qwen3-235b-a22b","i":0.8,"o":6.4,"c":"128k","t":["旗舰","MoE"],"s":"深度推理"},
-            {"n":"qwen3-32b","i":0.6,"o":4.8,"c":"128k","t":["主力"],"s":"日常对话"},
-            {"n":"qwen3-14b","i":0.4,"o":3.2,"c":"128k","t":["轻量"],"s":"日常对话"},
-            {"n":"qwen3-8b","i":0.2,"o":2,"c":"128k","t":["轻量","免费额度"],"s":"日常对话"},
-            {"n":"qwen3-4b","i":0.2,"o":2,"c":"128k","t":["轻量","免费额度"],"s":"日常对话"},
-            {"n":"qwq-32b","i":0.7,"o":2,"c":"128k","t":["推理"],"s":"深度推理"},
-            {"n":"deepseek-v3","i":1,"o":2,"c":"1M","t":["满血版","主力"],"s":"日常对话"},
-            {"n":"deepseek-r1","i":1,"o":2,"c":"1M","t":["推理","旗舰"],"s":"深度推理"},
-        ]
+    # ─── 已迁移平台：统一抓取结果 + 数据血缘 ───
+    ali_result = AliyunPlatform(api_key=ALI).fetch_result()
+    source_runs["aliyun"] = ali_result.metadata.to_dict()
+    ali = [{
+        "n": model["id"],
+        "i": float(model.get("input_price") or 0),
+        "o": float(model.get("output_price") or 0),
+        "c": model.get("context", "N/A"),
+        "t": model.get("tags", []),
+        "s": model.get("scene", "日常对话"),
+        "from_api": ali_result.metadata.source_type == "api",
+    } for model in ali_result.models]
     print("  Aliyun:", len(ali), file=sys.stderr)
 
     # ─── 硅基流动 ───
@@ -1379,13 +1347,9 @@ if not USE_JSON_DATA:
     print("  Spark:", len(xh_ids), file=sys.stderr)
 
     # ─── MiniMax ───
-    mm_ids = []
-    if MM:
-        d = fj("https://api.minimax.chat/v1/models", MM)
-        if d:
-            mm_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not mm_ids:
-        mm_ids = ["MiniMax-M2.7","MiniMax-M2.1","abab6.5s","abab6.5","abab6.5g","abab5.5","abab5.5s","abab6.5s-vision","abab6.5-vision","minimax-m1"]
+    minimax_result = MiniMaxPlatform(api_key=MM).fetch_result()
+    source_runs["minimax"] = minimax_result.metadata.to_dict()
+    mm_ids = [model["id"] for model in minimax_result.models]
     print("  MiniMax:", len(mm_ids), file=sys.stderr)
 
     # ─── 零一万物 ───
@@ -1422,13 +1386,9 @@ if not USE_JSON_DATA:
     print("  Jieyue:", len(jc_ids), file=sys.stderr)
 
     # ─── DeepSeek 官方 ───
-    ds_ids = []
-    if DS:
-        d = fj("https://api.deepseek.com/v1/models", DS)
-        if d:
-            ds_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not ds_ids:
-        ds_ids = ["deepseek-v4-flash","deepseek-v4-pro"]
+    deepseek_result = DeepSeekPlatform(api_key=DS).fetch_result()
+    source_runs["deepseek"] = deepseek_result.metadata.to_dict()
+    ds_ids = [model["id"] for model in deepseek_result.models]
     print("  DeepSeek:", len(ds_ids), file=sys.stderr)
 
     # ─── Groq ───
@@ -1599,17 +1559,14 @@ if not USE_JSON_DATA:
     print("  AiHubMix:", len(ahm_list), file=sys.stderr)
 
     # n1n.ai
-    n1n_list = []
-    n1n_prices = {}
-    d = fj("https://api.n1n.ai/api/pricing", "")
-    if d and isinstance(d, dict):
-        n1n_prices = parse_n1n_token_prices(d)
-        skip_kw = ["embed","rerank","tts","whisper","dall","midjourney","mj_","stable-diffusion","moderation","bge-","sd1","sd3","flux","cogview","paint","audio"]
-        for mid2, (ii, oo) in n1n_prices.items():
-            if ii > 0 and oo > 0 and not any(s in mid2.lower() for s in skip_kw):
-                n1n_list.append(mid2)
-    if not n1n_list:
-        n1n_list = ["gpt-4o","gpt-4o-mini","deepseek-chat","claude-sonnet-4-5","qwen-plus"]
+    n1n_result = N1NPlatform().fetch_result()
+    source_runs["n1n"] = n1n_result.metadata.to_dict()
+    n1n_list = [model["id"] for model in n1n_result.models]
+    n1n_prices = {
+        model["id"]: (float(model.get("input_price") or 0), float(model.get("output_price") or 0))
+        for model in n1n_result.models
+        if model.get("input_price") or model.get("output_price")
+    }
     print("  n1n.ai:", len(n1n_list), file=sys.stderr)
 
     # ChatAnywhere
@@ -1659,7 +1616,7 @@ if not USE_JSON_DATA:
     # 阿里百炼
     for m in ali:
         fam = get_family(m["n"])
-        api_price = (m["i"], m["o"], m["c"]) if (m["i"] > 0 or m["o"] > 0) else None
+        api_price = (m["i"], m["o"], m["c"]) if m.get("from_api") and (m["i"] > 0 or m["o"] > 0) else None
         ii, oo, cc, src = get_absolute_price("aliyun", m["n"], api_price=api_price)
         tt, ss = m["t"], m["s"]
         if src != "A":
@@ -4696,10 +4653,28 @@ try:
         "n1n":{"name":"n1n.ai","color":"#22d3ee"},
         "ca":{"name":"ChatAnywhere","color":"#fbbf24"},
     }
+    def _price_source_url(platform_id, model_name, source_tag, source_run):
+        if source_tag in ("A", "P"):
+            return source_run.get("source_url", "")
+        if source_tag in ("DB", "D"):
+            return (OFFICIAL_PRICES_DB.get(platform_id) or {}).get("_source", "")
+        if source_tag == "L":
+            return "https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json"
+        if source_tag == "OR":
+            return "https://openrouter.ai/api/v1/models"
+        if source_tag in ("S", "SP"):
+            candidates = [model_name.lower(), "sf:" + model_name.lower()]
+            for candidate in candidates:
+                price = OFFICIAL_PRICES.get(candidate)
+                if price and price.get("source"):
+                    return price["source"]
+        return ""
+
     _mj = {"meta":{"updated_at":data_updated_at,"generated_at":datetime.now().strftime("%Y-%m-%d %H:%M"),"total_models":total,
-        "platform_counts":{},"price_tiers":{},"price_status_counts":{},"price_changes":price_changes},
+        "platform_counts":{},"price_tiers":{},"price_status_counts":{},"lineage_counts":{},
+        "source_runs":source_runs,"price_changes":price_changes},
         "platforms":_pinfo,"models":[]}
-    _pc = {}; _ptc = {}; _psc = {}
+    _pc = {}; _ptc = {}; _psc = {}; _lc = {}
     for c in cards:
         # 从卡片 HTML 提取 data 属性
         _dp = re.search(r'data-p="([^"]*)"', c)
@@ -4722,6 +4697,19 @@ try:
             logger.warning("跳过无法序列化的空模型卡片")
             continue
         pid = _dp.group(1)
+        if pid not in source_runs:
+            source_runs[pid] = {
+                "platform_id": pid,
+                "source_type": "legacy_snapshot" if USE_JSON_DATA else "legacy_generator",
+                "source_url": "",
+                "collected_at": data_updated_at,
+                "model_count": 0,
+                "error": "",
+            }
+        source_run = source_runs[pid]
+        source_run["model_count"] = source_run.get("model_count") or 0
+        model_source = source_run.get("source_type", "legacy_generator")
+        _lc[model_source] = _lc.get(model_source, 0) + 1
         _pc[pid] = _pc.get(pid, 0) + 1
         if _dpt: _ptc[_dpt.group(1)] = _ptc.get(_dpt.group(1), 0) + 1
         if _dps: _psc[_dps.group(1)] = _psc.get(_dps.group(1), 0) + 1
@@ -4741,12 +4729,26 @@ try:
             "family":_df.group(1) if _df else "",
             "base_url":html.unescape(_bu.group(1)) if _bu else "",
             "price_src":_dsrc.group(1) if _dsrc else "",
+            "price_source_url":_price_source_url(
+                pid,
+                html.unescape(_mn.group(1)) if _mn else "",
+                _dsrc.group(1) if _dsrc else "",
+                source_run,
+            ),
             "price_status":_dps.group(1) if _dps else "unknown",
-            "billing_unit":_dbu.group(1) if _dbu else "unknown"
+            "billing_unit":_dbu.group(1) if _dbu else "unknown",
+            "model_source":model_source,
+            "source_url":source_run.get("source_url", ""),
+            "collected_at":source_run.get("collected_at", data_updated_at),
         })
     _mj["meta"]["platform_counts"] = _pc
     _mj["meta"]["price_tiers"] = _ptc
     _mj["meta"]["price_status_counts"] = _psc
+    _mj["meta"]["lineage_counts"] = _lc
+    for _source_pid, _source_count in _pc.items():
+        _source_run = source_runs.get(_source_pid, {})
+        if _source_run.get("source_type", "").startswith("legacy_"):
+            _source_run["model_count"] = _source_count
     with open(MODELS_JSON, "w", encoding="utf-8") as _jf:
         json.dump(_mj, _jf, ensure_ascii=False, separators=(',',':'))
     print("  models_data.json updated (%d models)" % total, file=sys.stderr)
@@ -4831,10 +4833,7 @@ try:
         "time": datetime.now().strftime("%H:%M"),
         "results": sorted(_ping_results, key=lambda x: x.get("ms", 99999) if x.get("ms", -1) > 0 else 99999)
     }
-    _history.append(_today_entry)
-    # 只保留最近30天的数据
-    if len(_history) > 30:
-        _history = _history[-30:]
+    _history = upsert_daily_history(_history, _today_entry, limit=30)
     
     with open(PING_DATA_FILE, "w", encoding="utf-8") as hf:
         json.dump(_history, hf, ensure_ascii=False, separators=(',', ':'))

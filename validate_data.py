@@ -19,9 +19,11 @@ PRICE_STATUSES = {
     "priced", "free", "free_tier", "non_token", "unknown", "unavailable", "retiring"
 }
 BILLING_UNITS = {"token", "request", "unknown"}
+MODEL_SOURCE_TYPES = {"api", "fallback", "legacy_generator", "legacy_snapshot"}
 REQUIRED_MODEL_FIELDS = {
     "platform_id", "name", "input_price", "output_price", "currency",
     "price_status", "billing_unit", "price_src", "base_url",
+    "price_source_url", "model_source", "source_url", "collected_at",
 }
 
 
@@ -54,6 +56,9 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
 
     seen: Counter[tuple[str, str]] = Counter()
     status_counts: Counter[str] = Counter()
+    lineage_counts: Counter[str] = Counter()
+    platform_counts: Counter[str] = Counter()
+    missing_price_source_urls = 0
     for index, model in enumerate(models):
         missing = REQUIRED_MODEL_FIELDS - model.keys()
         if missing:
@@ -64,6 +69,7 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
         if not platform or not name:
             errors.append(f"models[{index}] 平台或模型名为空")
         seen[(platform, name)] += 1
+        platform_counts[platform] += 1
 
         status = model.get("price_status")
         billing_unit = model.get("billing_unit")
@@ -83,6 +89,19 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
         if status == "unknown" and ("免费" in model.get("tags", []) or "免费额度" in model.get("tags", [])):
             errors.append(f"{platform}/{name}: 免费标签未转换为明确价格状态")
 
+        model_source = model.get("model_source")
+        lineage_counts[model_source] += 1
+        if model_source not in MODEL_SOURCE_TYPES:
+            errors.append(f"{platform}/{name}: 非法 model_source={model_source!r}")
+        if model_source in {"api", "fallback"} and not str(model.get("source_url", "")).strip():
+            errors.append(f"{platform}/{name}: {model_source} 模型缺少 source_url")
+        try:
+            datetime.fromisoformat(str(model.get("collected_at", "")))
+        except ValueError:
+            errors.append(f"{platform}/{name}: collected_at 格式无效")
+        if model.get("price_src") in {"A", "S", "SP", "DB", "D", "L", "OR", "P"} and not model.get("price_source_url"):
+            missing_price_source_urls += 1
+
     duplicates = [key for key, count in seen.items() if count > 1]
     if duplicates:
         preview = ", ".join(f"{p}/{n}" for p, n in duplicates[:10])
@@ -97,6 +116,24 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
     declared_status_counts = meta.get("price_status_counts", {})
     if declared_status_counts != dict(status_counts):
         errors.append("meta.price_status_counts 与实际模型不一致")
+    if meta.get("lineage_counts", {}) != dict(lineage_counts):
+        errors.append("meta.lineage_counts 与实际模型不一致")
+
+    source_runs = meta.get("source_runs")
+    if not isinstance(source_runs, dict):
+        errors.append("meta.source_runs 缺失或格式无效")
+    else:
+        for platform, count in platform_counts.items():
+            run = source_runs.get(platform)
+            if not isinstance(run, dict):
+                errors.append(f"{platform}: 缺少 source_runs 记录")
+                continue
+            if run.get("source_type") not in MODEL_SOURCE_TYPES:
+                errors.append(f"{platform}: source_runs.source_type 无效")
+            if run.get("model_count") != count:
+                errors.append(f"{platform}: source_runs.model_count={run.get('model_count')}，实际为 {count}")
+    if missing_price_source_urls:
+        warnings.append(f"{missing_price_source_urls} 个有价格来源标签的模型缺少来源 URL")
     return errors, warnings
 
 

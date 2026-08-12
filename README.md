@@ -8,7 +8,7 @@
 
 - 当前仓库快照：22 个有数据的平台、2345 个模型；页面数字由 `models_data.json` 动态生成，不再在文档中承诺固定数量。
 - 前端是生成后的纯 HTML/CSS/JavaScript，中文页与英文页均可独立部署。
-- `generate.py` 仍是生产主流程；`src/` 已承载价格分类和基础模型，但平台抓取尚未完全迁出单体脚本。
+- `generate.py` 仍是生产编排入口；阿里百炼、MiniMax、DeepSeek、n1n 已由 `src/platforms/` 中的生产抓取器负责，其余平台继续迁移。
 - 数据缓存的采集时间与页面生成时间分开记录，缓存重建页面不会伪装成一次新采集。
 - 每日 CI 已收敛为单一工作流，依次执行测试、刷新、数据校验、价格基准校验和静态产物提交。
 
@@ -29,6 +29,17 @@
 | `unavailable` | 已下线或不可用 | 否 |
 
 这样可避免把按张计费、按次计费、免费额度或缺失价格的模型误标为“免费”。页面上的价格排序、推荐、月费计算和预算反推均遵循该状态。
+
+## 数据血缘
+
+每条模型记录包含：
+
+- `model_source`：`api`、`fallback`、`legacy_generator` 或 `legacy_snapshot`。
+- `source_url`：模型目录来源 URL。
+- `collected_at`：该目录的实际采集时间。
+- `price_source_url`：价格来源 URL；尚未迁移的平台允许为空，但会产生校验警告。
+
+`meta.source_runs` 保存每个平台本次抓取的来源类型、模型数量和失败原因；`meta.lineage_counts` 汇总不同来源类型覆盖的模型数。API 请求失败时会明确记录为 `fallback`，不会把缓存或静态回退伪装成实时 API 数据。
 
 ## 数据链路
 
@@ -105,7 +116,8 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ├── en/index.html                     # 英文静态站
 ├── src/models/                       # 领域模型
 ├── src/pricing/                      # 价格解析与价格状态分类
-├── src/platforms/                    # 平台抽象，仍在逐步接入生产主流程
+├── src/platforms/base.py             # 统一抓取结果、来源元数据和 OpenAI 兼容基类
+├── src/platforms/catalog.py          # 已接入生产的关键平台抓取器
 ├── scripts/normalize_official_prices_db.py
 ├── tests/
 └── .github/workflows/update-models.yml
@@ -121,9 +133,9 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 
 ## 下一阶段
 
-- 将平台抓取器逐个迁入 `src/platforms/`，让测试真正覆盖生产代码。
+- 继续迁移硅基流动、OpenRouter、AiHubMix、ChatAnywhere 等高模型量平台。
 - 将 HTML 模板和内联 JavaScript 从 `generate.py` 拆出，建立浏览器级回归测试。
-- 给价格记录补充来源 URL、抓取时间和币种转换证据，形成可审计的数据血缘。
+- 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
 - 恢复并验证自定义域名，补充部署健康检查和失败通知。
 
 价格数据仅供选型参考，最终以平台控制台和正式账单为准。
