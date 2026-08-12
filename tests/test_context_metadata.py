@@ -1,4 +1,8 @@
-from src.models.context import context_from_model_name, enrich_context_metadata
+from src.models.context import (
+    context_from_model_name,
+    enrich_context_metadata,
+    restore_inferred_context_metadata,
+)
 
 
 def model(name, context="N/A", **overrides):
@@ -48,3 +52,33 @@ def test_conflicting_catalog_context_stays_unknown():
     ]
     enrich_context_metadata(models)
     assert models[2]["context_status"] == "unknown"
+
+
+def test_enrichment_is_idempotent_and_keeps_inference_auditable():
+    models = [
+        model("vendor/shared", "64k"),
+        model("other/shared"),
+        model("vendor/chat-128k"),
+    ]
+    first_counts = enrich_context_metadata(models)
+    first_snapshot = [item.copy() for item in models]
+    second_counts = enrich_context_metadata(models)
+    assert models == first_snapshot
+    assert second_counts == first_counts
+    assert second_counts == {"known": 1, "inferred": 2}
+
+
+def test_cached_render_restores_only_unchanged_inferred_contexts():
+    prior = [dict(
+        model("shared", "64k"),
+        platform_id="demo",
+        context_status="inferred",
+        context_source="catalog_consensus",
+    )]
+    current = [dict(model("shared", "64k"), platform_id="demo")]
+    changed = [dict(model("shared", "128k"), platform_id="demo")]
+    restore_inferred_context_metadata(current, prior)
+    restore_inferred_context_metadata(changed, prior)
+    assert current[0]["context_status"] == "inferred"
+    assert current[0]["context_source"] == "catalog_consensus"
+    assert "context_status" not in changed[0]

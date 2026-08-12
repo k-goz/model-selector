@@ -50,7 +50,7 @@ from src.platforms import (
     YiPlatform,
 )
 from src.monitoring import update_ping_history
-from src.models.context import enrich_context_metadata
+from src.models.context import enrich_context_metadata, restore_inferred_context_metadata
 from src.rendering import compose_page, load_asset, render_template
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -1114,6 +1114,7 @@ cards = []
 all_models = []
 price_changes = []
 source_runs = {}
+prior_context_models = []
 data_updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
 or_prices = {}  # OpenRouter 价格查找表（始终可用）
 OR = []         # OpenRouter 原始数据
@@ -1127,6 +1128,7 @@ if os.path.exists(MODELS_JSON) and not FORCE_REFRESH:
         with open(MODELS_JSON, "r", encoding="utf-8") as jf:
             jdata = json.load(jf)
         jmodels = jdata.get("models", [])
+        prior_context_models = jmodels
         jmeta = jdata.get("meta", {})
         source_runs = jmeta.get("source_runs", {}) if isinstance(jmeta.get("source_runs", {}), dict) else {}
         data_updated_at = jmeta.get("updated_at", data_updated_at)
@@ -2433,6 +2435,7 @@ try:
     _mj["meta"]["price_tiers"] = _ptc
     _mj["meta"]["price_status_counts"] = _psc
     _mj["meta"]["lineage_counts"] = _lc
+    restore_inferred_context_metadata(_mj["models"], prior_context_models)
     _mj["meta"]["context_status_counts"] = dict(enrich_context_metadata(_mj["models"]))
     for _source_pid, _source_count in _pc.items():
         _source_run = source_runs.get(_source_pid, {})
