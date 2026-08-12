@@ -7,6 +7,8 @@ SPA 定价页爬取脚本 — 用 Playwright 爬取 5 个 SPA 平台的实时定
 import asyncio, json, sys, os, time
 from datetime import datetime
 
+from src.tencent_auth import load_tencent_cookies, tencent_uin
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 OUTPUT_PATH = os.path.join(SCRIPT_DIR, "spa_prices.json")
 
@@ -21,29 +23,31 @@ except ImportError:
 # ═══════════════════════════════════════════════════════════
 # 平台 1: 腾讯混元 (复用 fetch_tencent.py 的逻辑)
 # ═══════════════════════════════════════════════════════════
-TENCENT_COOKIES = [
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "ownerUin", "value": "O100048466778G"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "skey", "value": "g0tGvib8odzJYbSU0W7WLAeLn1OHmJAy-FiGgfg0mvc_"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "uin", "value": "o100048466778"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "loginType", "value": "wx"},
-    {"domain": ".tencent.com", "path": "/", "name": "hunyuan_token", "value": "EQD42D4+6H50mSpBkxUCWnhdGgDFAAqZBJm0pV91Amr/qok7ChgqVtAg5i3VclkToeNczngr79hnL9M8PAzm1g=="},
-]
+TENCENT_COOKIE_PATH = os.environ.get(
+    "TENCENT_COOKIE_FILE", os.path.join(SCRIPT_DIR, "tencent_cookie.json")
+)
 
 async def scrape_tencent(browser):
     """腾讯混元 TokenHub — 通过内部 API 获取"""
+    try:
+        cookies = load_tencent_cookies(TENCENT_COOKIE_PATH)
+        uin = tencent_uin(cookies)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        print("  Tencent: local cookie file unavailable: %s" % exc, file=sys.stderr)
+        return {}
     context = await browser.new_context()
-    await context.add_cookies(TENCENT_COOKIES)
+    await context.add_cookies(cookies)
     page = await context.new_page()
     prices = {}
     try:
         await page.goto("https://console.cloud.tencent.com/tokenhub/models?regionId=1", wait_until="load", timeout=60000)
         await page.wait_for_timeout(5000)
         data = await page.evaluate("""
-            async () => {
+            async (uin) => {
                 const params = new URLSearchParams({
                     cmd: 'DescribeModelList', action: 'delegate', serviceType: 'tokenhub',
                     version: '3', json: '1', dictId: '3216', sts: '1',
-                    t: Date.now(), uin: '100048466778', ownerUin: '100048466778',
+                    t: Date.now(), uin: uin, ownerUin: uin,
                     Offset: '0', Limit: '100', Region: '1',
                 });
                 const resp = await fetch('https://console.cloud.tencent.com/cgi/capi?' + params.toString(), {
@@ -52,7 +56,7 @@ async def scrape_tencent(browser):
                 });
                 return await resp.json();
             }
-        """)
+        """, uin)
         if data.get("code") != 0:
             print("  Tencent: API failed, cookie may have expired", file=sys.stderr)
             return {}

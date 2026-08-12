@@ -1,238 +1,162 @@
 # AI 模型选择器
 
-一键对比全网 AI 模型价格，快速选择、跨平台比价、月费估算。
+面向 AI API 使用者的静态模型目录：统一查看模型、上下文、输入/输出价格、接入地址，并完成筛选、比价和用量估算。
 
-**https://ai-model-selector-eight.vercel.app**
+线上地址：[model.ai-selector.top](https://model.ai-selector.top)（[Vercel 备用域名](https://ai-model-selector-eight.vercel.app)）
 
----
+## 当前状态
 
-## 支持平台（25 家，3127 个模型）
+- 当前仓库快照：22 个有数据的平台、2345 个模型；页面数字由 `models_data.json` 动态生成，不再在文档中承诺固定数量。
+- 前端是生成后的纯 HTML/CSS/JavaScript，中文页与英文页均可独立部署。
+- `generate.py` 仍是生产编排入口；所有当前有模型数据的平台目录均已迁入 `src/platforms/`，生产生成不再依赖未审计的内联平台目录。
+- 数据缓存的采集时间与页面生成时间分开记录，缓存重建页面不会伪装成一次新采集。
+- 每日 CI 已收敛为单一工作流，依次执行测试、刷新、数据校验、价格基准校验、静态页面门禁、桌面/移动端浏览器回归和静态产物提交。
 
-### 国内官方平台
+> 当前提交内的数据采集时间是 2026-05-09，属于历史快照。要获得新数据，需要配置平台密钥后执行 `python3 generate.py --refresh`。
 
-| 平台 | 模型数 | 价格来源 | 货币 |
-|------|--------|----------|------|
-| 阿里百炼 | 468 | API 实时获取 | CNY |
-| 百度文心 | 181 | API 实时获取 | CNY |
-| 火山引擎 | 115 | API 实时获取 | CNY |
-| 硅基流动 | 110 | API 实时获取 | CNY |
-| 月之暗面 | 9 | API 实时获取 | CNY |
-| 腾讯混元 | 11 | API 实时获取 | CNY |
-| 智谱 AI | 7 | API 实时获取 | CNY |
-| MiniMax | 8 | API 实时获取 | CNY |
-| 零一万物 | 7 | API 实时获取 | CNY |
-| 阶跃星辰 | 9 | API 实时获取 | CNY |
-| 讯飞星火 | 6 | API 实时获取 | CNY |
-| 百川智能 | 6 | API 实时获取 | CNY |
-| DeepSeek | 2 | API 实时获取 | CNY |
+## 价格语义
 
-### 国内聚合平台
+价格不能简单地用 `0` 判断为免费。每条模型数据现在包含 `price_status` 和 `billing_unit`：
 
-| 平台 | 模型数 | 价格来源 | 货币 | 特点 |
-|------|--------|----------|------|------|
-| 无问芯穹 | 51 | API 实时获取 | CNY | 国产模型聚合 |
-| Novita AI | 95 | API 实时获取 | CNY | GPU云+模型聚合 |
-| n1n.ai | 571 | 公开价格API | CNY | 闭源模型折扣代理 |
-| AIGC2D | 571 | 公开价格API | CNY | OneAPI系统 |
-| ChatAnywhere | 93 | 网页抓取 | CNY | GPT/Claude中转 |
+| `price_status` | 含义 | 是否进入 Token 费用计算 |
+|---|---|---|
+| `priced` | 已知 Token 价格 | 是 |
+| `free` | 明确永久免费 | 是，费用为 0 |
+| `free_tier` | 只有免费额度，超额价格未确认 | 否 |
+| `non_token` | 按次、图片、视频或其他单位计费 | 否 |
+| `unknown` | 价格待确认 | 否 |
+| `retiring` | 即将下线 | 否 |
+| `unavailable` | 已下线或不可用 | 否 |
 
-### 国外平台
+这样可避免把按张计费、按次计费、免费额度或缺失价格的模型误标为“免费”。页面上的价格排序、推荐、月费计算和预算反推均遵循该状态。
 
-| 平台 | 模型数 | 价格来源 | 货币 |
-|------|--------|----------|------|
-| OpenRouter | 350 | API 实时获取 | USD |
-| Together AI | 69 | API 实时获取 | USD |
-| DeepInfra | 132 | API 实时获取 | USD |
-| Groq | 16 | API 实时获取 | USD |
-| Fireworks AI | 9 | API 实时获取 | USD |
-| Cohere | 8 | API 实时获取 | USD |
-| AiHubMix | 223 | API 实时获取 | USD |
+## 数据血缘
 
----
+每条模型记录包含：
 
-## 功能
+- `model_source`：`api`、`scrape`、`fallback`、`legacy_generator` 或 `legacy_snapshot`。
+- `source_url`：模型目录来源 URL。
+- `collected_at`：该目录的实际采集时间。
+- `price_source_url`：价格来源 URL；尚未迁移的平台允许为空，但会产生校验警告。
 
-### 核心功能
-- **多平台聚合** — 25 家平台 3127 个模型统一呈现
-- **实时价格对比** — 支持 CNY / USD 双货币切换
-- **一键接入** — 点击卡片弹出代码片段（Python / Node.js / cURL / Stream）
-- **Base URL 显示** — 每个卡片直接展示 API 接入地址
+`meta.source_runs` 保存每个平台本次抓取的来源类型、模型数量和失败原因；`meta.lineage_counts` 汇总不同来源类型覆盖的模型数。API 请求失败时会明确记录为 `fallback`，官方文档抓取记录为 `scrape`，不会把缓存或静态回退伪装成实时 API 数据。
 
-### 筛选与排序
-- **平台筛选** — 25 家平台一键切换，显示各平台模型数
-- **模型家族** — DeepSeek / Qwen / GLM / GPT / Claude / Gemini 等家族标签
-- **价格分级筛选** — 免费 / 便宜 / 中等 / 贵 / 极贵
-- **场景筛选** — 日常对话 / 深度推理 / 视觉图片 / 图片生成 / 视频生成 / 编程代码
-- **标签筛选** — 免费 / 旗舰 / 视觉 / 推理 / 长上下文 / 开源等
-- **上下文长度筛选** — 按上下文窗口大小过滤
-- **价格区间筛选** — 自定义输入/输出价格范围
-- **多维排序** — 默认 / 输入价升序 / 输入价降序 / 输出价升序 / 输出价降序 / 名称
-- **高级搜索** — 支持 `family:deepseek price:<5 ctx:>100k` 等语法
-- **分页** — 每页 66 个模型，底部翻页
+## 数据链路
 
-### 智能功能
-- **智能推荐** — 日常对话 / 编程 / 推理 / 视觉场景一键推荐最优模型
-- **跨平台比价** — 精确模型名匹配，同一模型在不同平台的价格对比
-- **月费计算器** — 输入对话次数 / Token 数 / 输出输入比，计算各模型月费排名
-- **预算反推** — 输入月预算，反推每个模型可用对话次数
-- **模型对比** — 最多勾选 3 个模型并排对比
-- **Rate Limits 对比** — 各平台并发限制 (TPM/RPM) 一目了然
-- **真实文本计价器** — 粘贴代码/文案，自动估算 Token 数并对比各平台花费
-- **接口测速 (TTFB)** — 选择模型，测各平台首字响应时间，找最快接口
-
-### 体验
-- **暗色模式** — 默认 Linear Aesthetic 暗色精度美学，可切换亮色
-- **收藏功能** — 收藏常用模型，本地持久化
-- **列表/网格视图** — 两种浏览模式切换
-- **筛选持久化** — 筛选条件通过 URL hash 持久化，可分享
-- **筛选栏默认折叠** — 左侧筛选栏默认全部折叠，按需展开
-- **移动端适配** — 768px / 400px 两级响应式
-- **键盘快捷键** — `/` 搜索 / `Esc` 清空 / `D` 暗色 / `V` 视图 / `1-9` 切换平台
-- **微信二维码** — 页脚扫码加微信获取最新资讯
-
-## 价格说明
-
-- **国外平台**（OpenRouter / Together / Groq / Fireworks / Cohere / DeepInfra / AiHubMix）：显示美元价格（$/1M tokens）
-- **国内平台**：显示人民币价格（¥/M tokens）
-- 阿里百炼、百度文心、火山引擎等价格从 API 实时获取
-- n1n.ai / AIGC2D 价格从公开价格 API 获取
-- ChatAnywhere 价格从官方文档网页抓取
-- 标注「价格待确认」的模型请至平台控制台核实
-
-## 数据同步机制
-
-本项目已全面重构为 **"Single Source of Truth (SSOT)"** 三层定价真理库架构，彻底摒弃了不稳定的爬虫猜测和硬编码兜底。
-
-```
-┌─────────────────────────────────────────────────────────┐
-│  第1层: 官方 API 直接拉取 (优先级最高)                    │
-│  - 适用于提供明确价格字段的 API (如 OpenRouter/阿里百炼)   │
-│  - 获取到的必定是最新精准价格                             │
-├─────────────────────────────────────────────────────────┤
-│  第2层: 官方平台网页抓取                                  │
-│  - 适用于提供官方价格清单网页但无接口的平台 (如硅基流动)   │
-│  - 脚本自动执行并解析网页 DOM，确保与官网一致             │
-├─────────────────────────────────────────────────────────┤
-│  第3层: official_prices_db.json 真理库                    │
-│  - 全局统一的定价字典，支持精确/前缀匹配                  │
-│  - 若前两层未命中，强制查表。若仍未找到，直接返回 0 + 警告  │
-│  - 彻底阻断不可控的“盲猜”和硬编码，实现 100% 精确          │
-└─────────────────────────────────────────────────────────┘
+```text
+平台 API / 公开数据
+        │
+        ▼
+generate.py --refresh
+        │
+        ├── official_prices_db.json  官方价格补充库
+        ├── models_data.json         可审计的数据快照
+        ├── ping_analysis.json       延迟分析数据
+        └── index.html + en/index.html
+                    │
+                    ▼
+              Vercel 静态部署
 ```
 
-**关键保证**：所有平台都有明确来源（URL及货币单位），若模型价格未录入 `official_prices_db.json`，控制台将明确抛出 `⚠️ PRICE_MISSING` 警告，严禁系统瞎猜，确保展示价格的绝对可靠性。
-
-### 本地操作流程
-
-1. **首次运行 / 更新数据**：`rm models_data.json && python3 generate.py`
-   - 删除旧 JSON → 强制从 API 拉取最新数据及价格体系 → 生成 HTML + 更新 JSON
-
-2. **只改页面样式/功能**：`python3 generate.py`
-   - 从 JSON 加载（0.1s）→ 生成 HTML + 更新 JSON → 数据不丢
-
-3. **添加新平台/模型**：修改 `generate.py` 或在 `official_prices_db.json` 补充记录 → `rm models_data.json && python3 generate.py`
-
-### CI/CD 自动更新
-
-- GitHub Actions 每天北京时间 06:00 自动运行
-- 从 GitHub Secrets 读取 API Key，调用各平台 API
-- 自动 commit `index.html` + `models_data.json` + `ping_analysis.json`
-- 部署到 Vercel（静态站点）
-
-## 技术架构
-
-### 核心架构
-- **前端**：纯 HTML + CSS + JS，零依赖，单文件可离线使用
-- **后端**：Python 数据抓取脚本（`generate.py`），从各平台 API 拉取模型数据生成静态 HTML
-- **数据层**：`models_data.json` 作为数据中间层，保证页面修改不丢数据
-- **设计**：CSS 变量体系 + Linear Aesthetic 设计风格（shimmer / glow / micro-border / glassmorphism）
-- **部署**：GitHub Actions 每日自动更新（北京时间 08:00）→ Vercel 静态站点
-
-### 模块化结构 (v6.5+)
-```
-/src/
-├── models/          # 数据模型定义 (Model, PriceInfo, PlatformInfo)
-├── pricing/         # SSOT 四层价格解析系统
-│   ├── normalize_for_match()  # 模型名称标准化
-│   ├── PriceDatabase          # 价格数据库管理
-│   └── SSOTPriceResolver      # 四层价格解析
-└── platforms/       # 平台数据获取基类
-    ├── BasePlatform           # 平台基类
-    └── OpenAICompatiblePlatform # OpenAI 兼容平台基类
-
-/tests/              # 单元测试
-├── test_pricing.py  # 价格解析测试
-└── test_models.py   # 数据模型测试
-```
-
-### 安全配置
-- API Key 仅从环境变量读取，无硬编码默认值
-- 支持 `.env` 文件本地开发
-- GitHub Actions 通过 Secrets 注入
-
-## 开发指南
-
-### 本地开发
+`official_prices_db.json` 的根节点只能是平台命名空间。可用以下命令检查并清理误写到根节点的模型记录：
 
 ```bash
-# 1. 克隆仓库
-git clone https://github.com/your-repo/ai-model-selector.git
-cd ai-model-selector
+python3 scripts/normalize_official_prices_db.py
+python3 scripts/normalize_official_prices_db.py --write
+```
 
-# 2. 配置环境变量
-cp .env.example .env
-# 编辑 .env 填入你的 API Key
+## 本地开发
 
-# 3. 运行数据抓取
+项目运行时只依赖 Python 标准库；单元测试使用 `pytest`，浏览器回归使用 Playwright。
+
+```bash
+python3 -m pip install pytest
+npm ci
+npx playwright install chromium
+
+# 使用现有 models_data.json 快速重建页面，不刷新采集时间
 python3 generate.py
 
-# 4. 本地预览
-# 直接用浏览器打开 index.html
-# 或使用 Python HTTP 服务器
+# 强制从各平台刷新；密钥缺失的平台会使用脚本内已有的安全回退
+python3 generate.py --refresh
+
+# 本地预览
 python3 -m http.server 8080
 ```
 
-### 运行测试
+密钥通过环境变量读取，常用项包括 `ALIYUN_KEY`、`SF_KEY`、`MS_KEY`、`ZH_KEY`、`VOLC_KEY`、`TENCENT_KEY`、`MINIMAX_KEY`、`DEEPSEEK_KEY`、`GROQ_KEY`、`TOGETHER_KEY` 等。仓库不保存真实密钥。
+
+腾讯控制台视觉抓取仅从本地 `tencent_cookie.json` 读取 Cookie，可从 `tencent_cookie.json.example` 复制结构。该文件已被 Git 忽略，不得提交。
+
+## 验证
 
 ```bash
-# 安装测试依赖
-pip install pytest
+# 单元测试
+python3 -m pytest tests/ -q
 
-# 运行所有测试
-python3 -m pytest tests/ -v
+# 校验数据结构、状态语义、重复项和采集时间
+python3 validate_data.py --max-age-hours 48
 
-# 运行特定测试
-python3 -m pytest tests/test_pricing.py -v
+# 核心价格样本与官网基准对照；缺失模型和价格偏差都会失败
+python3 verify_ground_truth.py
+
+# 检查中英文页面 DOM、模型数量、URL 和脚本结构
+python3 validate_site.py
+
+# 桌面 Chromium 与 Pixel 7 移动视口真实交互回归
+npm run test:browser
+
+# 检查默认生产域名、中英文页面和数据新鲜度
+python3 check_deployment.py --max-age-hours 48
+
+# 使用指定快照校验
+python3 verify_ground_truth.py --json /path/to/models_data.json
 ```
 
-### 添加新平台
+`ground_truth.json` 只放少量、可从官方来源复核的关键模型，不把大规模第三方聚合数据冒充为价格真值。
 
-1. 在 `src/platforms/` 创建新平台类，继承 `BasePlatform`
-2. 实现 `fetch_models()` 方法
-3. 在 `official_prices_db.json` 添加价格数据
-4. 在 `generate.py` 中注册新平台
+## 目录
 
-## 更新日志
+```text
+.
+├── generate.py                       # 当前生产生成器与平台抓取主流程
+├── validate_data.py                  # 发布前数据契约校验
+├── validate_site.py                  # 生成页面静态质量门禁
+├── verify_ground_truth.py            # 核心模型价格基准校验
+├── ground_truth.json                 # 小规模官方价格样本
+├── official_prices_db.json           # 按平台分区的价格补充库
+├── models_data.json                  # 当前发布数据快照
+├── index.html                        # 中文静态站
+├── en/index.html                     # 英文静态站
+├── src/models/                       # 领域模型
+├── src/pricing/                      # 价格解析与价格状态分类
+├── src/platforms/base.py             # 统一抓取结果、来源元数据和 OpenAI 兼容基类
+├── src/platforms/catalog.py          # 已接入生产的关键平台抓取器
+├── src/rendering/                     # 前端资源读取与页面组合
+├── assets/styles.css                  # 页面样式源码，生成时内联
+├── assets/app.js                      # 浏览器交互源码，生成时内联
+├── templates/page.html                # 页面组合骨架
+├── templates/document_head.html       # 文档头、导航与概览区块
+├── templates/insights.html            # Insights 内容区块
+├── playwright.config.js               # 桌面/移动端浏览器回归配置
+├── scripts/normalize_official_prices_db.py
+├── tests/browser/                     # Playwright 真实交互回归
+├── tests/                             # Python 单元与静态页面测试
+└── .github/workflows/update-models.yml
+```
 
-- **v6.5** (2026-05-09): 
-  - 🏗️ 模块化重构：拆分 `src/models/`、`src/pricing/`、`src/platforms/` 模块
-  - 🔒 安全加固：移除所有硬编码 API Key，改为纯环境变量
-  - 📝 添加类型注解和文档字符串
-  - 🧪 添加单元测试（34 个测试用例全部通过）
-  - 📊 改进日志系统（logging 模块）
-  - ⚠️ 改进错误处理（自定义异常类）
-- **v6.4** (2026-04-30): 彻底重构定价架构，引入 SSOT (单一真实来源) 四层解析系统。移除所有猜测性爬虫和硬编码兜底；建立统一 `official_prices_db.json`；修复样式兼容性 bug。
-- **v6.3** (2026-04-27): 全平台价格检查修复 — 百度文心添加bp()映射；硅基流动补充新模型价格；DeepInfra从API提取真实价格；修复JSON加载双重除法bug；修复OpenRouter负价格；修复上下文格式；价格待确认从358降至279
-- **v6.2** (2026-04-26): 修复分页bug(JSON加载后未重新filter导致每页显示全部模型)；每页66个模型；左侧筛选栏默认全部折叠
-- **v6.1** (2026-04-25): 修复6个 bug — clearAllFilters 场景筛选器类名(.sc-btn→.sc) + 缺少重置价格分级/货币切换；updatePrices/calcTokens/价格筛选正确处理 per_1m price_unit；JS 动态卡片添加 data-pu 属性；GitHub Actions 密钥名拼写修正(TOGATHER→TOGETHER)
-- **v6.0** (2026-04-24): 修复数据同步链路 — models_data.json 自动更新；5个国内平台硬编码回退；添加 Rate Limits 对比 / 真实文本计价器 / TTFB 接口测速；修复 price_unit/platform_color 同步 bug；25 平台 3127 模型
-- **v5.0** (2026-04-23): 添加 n1n.ai / AIGC2D / ChatAnywhere 国内聚合平台；添加微信二维码；移除导出功能；25 平台 3113 模型
-- **v4.0** (2026-04-22): 添加 AiHubMix / 无问芯穹 / DeepInfra / Novita AI；API Key 实时抓取；22 平台 1895 模型
-- **v3.5** (2026-04-20): 添加 Together AI / Fireworks AI / Cohere；修复 USD 价格显示；分页功能；筛选区重构
-- **v3.0** (2026-04-18): 全面升级 — Linear Aesthetic 设计 / 13 平台 / 跨平台比价 / 智能推荐 / 月费计算器
-- **v2.5** (2026-04-14): 接入全部平台 API；OpenRouter 价格保持美元
-- **v2** (2026-04-13): 初始版本
+## 现阶段开发原则
 
----
+1. 先保证价格语义正确和来源可追溯，再增加平台数量。
+2. 未知价格必须展示为未知，不能用 `0` 代替。
+3. 新抓取器先输出标准化模型记录，再接入页面生成。
+4. 每次数据更新必须通过结构校验和核心价格样本校验。
+5. 逐步将 `generate.py` 中的平台抓取、归一化、渲染拆分，但在拆分完成前保持单一生产入口，避免形成两套失真的架构。
 
-*价格数据仅供参考，以各平台实际定价为准*
+## 下一阶段
+
+- 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
+- 恢复并验证自定义域名，补充部署健康检查和失败通知。
+- 将页面区块继续拆成更小模板，并为筛选状态、计算器和复制命令补充更细粒度测试。
+
+价格数据仅供选型参考，最终以平台控制台和正式账单为准。

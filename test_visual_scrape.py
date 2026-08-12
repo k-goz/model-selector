@@ -1,22 +1,20 @@
 """纯页面视觉爬取测试 - 腾讯混元 TokenHub"""
+import argparse
 import asyncio
+from pathlib import Path
 from playwright.async_api import async_playwright
 
-# Cookie 配置（从浏览器导出）
-COOKIES = [
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "ownerUin", "value": "O100048466778G"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "skey", "value": "g0tGvib8odzJYbSU0W7WLAeLn1OHmJAy-FiGgfg0mvc_"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "uin", "value": "o100048466778"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "qcmainCSRFToken", "value": "9IB7h22EUdaY"},
-    {"domain": ".cloud.tencent.com", "path": "/", "name": "regionId", "value": "1"},
-    {"domain": ".tencent.com", "path": "/", "name": "hunyuan_token", "value": "EQD42D4+6H50mSpBkxUCWnhdGgDFAAqZBJm0pV91Amr/qok7ChgqVtAg5i3VclkToeNczngr79hnL9M8PAzm1g=="},
-]
+from src.tencent_auth import load_tencent_cookies
 
-async def main():
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+async def main(cookie_file: Path):
+    cookies = load_tencent_cookies(cookie_file)
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         context = await browser.new_context(viewport={"width": 1920, "height": 1080})
-        await context.add_cookies(COOKIES)
+        await context.add_cookies(cookies)
         page = await context.new_page()
 
         print("正在访问腾讯混元 TokenHub...")
@@ -112,7 +110,7 @@ async def main():
                 print(f"  - {name}")
             
             # 保存完整页面文本供分析
-            with open("/Users/king/IDEProjects/model-selector/page_text.txt", "w", encoding="utf-8") as f:
+            with (SCRIPT_DIR / "page_text.txt").open("w", encoding="utf-8") as f:
                 f.write(text)
             print(f"\n💾 完整页面文本已保存: page_text.txt")
         else:
@@ -121,11 +119,14 @@ async def main():
                 print(f"  - {m['name']} | 价格: {m['price']}")
         
         # 截图保存
-        await page.screenshot(path="/Users/king/IDEProjects/model-selector/tokenhub_visual.png", full_page=True)
+        await page.screenshot(path=str(SCRIPT_DIR / "tokenhub_visual.png"), full_page=True)
         print(f"\n📸 全页截图已保存: tokenhub_visual.png")
         
         await browser.close()
         print("\n✅ 视觉爬取测试完成")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cookie-file", type=Path, default=SCRIPT_DIR / "tencent_cookie.json")
+    args = parser.parse_args()
+    asyncio.run(main(args.cookie_file))

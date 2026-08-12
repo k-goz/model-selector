@@ -291,8 +291,8 @@ def main():
                 print("  - %s/%s: actual(%.2f/%.2f) vs expected(%.2f/%.2f) (source: %s)" % (
                     plat, model, act_i, act_o, exp_i, exp_o, src), file=sys.stderr)
 
-    if failed > 0:
-        print("\n[FAIL] %d models have price mismatches" % failed, file=sys.stderr)
+    if failed > 0 or skipped > 0:
+        print("\n[FAIL] %d price mismatches, %d missing models" % (failed, skipped), file=sys.stderr)
         sys.exit(1)
     else:
         print("\n[OK] All ground truth price verifications passed", file=sys.stderr)

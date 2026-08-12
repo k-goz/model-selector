@@ -45,6 +45,8 @@ class TestModel:
             platform_color="#000",
             input_price=0,
             output_price=0,
+            price_status="free",
+            billing_unit="token",
         )
         
         assert model.price_tier == "free"
@@ -60,9 +62,23 @@ class TestModel:
             platform_color="#000",
             input_price=5.0,
             output_price=10.0,
+            price_status="priced",
+            billing_unit="token",
         )
         
         assert model.price_tier == "mid"
+        assert model.is_free is False
+
+    def test_unknown_zero_price_is_not_free(self):
+        model = Model(
+            id="unknown-model",
+            name="Unknown Model",
+            platform="test",
+            platform_name="Test",
+            platform_color="#000",
+        )
+
+        assert model.price_tier == "unknown"
         assert model.is_free is False
     
     def test_context_tokens_extraction(self):

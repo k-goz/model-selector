@@ -25,10 +25,15 @@ class Model:
     currency: str = "CNY"            # 货币类型 (CNY/USD)
     price_unit: str = "per_token"    # 价格单位 (per_token/per_1m)
     price_source: str = ""           # 价格来源标签 (A/S/DB/L/P)
+    price_source_url: str = ""       # 价格来源 URL
+    price_status: str = "unknown"    # priced/free/free_tier/non_token/unknown
+    billing_unit: str = "unknown"    # token/request/unknown
     
     # 模型属性
     context: str = "N/A"             # 上下文长度 (如 32k, 128k)
     context_tokens: int = 0          # 上下文长度（数值）
+    context_status: str = "unknown"  # known/inferred/not_applicable/unknown
+    context_source: str = "unknown"  # catalog/model_name/catalog_consensus/...
     family: str = ""                 # 模型家族 (如 Qwen, GPT, Claude)
     
     # 标签和场景
@@ -37,6 +42,9 @@ class Model:
     
     # API 信息
     base_url: str = ""               # API Base URL
+    model_source: str = "legacy_generator"  # api/fallback/legacy_generator/legacy_snapshot
+    source_url: str = ""             # 模型目录来源 URL
+    collected_at: str = ""           # 模型目录采集时间
     
     # 状态
     status: str = ""                 # 模型状态 (如 Shutdown, Retiring)
@@ -53,8 +61,10 @@ class Model:
     @property
     def price_tier(self) -> str:
         """价格分级"""
-        if self.input_price == 0 and self.output_price == 0:
+        if self.price_status == "free":
             return "free"
+        if self.price_status != "priced":
+            return "unknown"
         
         # USD 价格需要转换
         p = self.input_price
@@ -73,7 +83,7 @@ class Model:
     @property
     def is_free(self) -> bool:
         """是否免费"""
-        return self.input_price == 0 and self.output_price == 0
+        return self.price_status == "free"
     
     @property
     def is_online(self) -> bool:
@@ -93,12 +103,20 @@ class Model:
             "currency": self.currency,
             "price_unit": self.price_unit,
             "price_source": self.price_source,
+            "price_source_url": self.price_source_url,
+            "price_status": self.price_status,
+            "billing_unit": self.billing_unit,
             "context": self.context,
             "context_tokens": self.context_tokens,
+            "context_status": self.context_status,
+            "context_source": self.context_source,
             "family": self.family,
             "tags": self.tags,
             "scene": self.scene,
             "base_url": self.base_url,
+            "model_source": self.model_source,
+            "source_url": self.source_url,
+            "collected_at": self.collected_at,
             "status": self.status,
         }
 
