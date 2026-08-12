@@ -39,7 +39,14 @@ jobs:
         run: |
           python -m pip install pytest
           npm ci
-          npx playwright install --with-deps chromium
+
+      - name: Restore model API cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: model-api-cache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            model-api-cache-${{ runner.os }}-
 
       - name: Run unit tests
         run: python -m pytest tests/ -q
@@ -69,12 +76,19 @@ jobs:
           NOVITA_KEY: ${{ secrets.NOVITA_KEY }}
           DEEPINFRA_KEY: ${{ secrets.DEEPINFRA_KEY }}
           AIHUBMIX_KEY: ${{ secrets.AIHUBMIX_KEY }}
+          N1N_KEY: ${{ secrets.N1N_KEY }}
+          CA_KEY: ${{ secrets.CA_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python generate.py --refresh
 
       - name: Validate published data
-        run: python validate_data.py --max-age-hours 2
+        run: |
+          python validate_data.py \
+            --max-age-hours 2 \
+            --min-models 1000 \
+            --min-live-ratio 0.65 \
+            --max-fallback-ratio 0.35
 
       - name: Verify ground truth prices
         run: python verify_ground_truth.py
@@ -83,7 +97,9 @@ jobs:
         run: python validate_site.py
 
       - name: Run browser regression tests
-        run: npm run test:browser
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:browser
 
       - name: Commit generated artifacts
         run: |
@@ -103,3 +119,15 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python scripts/notify_ci_failure.py
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-model-diagnostics-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            ground_truth_report.json
+            output/playwright/
+            models_data.json
+            ping_analysis.json

@@ -34,7 +34,13 @@ def load_json(path: Path) -> dict:
         raise ValueError(f"无法读取 {path}: {exc}") from exc
 
 
-def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[str]]:
+def validate_models(
+    data: dict,
+    max_age_hours: float,
+    min_live_ratio: float = 0,
+    max_fallback_ratio: float = 1,
+    min_models: int = 1,
+) -> tuple[list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
     meta = data.get("meta", {})
@@ -53,6 +59,8 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
 
     if meta.get("total_models") != len(models):
         errors.append(f"meta.total_models={meta.get('total_models')}，实际为 {len(models)}")
+    if len(models) < min_models:
+        errors.append(f"模型总数 {len(models)} 低于发布下限 {min_models}")
 
     seen: Counter[tuple[str, str]] = Counter()
     status_counts: Counter[str] = Counter()
@@ -118,6 +126,14 @@ def validate_models(data: dict, max_age_hours: float) -> tuple[list[str], list[s
         errors.append("meta.price_status_counts 与实际模型不一致")
     if meta.get("lineage_counts", {}) != dict(lineage_counts):
         errors.append("meta.lineage_counts 与实际模型不一致")
+    if lineage_counts["legacy_generator"]:
+        errors.append(f"仍有 {lineage_counts['legacy_generator']} 个模型来自 legacy_generator")
+    live_ratio = (lineage_counts["api"] + lineage_counts["scrape"]) / len(models)
+    fallback_ratio = lineage_counts["fallback"] / len(models)
+    if live_ratio < min_live_ratio:
+        errors.append(f"实时来源比例 {live_ratio:.1%} 低于发布下限 {min_live_ratio:.1%}")
+    if fallback_ratio > max_fallback_ratio:
+        errors.append(f"fallback 比例 {fallback_ratio:.1%} 高于发布上限 {max_fallback_ratio:.1%}")
 
     source_runs = meta.get("source_runs")
     if not isinstance(source_runs, dict):
@@ -163,10 +179,19 @@ def main() -> int:
     parser.add_argument("--models", type=Path, default=Path("models_data.json"))
     parser.add_argument("--prices", type=Path, default=Path("official_prices_db.json"))
     parser.add_argument("--max-age-hours", type=float, default=48)
+    parser.add_argument("--min-live-ratio", type=float, default=0)
+    parser.add_argument("--max-fallback-ratio", type=float, default=1)
+    parser.add_argument("--min-models", type=int, default=1)
     args = parser.parse_args()
 
     try:
-        model_errors, model_warnings = validate_models(load_json(args.models), args.max_age_hours)
+        model_errors, model_warnings = validate_models(
+            load_json(args.models),
+            args.max_age_hours,
+            min_live_ratio=args.min_live_ratio,
+            max_fallback_ratio=args.max_fallback_ratio,
+            min_models=args.min_models,
+        )
         price_errors, price_warnings = validate_price_db(load_json(args.prices))
     except ValueError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

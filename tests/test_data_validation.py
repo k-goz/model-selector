@@ -97,3 +97,34 @@ def test_evidenced_price_requires_source_url():
     data = model_document([valid_model(price_source_url="")])
     errors, _ = validate_models(data, max_age_hours=2)
     assert any("价格来源标签" in error for error in errors)
+
+
+def test_publish_thresholds_reject_fallback_only_refresh():
+    model = valid_model(model_source="fallback")
+    data = model_document([model])
+    data["meta"]["lineage_counts"] = {"fallback": 1}
+    data["meta"]["source_runs"]["demo"]["source_type"] = "fallback"
+    errors, _ = validate_models(
+        data,
+        max_age_hours=2,
+        min_live_ratio=0.65,
+        max_fallback_ratio=0.35,
+    )
+    assert any("实时来源比例" in error for error in errors)
+    assert any("fallback 比例" in error for error in errors)
+
+
+def test_publish_threshold_rejects_too_small_catalog():
+    errors, _ = validate_models(
+        model_document([valid_model()]), max_age_hours=2, min_models=1000
+    )
+    assert any("低于发布下限" in error for error in errors)
+
+
+def test_legacy_generator_is_always_rejected():
+    model = valid_model(model_source="legacy_generator")
+    data = model_document([model])
+    data["meta"]["lineage_counts"] = {"legacy_generator": 1}
+    data["meta"]["source_runs"]["demo"]["source_type"] = "legacy_generator"
+    errors, _ = validate_models(data, max_age_hours=2)
+    assert any("legacy_generator" in error for error in errors)
