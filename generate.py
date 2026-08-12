@@ -50,6 +50,7 @@ from src.platforms import (
     YiPlatform,
 )
 from src.history import upsert_daily_history
+from src.models.context import enrich_context_metadata
 from src.rendering import compose_page, load_asset, render_template
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -2432,6 +2433,7 @@ try:
     _mj["meta"]["price_tiers"] = _ptc
     _mj["meta"]["price_status_counts"] = _psc
     _mj["meta"]["lineage_counts"] = _lc
+    _mj["meta"]["context_status_counts"] = dict(enrich_context_metadata(_mj["models"]))
     for _source_pid, _source_count in _pc.items():
         _source_run = source_runs.get(_source_pid, {})
         if _source_run.get("source_type", "").startswith("legacy_"):

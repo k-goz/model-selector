@@ -32,6 +32,8 @@ class Model:
     # 模型属性
     context: str = "N/A"             # 上下文长度 (如 32k, 128k)
     context_tokens: int = 0          # 上下文长度（数值）
+    context_status: str = "unknown"  # known/inferred/not_applicable/unknown
+    context_source: str = "unknown"  # catalog/model_name/catalog_consensus/...
     family: str = ""                 # 模型家族 (如 Qwen, GPT, Claude)
     
     # 标签和场景
@@ -106,6 +108,8 @@ class Model:
             "billing_unit": self.billing_unit,
             "context": self.context,
             "context_tokens": self.context_tokens,
+            "context_status": self.context_status,
+            "context_source": self.context_source,
             "family": self.family,
             "tags": self.tags,
             "scene": self.scene,

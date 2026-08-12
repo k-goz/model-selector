@@ -20,10 +20,12 @@ PRICE_STATUSES = {
 }
 BILLING_UNITS = {"token", "request", "unknown"}
 MODEL_SOURCE_TYPES = {"api", "scrape", "fallback", "legacy_generator", "legacy_snapshot"}
+CONTEXT_STATUSES = {"known", "inferred", "not_applicable", "unknown"}
 REQUIRED_MODEL_FIELDS = {
     "platform_id", "name", "input_price", "output_price", "currency",
     "price_status", "billing_unit", "price_src", "base_url",
     "price_source_url", "model_source", "source_url", "collected_at",
+    "context_status", "context_source",
 }
 
 
@@ -66,6 +68,7 @@ def validate_models(
     status_counts: Counter[str] = Counter()
     lineage_counts: Counter[str] = Counter()
     platform_counts: Counter[str] = Counter()
+    context_status_counts: Counter[str] = Counter()
     missing_price_source_urls = 0
     for index, model in enumerate(models):
         missing = REQUIRED_MODEL_FIELDS - model.keys()
@@ -109,13 +112,22 @@ def validate_models(
             errors.append(f"{platform}/{name}: collected_at 格式无效")
         if model.get("price_src") in {"A", "S", "SP", "DB", "D", "L", "OR", "P"} and not model.get("price_source_url"):
             missing_price_source_urls += 1
+        context_status = model.get("context_status")
+        context_status_counts[context_status] += 1
+        has_context = model.get("context") not in (None, "", "N/A")
+        if context_status not in CONTEXT_STATUSES:
+            errors.append(f"{platform}/{name}: 非法 context_status={context_status!r}")
+        if context_status in {"known", "inferred"} and not has_context:
+            errors.append(f"{platform}/{name}: {context_status} 状态却没有上下文长度")
+        if context_status in {"unknown", "not_applicable"} and has_context:
+            errors.append(f"{platform}/{name}: {context_status} 状态却包含上下文长度")
 
     duplicates = [key for key, count in seen.items() if count > 1]
     if duplicates:
         preview = ", ".join(f"{p}/{n}" for p, n in duplicates[:10])
         errors.append(f"存在 {len(duplicates)} 组重复平台模型: {preview}")
 
-    missing_context = sum(1 for model in models if model.get("context") in (None, "", "N/A"))
+    missing_context = context_status_counts["unknown"]
     if missing_context:
         warnings.append(f"{missing_context} 个模型缺少上下文长度")
     if status_counts["unknown"]:
@@ -126,6 +138,8 @@ def validate_models(
         errors.append("meta.price_status_counts 与实际模型不一致")
     if meta.get("lineage_counts", {}) != dict(lineage_counts):
         errors.append("meta.lineage_counts 与实际模型不一致")
+    if meta.get("context_status_counts", {}) != dict(context_status_counts):
+        errors.append("meta.context_status_counts 与实际模型不一致")
     if lineage_counts["legacy_generator"]:
         errors.append(f"仍有 {lineage_counts['legacy_generator']} 个模型来自 legacy_generator")
     live_ratio = (lineage_counts["api"] + lineage_counts["scrape"]) / len(models)

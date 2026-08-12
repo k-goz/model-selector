@@ -21,6 +21,8 @@ def valid_model(**overrides):
         "source_url": "https://example.com/v1/models",
         "collected_at": datetime.now().isoformat(timespec="seconds"),
         "context": "32k",
+        "context_status": "known",
+        "context_source": "catalog",
         "tags": [],
     }
     model.update(overrides)
@@ -38,6 +40,7 @@ def model_document(models):
             "total_models": len(models),
             "price_status_counts": counts,
             "lineage_counts": {"api": len(models)},
+            "context_status_counts": {"known": len(models)},
             "source_runs": {
                 "demo": {
                     "platform_id": "demo",
