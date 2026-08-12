@@ -1,12 +1,11 @@
 name: Update Model Data
 
 on:
-  push:
-    branches: [main]
   schedule:
     # 每天北京时间 06:00
     - cron: '0 22 * * *'
   workflow_dispatch:
+  workflow_call:
 
 concurrency:
   # 同一工作流版本保持串行；新版本不被 GitHub 故障遗留的旧队列永久锁死。
@@ -18,7 +17,6 @@ permissions:
 
 jobs:
   update:
-    if: "github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'auto: update model data')"
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

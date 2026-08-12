@@ -1,0 +1,14 @@
+name: Refresh Model Data on Main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: "!startsWith(github.event.head_commit.message, 'auto: update model data')"
+    uses: ./.github/workflows/update-models.yml
+    secrets: inherit
