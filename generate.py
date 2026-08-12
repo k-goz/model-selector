@@ -30,12 +30,16 @@ from src.platforms import (
     ChatAnywherePlatform,
     DeepInfraPlatform,
     DeepSeekPlatform,
+    GroqPlatform,
     MiniMaxPlatform,
+    MoonshotPlatform,
     N1NPlatform,
     NovitaPlatform,
     OpenRouterPlatform,
     SiliconFlowPlatform,
     TogetherPlatform,
+    VolcenginePlatform,
+    ZhipuPlatform,
 )
 from src.history import upsert_daily_history
 
@@ -1243,49 +1247,21 @@ if not USE_JSON_DATA:
     print("  SF:", len(sf_ids), file=sys.stderr)
 
     # ─── 月之暗面 ───
-    ms_list = []
-    if MS:
-        d = fj("https://api.moonshot.cn/v1/models", MS)
-        ms_list = [{"id":m["id"],"c":str(int(m.get("context_length",0)//1000))+"k"} for m in (d.get("data",[]) if d else [])]
-    if not ms_list:
-        ms_list = [
-            {"id":"moonshot-v1-8k","c":"8k"},{"id":"moonshot-v1-32k","c":"32k"},{"id":"moonshot-v1-128k","c":"128k"},
-            {"id":"kimi-k2","c":"262k"},{"id":"kimi-k2.5","c":"262k"},{"id":"kimi-k2-turbo","c":"262k"},
-            {"id":"kimi-k2-thinking","c":"262k"},{"id":"kimi-k2-thinking-turbo","c":"262k"},
-            {"id":"moonshot-v1-8k-vision","c":"8k"},{"id":"moonshot-v1-32k-vision","c":"32k"},{"id":"moonshot-v1-128k-vision","c":"128k"},
-        ]
+    moonshot_result = MoonshotPlatform(api_key=MS).fetch_result()
+    source_runs["moonshot"] = moonshot_result.metadata.to_dict()
+    ms_list = moonshot_result.models
     print("  Moonshot:", len(ms_list), file=sys.stderr)
 
     # ─── 智谱AI ───
-    zh_ids = []
-    if ZH:
-        d = fj("https://open.bigmodel.cn/api/paas/v4/models", ZH)
-        zh_ids = [m["id"] for m in (d.get("data",[]) if d else [])]
-    if not zh_ids:
-        zh_ids = [
-            "glm-5","glm-5-turbo","glm-5.1","glm-4.7","glm-4.7-flashx","glm-4.7-flash",
-            "glm-4-plus","glm-5v-turbo","glm-z1-air","glm-4.5","glm-4.5-air","glm-4.6",
-            "glm-4-long","glm-4v-plus","glm-4v","glm-4-flash","glm-4-flashx",
-            "chatglm-turbo","chatglm3-turbo","emohaa-chat",
-            "cogviewx-flash","cogvideox-2","cogviewx-plus",
-        ]
+    zhipu_result = ZhipuPlatform(api_key=ZH).fetch_result()
+    source_runs["zhipu"] = zhipu_result.metadata.to_dict()
+    zh_ids = [model["id"] for model in zhipu_result.models]
     print("  Zhipu:", len(zh_ids), file=sys.stderr)
 
     # ─── 火山引擎 ───
-    vc_list = []
-    if VC:
-        d = fj("https://ark.cn-beijing.volces.com/api/v3/models", VC)
-        vc_list = [{"id":m["id"],"st":m.get("status","")} for m in (d.get("data",[]) if d else [])]
-    if not vc_list:
-        vc_list = [
-            {"id":"doubao-1.6-pro-32k","st":""},{"id":"doubao-1.5-pro-32k","st":""},{"id":"doubao-1.5-pro-128k","st":""},
-            {"id":"doubao-lite-32k","st":""},{"id":"doubao-1.5-lite-32k","st":""},
-            {"id":"doubao-vision","st":""},{"id":"doubao-coder","st":""},
-            {"id":"doubao-seed-1.6","st":""},{"id":"doubao-seed-1.6-flash","st":""},
-            {"id":"doubao-seed-1.6-vision","st":""},{"id":"doubao-seed-1.6-thinking","st":""},
-            {"id":"doubao-seed-2.0-pro","st":""},{"id":"doubao-seed-2.0-mini","st":""},
-            {"id":"doubao-smart-router","st":""},
-        ]
+    volcengine_result = VolcenginePlatform(api_key=VC).fetch_result()
+    source_runs["volcengine"] = volcengine_result.metadata.to_dict()
+    vc_list = volcengine_result.models
     print("  Volcengine:", len(vc_list), file=sys.stderr)
 
     # ─── OpenRouter（公开目录，失败时使用本地缓存） ───
@@ -1377,16 +1353,9 @@ if not USE_JSON_DATA:
     print("  DeepSeek:", len(ds_ids), file=sys.stderr)
 
     # ─── Groq ───
-    gq_ids = []
-    if GQ:
-        d = fj("https://api.groq.com/openai/v1/models", GQ)
-        if d:
-            gq_ids = [m.get("id","") for m in (d.get("data",[]) if d else [])]
-    if not gq_ids:
-        gq_ids = ["llama-3.3-70b-versatile","llama-3.1-8b-instant","llama-3.1-70b-versatile",
-                  "llama-3.2-1b-preview","llama-3.2-3b-preview","llama-3.2-11b-vision-preview",
-                  "llama-3.2-90b-vision-preview","mixtral-8x7b-32768","gemma2-9b-it",
-                  "deepseek-r1-distill-llama-70b","deepseek-r1-distill-qwen-32b"]
+    groq_result = GroqPlatform(api_key=GQ).fetch_result()
+    source_runs["groq"] = groq_result.metadata.to_dict()
+    gq_ids = [model["id"] for model in groq_result.models]
     print("  Groq:", len(gq_ids), file=sys.stderr)
 
     # ─── Together AI ───
@@ -1535,6 +1504,8 @@ if not USE_JSON_DATA:
     for m in ms_list:
         mid = m["id"]
         ii, oo, cc, src = get_absolute_price("moonshot", mid)
+        if not cc or cc == "N/A":
+            cc = m.get("context") or "N/A"
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         fam = get_family(mid)
         cards.append(make_card("moonshot","月之暗面","#4f46e5",Te(mid),ii,oo,cc,tt,ss,
@@ -1552,7 +1523,7 @@ if not USE_JSON_DATA:
 
     # 火山引擎
     for m in vc_list:
-        mid = m["id"]; st = m.get("st","")
+        mid = m["id"]; st = m.get("status","")
         ii, oo, cc, src = get_absolute_price("volcengine", mid)
         tt, ss = infer_tags_and_scene(mid, ii, oo, cc)
         tt = tt[:]

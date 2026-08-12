@@ -168,6 +168,117 @@ class DeepSeekPlatform(OpenAICompatiblePlatform):
         return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
 
 
+class MoonshotPlatform(BasePlatform):
+    platform_id = "moonshot"
+    platform_name = "月之暗面"
+    platform_color = "#4f46e5"
+    base_url = "https://api.moonshot.cn/v1"
+    model_source_url = "https://api.moonshot.cn/v1/models"
+
+    FALLBACK_MODELS = [
+        ("moonshot-v1-8k", 8000), ("moonshot-v1-32k", 32000), ("moonshot-v1-128k", 128000),
+        ("kimi-k2", 262000), ("kimi-k2.5", 262000), ("kimi-k2-turbo", 262000),
+        ("kimi-k2-thinking", 262000), ("kimi-k2-thinking-turbo", 262000),
+        ("moonshot-v1-8k-vision", 8000), ("moonshot-v1-32k-vision", 32000),
+        ("moonshot-v1-128k-vision", 128000),
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        if not self.is_configured:
+            raise ValueError("月之暗面 API Key 未配置")
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            context_tokens = _as_int(raw.get("context_length"))
+            if model_id:
+                models.append({
+                    "id": model_id, "name": model_id,
+                    "context_tokens": context_tokens, "context": _context_label(context_tokens),
+                })
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{
+            "id": model_id, "name": model_id,
+            "context_tokens": context_tokens, "context": _context_label(context_tokens),
+        } for model_id, context_tokens in self.FALLBACK_MODELS]
+
+
+class ZhipuPlatform(OpenAICompatiblePlatform):
+    platform_id = "zhipu"
+    platform_name = "智谱 AI"
+    platform_color = "#00c4b4"
+    base_url = "https://open.bigmodel.cn/api/paas/v4"
+
+    FALLBACK_IDS = [
+        "glm-5", "glm-5-turbo", "glm-5.1", "glm-4.7", "glm-4.7-flashx", "glm-4.7-flash",
+        "glm-4-plus", "glm-5v-turbo", "glm-z1-air", "glm-4.5", "glm-4.5-air", "glm-4.6",
+        "glm-4-long", "glm-4v-plus", "glm-4v", "glm-4-flash", "glm-4-flashx",
+        "chatglm-turbo", "chatglm3-turbo", "emohaa-chat",
+        "cogviewx-flash", "cogvideox-2", "cogviewx-plus",
+    ]
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
+class VolcenginePlatform(BasePlatform):
+    platform_id = "volcengine"
+    platform_name = "火山引擎"
+    platform_color = "#dc2626"
+    base_url = "https://ark.cn-beijing.volces.com/api/v3"
+    model_source_url = "https://ark.cn-beijing.volces.com/api/v3/models"
+
+    FALLBACK_IDS = [
+        "doubao-1.6-pro-32k", "doubao-1.5-pro-32k", "doubao-1.5-pro-128k",
+        "doubao-lite-32k", "doubao-1.5-lite-32k", "doubao-vision", "doubao-coder",
+        "doubao-seed-1.6", "doubao-seed-1.6-flash", "doubao-seed-1.6-vision",
+        "doubao-seed-1.6-thinking", "doubao-seed-2.0-pro", "doubao-seed-2.0-mini",
+        "doubao-smart-router",
+    ]
+
+    def fetch_models(self) -> List[Dict[str, Any]]:
+        if not self.is_configured:
+            raise ValueError("火山引擎 API Key 未配置")
+        payload = self.json_fetcher(self.model_source_url, self.api_key)
+        raw_models = payload.get("data", []) if isinstance(payload, dict) else []
+        models = []
+        for raw in raw_models:
+            if not isinstance(raw, dict):
+                continue
+            model_id = str(raw.get("id") or "").strip()
+            if model_id:
+                models.append({
+                    "id": model_id, "name": model_id,
+                    "status": str(raw.get("status") or ""),
+                })
+        return models
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id, "status": ""} for model_id in self.FALLBACK_IDS]
+
+
+class GroqPlatform(OpenAICompatiblePlatform):
+    platform_id = "groq"
+    platform_name = "Groq"
+    platform_color = "#f55036"
+    base_url = "https://api.groq.com/openai/v1"
+
+    FALLBACK_IDS = [
+        "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama-3.1-70b-versatile",
+        "llama-3.2-1b-preview", "llama-3.2-3b-preview", "llama-3.2-11b-vision-preview",
+        "llama-3.2-90b-vision-preview", "mixtral-8x7b-32768", "gemma2-9b-it",
+        "deepseek-r1-distill-llama-70b", "deepseek-r1-distill-qwen-32b",
+    ]
+
+    def get_fallback_models(self) -> List[Dict[str, Any]]:
+        return [{"id": model_id, "name": model_id} for model_id in self.FALLBACK_IDS]
+
+
 class N1NPlatform(BasePlatform):
     platform_id = "n1n"
     platform_name = "n1n.ai"

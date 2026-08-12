@@ -8,12 +8,16 @@ from src.platforms import (
     ChatAnywherePlatform,
     DeepInfraPlatform,
     DeepSeekPlatform,
+    GroqPlatform,
     MiniMaxPlatform,
+    MoonshotPlatform,
     N1NPlatform,
     NovitaPlatform,
     OpenRouterPlatform,
     SiliconFlowPlatform,
     TogetherPlatform,
+    VolcenginePlatform,
+    ZhipuPlatform,
     parse_chatanywhere_pricing_html,
 )
 
@@ -73,6 +77,55 @@ def test_deepseek_without_key_uses_current_fallback_models():
     result = DeepSeekPlatform().fetch_result()
     assert result.metadata.source_type == "fallback"
     assert [model["id"] for model in result.models] == ["deepseek-v4-flash", "deepseek-v4-pro"]
+
+
+def test_moonshot_preserves_api_context_and_records_lineage():
+    payload = {"data": [{"id": "kimi-test", "context_length": 262144}]}
+    result = MoonshotPlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.metadata.source_type == "api"
+    assert result.metadata.source_url == "https://api.moonshot.cn/v1/models"
+    assert result.models == [{
+        "id": "kimi-test", "name": "kimi-test",
+        "context_tokens": 262144, "context": "262k",
+    }]
+
+
+def test_zhipu_and_groq_use_openai_compatible_catalogs():
+    payload = {"data": [{"id": "model-a"}, {"id": ""}]}
+    zhipu = ZhipuPlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    groq = GroqPlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert zhipu.models == [{"id": "model-a", "name": "model-a"}]
+    assert groq.models == [{"id": "model-a", "name": "model-a"}]
+    assert zhipu.metadata.source_url == "https://open.bigmodel.cn/api/paas/v4/models"
+    assert groq.metadata.source_url == "https://api.groq.com/openai/v1/models"
+
+
+def test_volcengine_preserves_retirement_status():
+    payload = {"data": [
+        {"id": "doubao-active", "status": "Active"},
+        {"id": "doubao-old", "status": "Retiring"},
+    ]}
+    result = VolcenginePlatform(
+        api_key="secret", json_fetcher=lambda _url, _key: payload,
+    ).fetch_result()
+    assert result.models == [
+        {"id": "doubao-active", "name": "doubao-active", "status": "Active"},
+        {"id": "doubao-old", "name": "doubao-old", "status": "Retiring"},
+    ]
+
+
+def test_phase_five_platforms_without_keys_use_explicit_fallbacks():
+    for platform in (MoonshotPlatform(), ZhipuPlatform(), VolcenginePlatform(), GroqPlatform()):
+        result = platform.fetch_result()
+        assert result.metadata.source_type == "fallback"
+        assert "API Key 未配置" in result.metadata.error
+        assert result.models
 
 
 def test_empty_api_response_records_fallback_reason():
