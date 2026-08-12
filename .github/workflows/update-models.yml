@@ -96,3 +96,10 @@ jobs:
           git add index.html en/index.html models_data.json ping_analysis.json
           git commit -m "auto: update model data $(date +%Y-%m-%d)"
           git push
+
+      - name: Notify failure
+        if: failure()
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python scripts/notify_ci_failure.py

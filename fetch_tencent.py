@@ -12,18 +12,19 @@ import os
 import sys
 import time
 
+from src.tencent_auth import load_tencent_cookies, tencent_uin
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 def load_cookies(path):
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            cookies = json.load(f)
+        cookies = load_tencent_cookies(path)
     except FileNotFoundError:
         print(f"Error: Cookie file not found: {path}", file=sys.stderr)
         print("Please export cookies from browser and save to tencent_cookie.json", file=sys.stderr)
         sys.exit(1)
-    except json.JSONDecodeError as e:
+    except (json.JSONDecodeError, ValueError) as e:
         print(f"Error: Invalid JSON in cookie file: {path} ({e})", file=sys.stderr)
         sys.exit(1)
     if not isinstance(cookies, list):
@@ -72,6 +73,7 @@ async def fetch_tencent(cookie_path, output_path):
         sys.exit(1)
 
     cookies = load_cookies(cookie_path)
+    uin = tencent_uin(cookies)
 
     async with async_playwright() as p:
         try:
@@ -93,7 +95,7 @@ async def fetch_tencent(cookie_path, output_path):
         await page.wait_for_timeout(5000)
 
         api_url = await page.evaluate("""
-            async () => {
+            async (uin) => {
                 const url = 'https://console.cloud.tencent.com/cgi/capi';
                 const ts = Date.now();
                 const cookieMap = {};
@@ -110,8 +112,8 @@ async def fetch_tencent(cookie_path, output_path):
                     dictId: '3216',
                     sts: '1',
                     t: ts,
-                    uin: '100048466778',
-                    ownerUin: '100048466778',
+                    uin: uin,
+                    ownerUin: uin,
                     Offset: '0',
                     Limit: '100',
                     Region: '1',
@@ -125,7 +127,7 @@ async def fetch_tencent(cookie_path, output_path):
                 });
                 return await resp.json();
             }
-        """)
+        """, uin)
 
         data = api_url
         api_code = data.get("code", -1)

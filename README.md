@@ -2,7 +2,7 @@
 
 面向 AI API 使用者的静态模型目录：统一查看模型、上下文、输入/输出价格、接入地址，并完成筛选、比价和用量估算。
 
-线上地址：[ai-model-selector-eight.vercel.app](https://ai-model-selector-eight.vercel.app)
+线上地址：[model.ai-selector.top](https://model.ai-selector.top)（[Vercel 备用域名](https://ai-model-selector-eight.vercel.app)）
 
 ## 当前状态
 
@@ -86,6 +86,8 @@ python3 -m http.server 8080
 
 密钥通过环境变量读取，常用项包括 `ALIYUN_KEY`、`SF_KEY`、`MS_KEY`、`ZH_KEY`、`VOLC_KEY`、`TENCENT_KEY`、`MINIMAX_KEY`、`DEEPSEEK_KEY`、`GROQ_KEY`、`TOGETHER_KEY` 等。仓库不保存真实密钥。
 
+腾讯控制台视觉抓取仅从本地 `tencent_cookie.json` 读取 Cookie，可从 `tencent_cookie.json.example` 复制结构。该文件已被 Git 忽略，不得提交。
+
 ## 验证
 
 ```bash
@@ -103,6 +105,9 @@ python3 validate_site.py
 
 # 桌面 Chromium 与 Pixel 7 移动视口真实交互回归
 npm run test:browser
+
+# 检查默认生产域名、中英文页面和数据新鲜度
+python3 check_deployment.py --max-age-hours 48
 
 # 使用指定快照校验
 python3 verify_ground_truth.py --json /path/to/models_data.json
