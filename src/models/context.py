@@ -28,6 +28,10 @@ def _has_context(model: dict[str, Any]) -> bool:
     return model.get("context") not in (None, "", "N/A")
 
 
+def _is_prior_inference(model: dict[str, Any]) -> bool:
+    return model.get("context_status") == "inferred"
+
+
 def _not_applicable(model: dict[str, Any]) -> bool:
     return (
         model.get("billing_unit") == "request"
@@ -41,14 +45,18 @@ def enrich_context_metadata(models: list[dict[str, Any]]) -> Counter[str]:
 
     known_by_name: dict[str, set[str]] = defaultdict(set)
     for model in models:
-        if _has_context(model):
+        # 上一次生成得到的推断值不能反过来成为下一次生成的“目录证据”。
+        if _has_context(model) and not _is_prior_inference(model):
             known_by_name[normalize_for_match(str(model.get("name") or ""))].add(str(model["context"]))
 
     counts: Counter[str] = Counter()
     for model in models:
-        if _has_context(model):
+        prior_inference = _is_prior_inference(model)
+        if _has_context(model) and not prior_inference:
             status, source = "known", "catalog"
         elif _not_applicable(model):
+            if prior_inference:
+                model["context"] = "N/A"
             status, source = "not_applicable", "billing_semantics"
         else:
             from_name = context_from_model_name(str(model.get("name") or ""))
@@ -60,8 +68,31 @@ def enrich_context_metadata(models: list[dict[str, Any]]) -> Counter[str]:
                 model["context"] = next(iter(consensus))
                 status, source = "inferred", "catalog_consensus"
             else:
+                if prior_inference:
+                    model["context"] = "N/A"
                 status, source = "unknown", "unknown"
         model["context_status"] = status
         model["context_source"] = source
         counts[status] += 1
     return counts
+
+
+def restore_inferred_context_metadata(
+    models: list[dict[str, Any]],
+    prior_models: list[dict[str, Any]],
+) -> None:
+    """在缓存重渲染时恢复推断来源，防止其被误认作目录原始值。"""
+
+    prior_inferences = {
+        (str(model.get("platform_id") or ""), str(model.get("name") or "")): model
+        for model in prior_models
+        if _is_prior_inference(model) and _has_context(model)
+    }
+    for model in models:
+        prior = prior_inferences.get((
+            str(model.get("platform_id") or ""),
+            str(model.get("name") or ""),
+        ))
+        if prior and model.get("context") == prior.get("context"):
+            model["context_status"] = "inferred"
+            model["context_source"] = str(prior.get("context_source") or "unknown")
