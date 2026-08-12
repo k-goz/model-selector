@@ -20,6 +20,7 @@ from src.pricing import (
     SSOTPriceResolver,
     classify_price,
     parse_n1n_token_prices,
+    parse_moonshot_pricing_markdown,
     resolve_price_source_url,
 )
 
@@ -42,6 +43,20 @@ class TestPriceSourceResolution:
     def test_unknown_or_hardcoded_source_is_not_invented(self):
         assert resolve_price_source_url("unknown", "A") == ""
         assert resolve_price_source_url("aliyun", "H") == ""
+
+
+class TestMoonshotPricingParser:
+    def test_parses_exact_rows_without_cross_table_contamination(self):
+        content = '''
+["moonshot-v1-32k", "1M tokens", "¥5.00", "¥20.00", "32,768 tokens"],
+["moonshot-v1-128k", "1M tokens", "¥10.00", "¥30.00", "131,072 tokens"],
+["other-model", "1M tokens", "¥24.00", "¥24.00", "32,768 tokens"],
+'''
+        prices = parse_moonshot_pricing_markdown(content)
+        assert prices["moonshot-v1-32k"]["input"] == 5.0
+        assert prices["moonshot-v1-32k"]["output"] == 20.0
+        assert prices["moonshot-v1-128k"]["input"] == 10.0
+        assert "other-model" not in prices
 
 
 class TestClassifyPrice:

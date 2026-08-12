@@ -23,7 +23,7 @@ from datetime import datetime
 from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
 
-from src.pricing import classify_price, resolve_price_source_url
+from src.pricing import classify_price, parse_moonshot_pricing_markdown, resolve_price_source_url
 from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
@@ -240,27 +240,13 @@ def fetch_official_prices():
     except Exception as e:
         print("  fetch_official_prices: DeepSeek error:", str(e)[:80], file=sys.stderr)
 
-    # 2. 月之暗面 - Mintlify SSR，价格在 JS rows 数据中
+    # 2. 月之暗面 - 使用官方机器可读 Markdown，避免 SSR 混入其他表格。
     try:
-        h = _fh("https://platform.moonshot.cn/docs/pricing/chat-v1")
+        source_url = "https://platform.kimi.com/docs/pricing/chat-v1.md"
+        h = _fh(source_url)
         if h:
-            m = re.search(r'rows:\s*\[\[(.*?)\]\]', h, re.DOTALL)
-            if m:
-                rows_str = '[[' + m.group(1) + ']]'
-                rows_str = rows_str.replace('\\"', '"')
-                row_items = re.findall(r'\[([^\]]+)\]', rows_str)
-                for row in row_items:
-                    fields = re.findall(r'"([^"]*)"', row)
-                    if len(fields) >= 3:
-                        mn = fields[0].lower().strip()
-                        inp_m = re.search(r'[\d.]+', fields[2])
-                        out_m = re.search(r'[\d.]+', fields[3]) if len(fields) > 3 else None
-                        if inp_m and out_m:
-                            iv = float(inp_m.group())
-                            ov = float(out_m.group())
-                            if iv > 0 and ov > 0:
-                                prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
-                                             "source": "https://platform.moonshot.cn/docs/pricing/chat-v1"}
+            for model_name, price in parse_moonshot_pricing_markdown(h).items():
+                prices[model_name] = {**price, "source": source_url}
             print("  fetch_official_prices: Moonshot %d models" % sum(1 for k in prices if k.startswith("moonshot")), file=sys.stderr)
     except Exception as e:
         print("  fetch_official_prices: Moonshot error:", str(e)[:80], file=sys.stderr)

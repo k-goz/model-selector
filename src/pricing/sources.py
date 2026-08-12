@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Mapping
+import re
 
 
 COMMUNITY_PRICE_SOURCE = (
@@ -20,6 +21,29 @@ PLATFORM_PRICE_SOURCES: Mapping[str, str] = {
     "n1n": "https://api.n1n.ai/api/pricing",
     "ca": "https://chatanywhere.apifox.cn/doc-2694962",
 }
+
+
+def parse_moonshot_pricing_markdown(content: str) -> dict[str, dict[str, float | str]]:
+    """从 Moonshot 官方 Markdown 表格中严格解析逐模型输入/输出价格。"""
+
+    prices: dict[str, dict[str, float | str]] = {}
+    for line in content.splitlines():
+        line = line.strip().rstrip(",")
+        if not line.startswith('["moonshot-'):
+            continue
+        fields = re.findall(r'"([^"\\]*(?:\\.[^"\\]*)*)"', line)
+        if len(fields) < 4:
+            continue
+        input_match = re.fullmatch(r"¥([\d.]+)", fields[2])
+        output_match = re.fullmatch(r"¥([\d.]+)", fields[3])
+        if not input_match or not output_match:
+            continue
+        prices[fields[0].lower()] = {
+            "input": float(input_match.group(1)),
+            "output": float(output_match.group(1)),
+            "currency": "CNY",
+        }
+    return prices
 
 
 def resolve_price_source_url(

@@ -16,7 +16,7 @@ import urllib.request
 from typing import Any, Dict, Mapping, Tuple, Optional, Sequence
 from dataclasses import dataclass
 
-from .sources import resolve_price_source_url
+from .sources import parse_moonshot_pricing_markdown, resolve_price_source_url
 
 logger = logging.getLogger(__name__)
 
