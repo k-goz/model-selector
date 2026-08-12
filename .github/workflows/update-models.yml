@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: update-model-data
+  # 同一工作流版本保持串行；新版本不被 GitHub 故障遗留的旧队列永久锁死。
+  group: update-model-data-${{ github.workflow_sha }}
   cancel-in-progress: false
 
 permissions:
