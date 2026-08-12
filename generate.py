@@ -50,7 +50,7 @@ from src.platforms import (
     YiPlatform,
 )
 from src.history import upsert_daily_history
-from src.rendering import compose_page, load_asset
+from src.rendering import compose_page, load_asset, render_template
 
 # ═══════════════════════════════════════════════════════════════════════════
 # 日志配置
@@ -2150,52 +2150,12 @@ JS = load_asset("assets/app.js")
 # 组装 HTML
 # ═══════════════════════════════════════════════════════════
 
-HDR = (
-     '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n<meta charset="UTF-8">\n'
-     '<meta name="viewport" content="width=device-width,initial-scale=1">\n'
-     '<title>AI 模型选择器 - 全网价格对比 2026 | DeepSeek vs GPT-4o vs Claude</title>\n'
-     '<meta name="description" content="实时对比25+平台AI模型价格：DeepSeek、GPT-4o、Claude、Qwen等，一键复制API接入命令，支持跨平台比价、Token计价器、接口测速">\n'
-     '<meta name="keywords" content="AI模型价格对比,DeepSeek价格,GPT-4o价格,Claude价格,大模型选择器,AI API定价,2026最佳AI模型,免费AI模型,廉价AI模型">\n'
-     '<meta name="robots" content="index, follow">\n'
-     '<link rel="canonical" href="https://model.ai-selector.top/">\n'
-     '<meta property="og:title" content="AI 模型选择器 - 全网价格对比 2026">\n'
-     '<meta property="og:description" content="实时对比25+平台AI模型价格，支持跨平台比价、Token计价">\n'
-     '<meta property="og:type" content="website">\n'
-     '<meta property="og:url" content="https://model.ai-selector.top/">\n'
-     '<link rel="alternate" hreflang="en" href="https://model.ai-selector.top/en/">\n'
-     '<link rel="alternate" hreflang="zh" href="https://model.ai-selector.top/">\n'
-     '<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%2250%22 x=%2250%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2250%22>AI</text></svg>">\n'
-     '<style>\n' + CSS + '\n</style>\n'
-     '</head>\n<body>\n'
-     '<nav class="topnav">\n'
-     '<div class="topnav-inner">\n'
-     '<a href="./index.html" class="topnav-brand">AI Model Selector</a>\n'
-     '<div class="topnav-links" id="navLinks">\n'
-     '<a href="./index.html" class="topnav-link active">首页</a>\n'
-     '<a href="./reviews.html" class="topnav-link">评测</a>\n'
-     '<a href="./about.html" class="topnav-link">关于</a>\n'
-     '<a href="./privacy.html" class="topnav-link">隐私</a>\n'
-     '<a href="./en/index.html" class="topnav-lang" title="English">EN</a>\n'
-     '</div>\n'
-     '<button class="topnav-burger" onclick="document.getElementById(\'navLinks\').classList.toggle(\'open\')">&#9776;</button>\n'
-     '</div>\n'
-     '</nav>\n'
-     '<!-- AdSense 横幅广告位 -->\n'
-     '<div class="ad-container ad-top"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>\n'
-     '<div class="wrap">\n'
-     '<div class="hdr"><h1>AI 模型选择器</h1>'
-    '<p>一键对比全网价格 &middot; 点击卡片复制切换命令 &middot; 按 / 搜索 &middot; 按 D 暗色 &middot; 按 V 切换视图</p>'
-    '<div class="brow">'
-    '<span class="bd">&#128202; ' + str(total) + ' 个模型</span>'
-    '<span class="bd bd-free">&#128998; 免费</span>'
-    '<span class="bd bd-cheap">&#128308; &lt;¥0.7</span>'
-    '<span class="bd bd-mid">&#128993; ¥0.7-10/M</span>'
-    '<span class="bd bd-high">&#128996; ¥10+/M</span>'
-    '<span class="bd bd-ultra">&#127745; &gt;¥100/M</span>'
-    '</div></div>\n'
-    '<div class="snote">' + snote + '</div>\n'
-    + price_change_html + '\n'
-
+HDR = render_template("templates/document_head.html", {
+    "STYLES": CSS,
+    "TOTAL": total,
+    "DATA_NOTE": snote,
+    "PRICE_CHANGE_HTML": price_change_html,
+}) + (
     # ─── 左侧筛选栏 + 右侧内容 布局 ───
     '<button class="sidebar-toggle" onclick="toggleSidebar()">&#9776;</button>\n'
     '<div class="main-layout">\n'
@@ -2295,18 +2255,9 @@ FTR = (
     '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a> &middot; <a href="https://cloud.siliconflow.cn/i/exbVXMa4" target="_blank" class="invite-link">&#9734; 支持开发者 — 注册硅基流动领代金券</a></p>'
     '</div>\n'
     # My Insights 板块（小红书同步内容）
-    '<div class="insights-section" id="insightsSection">\n'
-    '<h2 class="insights-title">&#128161; My Insights</h2>\n'
-    '<p class="insights-subtitle">从小红书同步的 AI 模型使用心得与技巧</p>\n'
-    '<div class="insights-grid" id="insightsGrid">\n'
-    '<div class="insight-card"><div class="insight-date">2026-04</div><h3>DeepSeek R1 实测：推理能力接近 o1，价格仅1/30</h3><p class="insight-excerpt">在实际编码任务中测试了 DeepSeek-R1 的推理链，发现其代码生成质量与 GPT-4o 相当，但价格仅为 $1/M vs $30/M，性价比极高...</p></div>\n'
-    '<div class="insight-card"><div class="insight-date">2026-03</div><h3>Qwen3-Coder-480B 体验：国产代码模型的新天花板</h3><p class="insight-excerpt">Qwen3-Coder 在 HumanEval 和 SWE-Bench 上表现亮眼，480B 参数的代码补全能力已逼近 Claude Sonnet 4...</p></div>\n'
-    '<div class="insight-card"><div class="insight-date">2026-03</div><h3>5个免费AI API推荐：零成本玩转大模型</h3><p class="insight-excerpt">SiliconFlow、Groq、Together AI 均提供免费额度，本文对比了各平台的免费模型列表和限制条件，帮你零成本开始 AI 开发...</p></div>\n'
-    '<div class="insight-card"><div class="insight-date">2026-02</div><h3>硅基流动 vs 火山引擎：国内推理服务横评</h3><p class="insight-excerpt">同为国内热门推理平台，硅基流动的 RSC 接口响应更快，火山引擎的 Doubao 系列价格更低，不同场景选择不同...</p></div>\n'
-    '</div>\n'
-    '</div>\n'
+    + load_asset("templates/insights.html")
     # AdSense 底部广告位
-    '<div class="ad-container ad-bottom"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>\n'
+    + '<div class="ad-container ad-bottom"><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script></div>\n'
     '<div id="toast" class=""></div>\n'
     # Token 计价器模态框
     '<div class="tk-modal" id="tkModal" onclick="if(event.target===this)closeTokenCalc()">'

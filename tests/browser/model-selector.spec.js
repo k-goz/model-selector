@@ -88,3 +88,42 @@ test('English page loads the same catalog', async ({ page }) => {
   await expect(page).toHaveTitle(/AI Model Selector/);
   expect(errors).toEqual([]);
 });
+
+test('filter state survives a page reload', async ({ page }) => {
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await page.locator('#si').fill('deepseek-v4-pro');
+  await expect.poll(() => page.url()).toContain('#');
+  const filteredCount = await page.locator('#filterCount strong').textContent();
+
+  await page.reload();
+  await expect(page.locator('#grid .mc')).toHaveCount(modelData.models.length);
+  await expect(page.locator('#si')).toHaveValue('deepseek-v4-pro');
+  await expect(page.locator('#filterCount strong')).toHaveText(filteredCount);
+});
+
+test('token calculator produces ranked estimates', async ({ page }) => {
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await page.getByRole('button', { name: /计价/ }).click();
+  await expect(page.locator('#tkModal')).toHaveClass(/show/);
+  await page.locator('#tkText').fill('请估算这段中文和 English code: console.log("hello")');
+  await page.getByRole('button', { name: '计算 Token' }).click();
+  await expect(page.locator('#tkStats .tk-stat')).toHaveCount(4);
+  await expect(page.locator('#tkResult .tk-result-table tr')).not.toHaveCount(1);
+});
+
+test('model card opens switchable and copyable integration code', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await waitForCatalog(page);
+  const firstCard = page.locator('#grid .mc:visible').first();
+  const modelName = (await firstCard.locator('.mname').textContent()).trim();
+  await firstCard.locator('.mname').click();
+  await expect(page.locator('#codeModal')).toHaveClass(/show/);
+  await expect(page.locator('#codeModal .cm-model')).toHaveText(modelName);
+  await page.locator('.code-tab[data-lang="curl"]').click();
+  await expect(page.locator('#codeBlock pre')).toContainText('curl ');
+  await page.locator('.code-copy-btn').click();
+  await expect(page.locator('.code-copy-btn')).toHaveText('已复制');
+});

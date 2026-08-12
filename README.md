@@ -135,7 +135,9 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ├── src/rendering/                     # 前端资源读取与页面组合
 ├── assets/styles.css                  # 页面样式源码，生成时内联
 ├── assets/app.js                      # 浏览器交互源码，生成时内联
-├── templates/page.html                # 页面组合模板
+├── templates/page.html                # 页面组合骨架
+├── templates/document_head.html       # 文档头、导航与概览区块
+├── templates/insights.html            # Insights 内容区块
 ├── playwright.config.js               # 桌面/移动端浏览器回归配置
 ├── scripts/normalize_official_prices_db.py
 ├── tests/browser/                     # Playwright 真实交互回归
