@@ -16,7 +16,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -29,8 +29,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
       - name: Install test dependencies
-        run: python -m pip install pytest
+        run: |
+          python -m pip install pytest
+          npm ci
+          npx playwright install --with-deps chromium
 
       - name: Run unit tests
         run: python -m pytest tests/ -q
@@ -69,6 +78,12 @@ jobs:
 
       - name: Verify ground truth prices
         run: python verify_ground_truth.py
+
+      - name: Validate generated pages
+        run: python validate_site.py
+
+      - name: Run browser regression tests
+        run: npm run test:browser
 
       - name: Commit generated artifacts
         run: |

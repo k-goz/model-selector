@@ -10,6 +10,11 @@ tencent_cookie.json
 # Python
 __pycache__/
 .pytest_cache/
+node_modules/
+.playwright-cli/
+output/playwright/
+playwright-report/
+test-results/
 *.py[cod]
 *$py.class
 *.so

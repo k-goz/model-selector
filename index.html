@@ -14,8 +14,7 @@
 <meta property="og:url" content="https://ai-model-selector-eight.vercel.app/">
 <link rel="alternate" hreflang="en" href="https://ai-model-selector-eight.vercel.app/en/">
 <link rel="alternate" hreflang="zh" href="https://ai-model-selector-eight.vercel.app/">
-<!-- Google AdSense (替换为真实 publisher ID) -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22><text y=%2250%22 x=%2250%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2250%22>AI</text></svg>">
 <style>
 
 *{box-sizing:border-box;margin:0;padding:0}
@@ -385,7 +384,7 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .main-layout{flex-direction:column}
 .sidebar{width:100%;max-height:none;position:static;border-right:none;border-bottom:1px solid var(--border);padding:10px;display:none}
 .sidebar.open{display:block}
-.sidebar-toggle{display:flex}
+.sidebar-toggle{display:flex;top:58px;z-index:900}
 .content-area{padding:10px}
 /* 整体布局 */
 .wrap{padding:0 10px 30px}
@@ -661,6 +660,15 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 
 /* ─── 工具栏新按钮 ─── */
 .tool-btn-extended{margin-left:4px}
+
+/* Keep responsive layout overrides after the desktop sidebar declarations. */
+@media(max-width:768px){
+.main-layout{flex-direction:column}
+.sidebar{width:100%;min-width:0;max-width:100%;max-height:none;position:static;border-right:none;border-bottom:1px solid var(--border);padding:10px;display:none}
+.sidebar.open{display:block}
+.sidebar-toggle{display:flex;top:58px;z-index:900}
+.content-area{padding:10px}
+}
 
 
 </style>
@@ -3291,7 +3299,8 @@ function renderModelsFromJSON(data) {
 // 初始化
 document.addEventListener('DOMContentLoaded',function(){
 // ─── 尝试从 models_data.json 动态加载 ───
-fetch('models_data.json').then(function(r){return r.json();}).then(function(data){
+var modelsDataUrl=document.documentElement.lang==='en'?'../models_data.json':'models_data.json';
+fetch(modelsDataUrl).then(function(r){return r.json();}).then(function(data){
     if(data && data.models && data.models.length>0){
         renderModelsFromJSON(data);
         filter();

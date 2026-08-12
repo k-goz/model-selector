@@ -173,7 +173,8 @@ function renderModelsFromJSON(data) {
 // 初始化
 document.addEventListener('DOMContentLoaded',function(){
 // ─── 尝试从 models_data.json 动态加载 ───
-fetch('models_data.json').then(function(r){return r.json();}).then(function(data){
+var modelsDataUrl=document.documentElement.lang==='en'?'../models_data.json':'models_data.json';
+fetch(modelsDataUrl).then(function(r){return r.json();}).then(function(data){
     if(data && data.models && data.models.length>0){
         renderModelsFromJSON(data);
         filter();

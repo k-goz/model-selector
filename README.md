@@ -10,7 +10,7 @@
 - 前端是生成后的纯 HTML/CSS/JavaScript，中文页与英文页均可独立部署。
 - `generate.py` 仍是生产编排入口；所有当前有模型数据的平台目录均已迁入 `src/platforms/`，生产生成不再依赖未审计的内联平台目录。
 - 数据缓存的采集时间与页面生成时间分开记录，缓存重建页面不会伪装成一次新采集。
-- 每日 CI 已收敛为单一工作流，依次执行测试、刷新、数据校验、价格基准校验和静态产物提交。
+- 每日 CI 已收敛为单一工作流，依次执行测试、刷新、数据校验、价格基准校验、静态页面门禁、桌面/移动端浏览器回归和静态产物提交。
 
 > 当前提交内的数据采集时间是 2026-05-09，属于历史快照。要获得新数据，需要配置平台密钥后执行 `python3 generate.py --refresh`。
 
@@ -67,10 +67,12 @@ python3 scripts/normalize_official_prices_db.py --write
 
 ## 本地开发
 
-项目运行时只依赖 Python 标准库，测试使用 `pytest`。
+项目运行时只依赖 Python 标准库；单元测试使用 `pytest`，浏览器回归使用 Playwright。
 
 ```bash
 python3 -m pip install pytest
+npm ci
+npx playwright install chromium
 
 # 使用现有 models_data.json 快速重建页面，不刷新采集时间
 python3 generate.py
@@ -96,6 +98,12 @@ python3 validate_data.py --max-age-hours 48
 # 核心价格样本与官网基准对照；缺失模型和价格偏差都会失败
 python3 verify_ground_truth.py
 
+# 检查中英文页面 DOM、模型数量、URL 和脚本结构
+python3 validate_site.py
+
+# 桌面 Chromium 与 Pixel 7 移动视口真实交互回归
+npm run test:browser
+
 # 使用指定快照校验
 python3 verify_ground_truth.py --json /path/to/models_data.json
 ```
@@ -108,6 +116,7 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 .
 ├── generate.py                       # 当前生产生成器与平台抓取主流程
 ├── validate_data.py                  # 发布前数据契约校验
+├── validate_site.py                  # 生成页面静态质量门禁
 ├── verify_ground_truth.py            # 核心模型价格基准校验
 ├── ground_truth.json                 # 小规模官方价格样本
 ├── official_prices_db.json           # 按平台分区的价格补充库
@@ -122,8 +131,10 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ├── assets/styles.css                  # 页面样式源码，生成时内联
 ├── assets/app.js                      # 浏览器交互源码，生成时内联
 ├── templates/page.html                # 页面组合模板
+├── playwright.config.js               # 桌面/移动端浏览器回归配置
 ├── scripts/normalize_official_prices_db.py
-├── tests/
+├── tests/browser/                     # Playwright 真实交互回归
+├── tests/                             # Python 单元与静态页面测试
 └── .github/workflows/update-models.yml
 ```
 
@@ -137,9 +148,8 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 
 ## 下一阶段
 
-- 建立浏览器级回归测试和静态页面门禁，并接入每日 CI。
-- 将 HTML 模板和内联 JavaScript 从 `generate.py` 拆出，建立浏览器级回归测试。
 - 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
 - 恢复并验证自定义域名，补充部署健康检查和失败通知。
+- 将页面区块继续拆成更小模板，并为筛选状态、计算器和复制命令补充更细粒度测试。
 
 价格数据仅供选型参考，最终以平台控制台和正式账单为准。

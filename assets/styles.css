@@ -366,7 +366,7 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 .main-layout{flex-direction:column}
 .sidebar{width:100%;max-height:none;position:static;border-right:none;border-bottom:1px solid var(--border);padding:10px;display:none}
 .sidebar.open{display:block}
-.sidebar-toggle{display:flex}
+.sidebar-toggle{display:flex;top:58px;z-index:900}
 .content-area{padding:10px}
 /* 整体布局 */
 .wrap{padding:0 10px 30px}
@@ -642,3 +642,12 @@ body.light .toast-err{background:rgba(220,38,38,.1);color:#dc2626;border-color:r
 
 /* ─── 工具栏新按钮 ─── */
 .tool-btn-extended{margin-left:4px}
+
+/* Keep responsive layout overrides after the desktop sidebar declarations. */
+@media(max-width:768px){
+.main-layout{flex-direction:column}
+.sidebar{width:100%;min-width:0;max-width:100%;max-height:none;position:static;border-right:none;border-bottom:1px solid var(--border);padding:10px;display:none}
+.sidebar.open{display:block}
+.sidebar-toggle{display:flex;top:58px;z-index:900}
+.content-area{padding:10px}
+}
