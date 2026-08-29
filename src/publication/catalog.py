@@ -186,7 +186,7 @@ def build_catalog(
         source_run = source_runs.get(platform_id, {})
         if source_run.get("source_type", "").startswith("legacy_"):
             source_run["model_count"] = count
-    return enrich_catalog_contract(catalog)
+    return enrich_catalog_contract(catalog, previous_models=prior_context_models)
 
 
 def write_catalog(path: Path, catalog: dict[str, Any]) -> None:

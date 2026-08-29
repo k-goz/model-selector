@@ -128,9 +128,33 @@ def enrich_model_contract(model: dict[str, Any], aliases: Mapping[str, str] | No
     return model
 
 
-def enrich_catalog_contract(catalog: dict[str, Any], aliases: Mapping[str, str] | None = None) -> dict[str, Any]:
+def enrich_catalog_contract(
+    catalog: dict[str, Any],
+    aliases: Mapping[str, str] | None = None,
+    previous_models: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     catalog.setdefault("meta", {})["schema_version"] = SCHEMA_VERSION
     catalog["meta"]["identity_version"] = IDENTITY_VERSION
+    previous_index = {
+        str(model.get("provider_offering_id")): model
+        for model in (previous_models or [])
+        if model.get("provider_offering_id")
+    }
     for model in catalog.get("models", []):
         enrich_model_contract(model, aliases)
+        previous = previous_index.get(model["provider_offering_id"])
+        if not previous:
+            continue
+        previous_lifecycle = previous.get("lifecycle") or {}
+        if previous_lifecycle.get("status") == model["lifecycle"]["status"]:
+            model["lifecycle"]["since"] = previous_lifecycle.get("since")
+            model["lifecycle"]["retirement_at"] = previous_lifecycle.get("retirement_at")
+        if previous.get("aliases"):
+            model["aliases"] = list(previous["aliases"])
+        if (
+            previous.get("input_price") == model.get("input_price")
+            and previous.get("output_price") == model.get("output_price")
+            and previous.get("price_status") == model.get("price_status")
+        ):
+            model["price_effective_at"] = previous.get("price_effective_at")
     return catalog

@@ -24,3 +24,11 @@ python scripts/validate_catalog_schema.py
 ```
 
 迁移只补充合同字段，不改模型、价格、来源、上下文和页面展示。Schema 后续变更必须提升版本并记录迁移说明。
+
+## 价格历史与差异
+
+- `data/diffs/latest.json`：以 `provider_offering_id` 比较的最新机器差异；
+- `data/history/price-history.json`：只追加真实价格语义变化，相同旧值/新值不会重复写入；
+- `data/history/summary.json`：按日、ISO 周和月聚合价格事件。
+
+价格事件保留旧值、新值、发现时间、价格生效时间和证据。来源没有给出生效时间时使用发现时间作为事件排序时间，但原始目录的 `price_effective_at` 仍保持 `null`。历史最多保留最近 5000 条事件，避免静态产物无限增长。

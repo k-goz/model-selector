@@ -1,6 +1,6 @@
 from copy import deepcopy
 
-from src.models.contract import canonical_model_key, enrich_model_contract
+from src.models.contract import canonical_model_key, enrich_catalog_contract, enrich_model_contract
 
 
 BASE = {
@@ -41,3 +41,13 @@ def test_provider_offering_id_preserves_case_sensitive_provider_identity():
     mixed = enrich_model_contract(deepcopy({**BASE, "name": "cc-MiniMax-M2"}))
     assert lower["canonical_model_id"] == mixed["canonical_model_id"]
     assert lower["provider_offering_id"] != mixed["provider_offering_id"]
+
+
+def test_unchanged_lifecycle_since_is_preserved_across_refreshes():
+    previous = enrich_model_contract(deepcopy(BASE))
+    previous["lifecycle"]["since"] = "2026-08-01T00:00:00+00:00"
+    refreshed = deepcopy(BASE)
+    refreshed["collected_at"] = "2026-08-31T00:00:00+00:00"
+    catalog = {"meta": {}, "models": [refreshed]}
+    enrich_catalog_contract(catalog, previous_models=[previous])
+    assert catalog["models"][0]["lifecycle"]["since"] == "2026-08-01T00:00:00+00:00"
