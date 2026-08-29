@@ -237,13 +237,17 @@
       "context": "1M"
     },
     "deepseek-v4-flash": {
-      "input": 1.0,
-      "output": 2.0,
+      "input": 3.0,
+      "output": 9.0,
+      "input_min": 1.5,
+      "output_min": 4.5,
       "context": "1M"
     },
     "deepseek-v4-pro": {
-      "input": 3.0,
-      "output": 6.0,
+      "input": 9.0,
+      "output": 27.0,
+      "input_min": 4.5,
+      "output_min": 13.5,
       "context": "1M"
     }
   },

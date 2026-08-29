@@ -23,7 +23,12 @@ from datetime import datetime
 from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
 
-from src.pricing import classify_price, parse_moonshot_pricing_markdown, resolve_price_source_url
+from src.pricing import (
+    classify_price,
+    parse_deepseek_pricing_html,
+    parse_moonshot_pricing_markdown,
+    resolve_price_source_url,
+)
 from src.platforms import (
     AiHubMixPlatform,
     AliyunPlatform,
@@ -216,29 +221,13 @@ def fetch_official_prices():
                     print("  fetch_official_prices fetch error: %s [%s]" % (str(e)[:60], url), file=sys.stderr)
                     return None
 
-    # 1. DeepSeek - 静态 HTML，表格列为 [label, sub-label, flash-value, pro-value]
+    # 1. DeepSeek - 官方表格含空闲/高峰双价；发布高峰价并保留区间。
     try:
-        h = _fh("https://api-docs.deepseek.com/zh-cn/quick_start/pricing")
+        src = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
+        h = _fh(src)
         if h:
-            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
-            fi = fo = pi = po = None
-            for i, cell in enumerate(tds):
-                txt = re.sub(r'<[^>]+>', '', cell).strip()
-                if '缓存未命中' in txt and i + 2 < len(tds):
-                    m1 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 1]))
-                    m2 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 2]))
-                    if m1: fi = float(m1.group(1))
-                    if m2: pi = float(m2.group(1))
-                if '输出' in txt and '百万' in txt and i + 2 < len(tds):
-                    m1 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 1]))
-                    m2 = re.search(r'([\d.]+)', re.sub(r'<[^>]+>', '', tds[i + 2]))
-                    if m1: fo = float(m1.group(1))
-                    if m2: po = float(m2.group(1))
-            src = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
-            if fi and fo:
-                prices["deepseek-v4-flash"] = {"input": fi, "output": fo, "currency": "CNY", "source": src}
-            if pi and po:
-                prices["deepseek-v4-pro"] = {"input": pi, "output": po, "currency": "CNY", "source": src}
+            for model_name, price in parse_deepseek_pricing_html(h).items():
+                prices[model_name] = {**price, "source": src}
             print("  fetch_official_prices: DeepSeek %d models" % sum(1 for k in prices if k.startswith("deepseek")), file=sys.stderr)
     except Exception as e:
         print("  fetch_official_prices: DeepSeek error:", str(e)[:80], file=sys.stderr)
@@ -762,6 +751,16 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     pt = price_classification.tier
     ts = th(tags)
     bg = bc(inp, out, price_classification) if cur == "CNY" else bo(inp, out, price_unit, price_classification)
+    input_display = output_display = pricing_note = ""
+    variable_price = OFFICIAL_PRICES.get(str(mname).lower(), {}) if pid == "deepseek" else {}
+    if all(variable_price.get(key) is not None for key in ("input_min", "input_max", "output_min", "output_max")):
+        input_display = "¥%.2f–%.2f/M" % (variable_price["input_min"], variable_price["input_max"])
+        output_display = "¥%.2f–%.2f/M" % (variable_price["output_min"], variable_price["output_max"])
+        pricing_note = str(variable_price.get("pricing_note", ""))
+        bg = (
+            '<span class="price-badge price-mid" title="' + Te(pricing_note) + '">'
+            'IN:' + input_display + ' OUT:' + output_display + '</span>'
+        )
     src_map = {"A": "API直接采集", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
                "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据",
                "D": "国内官方价格库", "DB": "官方价格数据库", "CV": "交叉验证修正"}
@@ -782,6 +781,7 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
         '<div class="mc" style="--c:' + pc + '" data-s="' + scen + '" data-p="' + pid + '" data-pt="' + pt + '" '
         'data-inp="' + inp_s + '" data-out="' + out_s + '" data-cur="' + cur + '" '
         'data-ctx="' + ctx_num + '" data-ctx-display="' + ctx + '" data-pu="' + price_unit + '" data-src="' + price_src + '" '
+        'data-inp-display="' + Te(input_display) + '" data-out-display="' + Te(output_display) + '" data-pricing-note="' + Te(pricing_note) + '" '
         'data-price-status="' + price_classification.status + '" data-billing-unit="' + price_classification.billing_unit + '" '
         'data-base-url="' + Te(cmd_base) + '" data-model-name="' + Te(mname) + '" ' + extra_attrs + fam_attr + ' '
         'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p)">'
@@ -1834,7 +1834,7 @@ def send_telegram_notification(total_models, changes):
         print("  Telegram notification failed:", e, file=sys.stderr)
 
 # 每次运行都发送通知
-if not RENDER_ONLY:
+if not RENDER_ONLY and os.environ.get("DEFER_SUCCESS_NOTIFICATION") != "1":
     send_telegram_notification(total, price_changes)
 
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
@@ -2375,6 +2375,9 @@ try:
         _pu = re.search(r'data-pu="([^"]*)"', c)
         _dpt = re.search(r'data-pt="([^"]*)"', c)
         _dsrc = re.search(r'data-src="([^"]*)"', c)
+        _dip = re.search(r'data-inp-display="([^"]*)"', c)
+        _dop = re.search(r'data-out-display="([^"]*)"', c)
+        _dpn = re.search(r'data-pricing-note="([^"]*)"', c)
         _dps = re.search(r'data-price-status="([^"]*)"', c)
         _dbu = re.search(r'data-billing-unit="([^"]*)"', c)
         _mn = re.search(r'class="mname">([^<]*)', c)
@@ -2408,7 +2411,9 @@ try:
             "name":html.unescape(_mn.group(1)) if _mn else "",
             "input_price":float(_di.group(1)) if _di else 0,
             "output_price":float(_do.group(1)) if _do else 0,
-            "input_price_display":"","output_price_display":"",
+            "input_price_display":html.unescape(_dip.group(1)) if _dip else "",
+            "output_price_display":html.unescape(_dop.group(1)) if _dop else "",
+            "pricing_note":html.unescape(_dpn.group(1)) if _dpn else "",
             "currency":_dc.group(1) if _dc else "CNY",
             "price_unit":_pu.group(1) if _pu else "per_token",
             "context":_dn.group(1) if _dn else "",

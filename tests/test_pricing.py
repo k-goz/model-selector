@@ -20,6 +20,7 @@ from src.pricing import (
     SSOTPriceResolver,
     classify_price,
     parse_n1n_token_prices,
+    parse_deepseek_pricing_html,
     parse_moonshot_pricing_markdown,
     resolve_price_source_url,
 )
@@ -57,6 +58,34 @@ class TestMoonshotPricingParser:
         assert prices["moonshot-v1-32k"]["output"] == 20.0
         assert prices["moonshot-v1-128k"]["input"] == 10.0
         assert "other-model" not in prices
+
+
+class TestDeepSeekPricingParser:
+    def test_parses_idle_and_peak_ranges_without_column_drift(self):
+        content = """
+        <table><tr><th>模型</th><th>deepseek-v4-flash</th><th>deepseek-v4-pro</th><th>deepseek-v4-flash-vision-exp</th></tr>
+        <tr><td>价格</td><td>百万tokens输入（缓存未命中）</td><td>空闲时段</td><td>1.5元</td><td>4.5元</td><td>1.5元</td></tr>
+        <tr><td>高峰时段</td><td>3.0元</td><td>9.0元</td><td>3.0元</td></tr>
+        <tr><td>百万tokens输出</td><td>空闲时段</td><td>4.5元</td><td>13.5元</td><td>4.5元</td></tr>
+        <tr><td>高峰时段</td><td>9.0元</td><td>27.0元</td><td>9.0元</td></tr></table>
+        """
+        prices = parse_deepseek_pricing_html(content)
+        assert prices["deepseek-v4-flash"] == {
+            "input": 3.0, "output": 9.0,
+            "input_min": 1.5, "input_max": 3.0,
+            "output_min": 4.5, "output_max": 9.0,
+            "currency": "CNY", "pricing_note": "空闲时段至高峰时段；排序按高峰价",
+        }
+        assert prices["deepseek-v4-pro"]["input"] == 9.0
+        assert prices["deepseek-v4-pro"]["output"] == 27.0
+        assert prices["deepseek-v4-pro"]["input_min"] == 4.5
+        assert prices["deepseek-v4-pro"]["output_min"] == 13.5
+
+    def test_rejects_incomplete_price_table(self):
+        assert parse_deepseek_pricing_html(
+            "<table><tr><th>模型</th><th>deepseek-v4-pro</th></tr>"
+            "<tr><td>百万tokens输入（缓存未命中）</td><td>空闲时段</td><td>4.5元</td></tr></table>"
+        ) == {}
 
 
 class TestClassifyPrice:

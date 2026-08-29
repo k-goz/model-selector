@@ -84,6 +84,7 @@ jobs:
           CA_KEY: ${{ secrets.CA_KEY }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          DEFER_SUCCESS_NOTIFICATION: "1"
         run: python generate.py --refresh
 
       - name: Validate published data
