@@ -74,7 +74,7 @@ async function notify(sub,event,isTest,queueFailure){
       var permission=Notification.permission;
       if(permission==='default')permission=await Notification.requestPermission();
       if(permission!=='granted')throw new Error('permission_'+permission);
-      if('serviceWorker' in navigator){var registration=await navigator.serviceWorker.register('/sw.js');await registration.showNotification(event.title,options);}
+      if('serviceWorker' in navigator){await navigator.serviceWorker.register('/sw.js');var registration=await navigator.serviceWorker.ready;await registration.showNotification(event.title,options);}
       else new Notification(event.title,options);
     }
     var sentAt=new Date().toISOString();

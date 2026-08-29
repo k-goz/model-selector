@@ -40,6 +40,9 @@ jobs:
       - name: Run Python regression tests
         run: python -m pytest tests/ -q
 
+      - name: Run API contract tests
+        run: npm run test:api
+
       - name: Validate committed artifacts
         run: |
           python scripts/validate_catalog_schema.py
