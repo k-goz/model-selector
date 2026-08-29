@@ -10,7 +10,7 @@ from pathlib import Path
 from jsonschema import Draft202012Validator, FormatChecker
 
 
-DEFAULT_SCHEMA = Path("schemas/models-data.phase17-compat.schema.json")
+DEFAULT_SCHEMA = Path("schemas/models-data.v2.schema.json")
 
 
 def validate_catalog(data_path: Path, schema_path: Path = DEFAULT_SCHEMA) -> None:
