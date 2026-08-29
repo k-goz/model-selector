@@ -1,4 +1,5 @@
 
+// Core catalog UI. Cross-cutting concerns live in sibling modules: i18n, routing and analytics.
 var curP='all',curS='all',curPT='all',curSort='default',selModels=[];
 var curTags=[],curCtx='all',curCur='CNY',priceMin=null,priceMax=null;
 var curFamily='all';
@@ -6,6 +7,9 @@ var isDark=localStorage.getItem('dark')!=='0';
 var isListView=localStorage.getItem('listView')==='1';
 var favs=JSON.parse(localStorage.getItem('favs')||'[]');
 var USD_TO_CNY=7.25;
+var restoredState=null,currentOfferingId='';
+function tr(key,params){return window.ModelSelectorI18n.t(key,params);}
+function metric(name,properties){if(window.ModelSelectorAnalytics)window.ModelSelectorAnalytics.track(name,properties);}
 
 // ─── 从 models_data.json 动态加载模型数据 ───
 var modelsDataLoaded = false;
@@ -59,6 +63,7 @@ function escapeHtml(value) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
+function safeHttpUrl(value){try{var url=new URL(String(value||''),location.href);return /^https?:$/.test(url.protocol)?url.href:'';}catch(error){return '';}}
 function classifyModelPrice(model, tags) {
     var inp = parseFloat(model.input_price) || 0;
     var out = parseFloat(model.output_price) || 0;
@@ -75,8 +80,8 @@ function classifyModelPrice(model, tags) {
         else status = 'unknown';
     }
     if (!billingUnit) billingUnit = status === 'priced' || status === 'free' ? 'token' : (tags.indexOf('按次计费') >= 0 ? 'request' : 'unknown');
-    var labels = {free:'免费',free_tier:'有免费额度 · 价格待确认',non_token:'非 Token 计费 · 待确认',
-        unavailable:'已下线',retiring:'即将下线',unknown:'价格待确认'};
+    var labels = {free:tr('price.free'),free_tier:tr('price.free_tier'),non_token:tr('price.non_token'),
+        unavailable:tr('price.unavailable'),retiring:tr('price.retiring'),unknown:tr('price.unknown')};
     return {status:status,billingUnit:billingUnit,label:labels[status] || ''};
 }
 var catalogData=null,catalogModels=[],filteredModels=[];
@@ -103,6 +108,9 @@ function renderModelCard(m,data) {
     var inputPriceDisplay = String(m.input_price_display || '');
     var outputPriceDisplay = String(m.output_price_display || '');
     var pricingNote = String(m.pricing_note || '');
+    var confidenceGrade=String((m.confidence||{}).grade||'unknown');
+    var evidenceUrl=safeHttpUrl(m.price_source_url||m.source_url||'');
+    var collectedAt=String(m.evidence_at||m.collected_at||'');
 
     // 价格分级
     var pt = 'mid';
@@ -175,17 +183,20 @@ function renderModelCard(m,data) {
         + 'data-pricing-note="' + escapeHtml(pricingNote) + '" '
         + 'data-billing-unit="' + billingUnit + '" data-base-url="' + escapeHtml(baseUrl) + '" '
         + 'data-model-name="' + escapeHtml(mname) + '" data-offering-id="' + escapeHtml(m.provider_offering_id || '') + '" data-confidence="' + escapeHtml((m.confidence || {}).grade || 'unknown') + '" ' + famAttr + ' '
-        + 'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p)">'
+        + 'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p,this.dataset.offeringId)">'
         + '<div class="dot"></div><div class="prov">' + escapeHtml(pname) + '</div>'
         + '<div class="mname">' + escapeHtml(mname) + '</div><div class="tags">' + tagsHtml + '</div>'
         + '<div class="prow">' + priceHtml + sourceHtml + '</div>'
-        + '<div class="ctx-row"><span class="ctx">上下文: ' + escapeHtml(ctx) + '</span>'
+        + '<div class="trust-row"><span class="confidence confidence-'+escapeHtml(confidenceGrade)+'">'+escapeHtml(tr('trust.confidence.'+(confidenceGrade==='high'||confidenceGrade==='medium'||confidenceGrade==='low'?confidenceGrade:'unknown')))+'</span>'
+        + (evidenceUrl?'<a class="source-link" href="'+escapeHtml(evidenceUrl)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">'+escapeHtml(tr('trust.source'))+'</a>':'')
+        + (collectedAt?'<time class="evidence-time" datetime="'+escapeHtml(collectedAt)+'">'+escapeHtml(tr('trust.updated',{value:collectedAt.slice(0,10)}))+'</time>':'')+'</div>'
+        + '<div class="ctx-row"><span class="ctx">' + escapeHtml(tr('catalog.context',{value:ctx})) + '</span>'
         + '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + ctxBarW + '%"></div></div></div>'
         + '<div class="base-url">' + escapeHtml(baseUrl) + '</div>'
-        + '<div class="hint">点击查看接入代码</div>'
+        + '<div class="hint">' + escapeHtml(tr('catalog.integration')) + '</div>'
         + '<div class="card-actions">'
-        + '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
-        + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
+        + '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="' + escapeHtml(tr('catalog.favorite')) + '">&#9734;</span>'
+        + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">' + escapeHtml(tr('catalog.compare')) + '</label></div>'
         + '</div></div>';
 
     return cardHtml;
@@ -249,7 +260,10 @@ function renderModelsFromJSON(data) {
     modelsDataLoaded=true;
     currentPage=1;
     filter();
+    restoreComparison();
+    restoreDeepLink();
     buildCrossPrice();
+    metric('catalog_loaded',{models:catalogModels.length});
     return true;
 }
 
@@ -265,7 +279,7 @@ fetch(modelsDataUrl).then(function(r){return r.json();}).then(function(data){
     }
 }).catch(function(){
     var grid=document.getElementById('grid');
-    if(grid)grid.innerHTML='<p class="catalog-error" role="alert">模型数据加载失败，请稍后重试或直接查看 models_data.json。</p>';
+    if(grid)grid.innerHTML='<p class="catalog-error" role="alert">'+escapeHtml(tr('catalog.load_error'))+'</p>';
 });
 
 if(!isDark)document.body.classList.add('light');
@@ -278,7 +292,7 @@ setTimeout(function(){ld.classList.remove('show')},600);
 // 平台筛选
 document.querySelectorAll('.pt').forEach(function(b){b.addEventListener('click',function(){
 document.querySelectorAll('.pt').forEach(function(x){x.classList.remove('active')});
-b.classList.add('active');curP=b.dataset.p;filter();saveState();});});
+b.classList.add('active');curP=b.dataset.p;filter();saveState();metric('filter_used',{type:'platform'});});});
 // 价格分级筛选
 document.querySelectorAll('.pt-filter').forEach(function(b){b.addEventListener('click',function(){
 document.querySelectorAll('.pt-filter').forEach(function(x){x.classList.remove('active')});
@@ -310,7 +324,7 @@ document.querySelectorAll('.cur-btn').forEach(function(x){x.classList.remove('ac
 b.classList.add('active');curCur=b.dataset.cur;updatePrices();});});
 // 搜索
 var st;
-document.getElementById('si').addEventListener('input',function(){clearTimeout(st);st=setTimeout(function(){filter();saveState();},200)});
+document.getElementById('si').addEventListener('input',function(){clearTimeout(st);st=setTimeout(function(){filter();saveState();metric('search_used',{hasQuery:!!document.getElementById('si').value});},200)});
 // 预设按钮
 document.querySelectorAll('.preset-btn').forEach(function(b){b.addEventListener('click',function(){
 document.getElementById('calcChats').value=b.dataset.chats;
@@ -341,6 +355,8 @@ if(pb)pb.click();
 });
 // 从URL hash恢复状态
 restoreState();
+var languageLink=document.querySelector('.topnav-lang');
+if(languageLink)languageLink.addEventListener('click',function(){languageLink.href=ModelSelectorRouting.languageUrl(ModelSelectorI18n.locale==='en'?'zh':'en',currentState());});
 
 // 初始筛选
 filter();
@@ -456,7 +472,7 @@ function filter(){
     renderCurrentPage();
     document.getElementById('empty').style.display=totalFiltered===0?'block':'none';
     var fc=document.getElementById('filterCount');
-    if(fc)fc.innerHTML='显示 <strong>'+totalFiltered+'</strong> / '+catalogModels.length+' 个模型';
+    if(fc)fc.innerHTML=tr('catalog.count',{count:'<strong>'+totalFiltered+'</strong>',total:catalogModels.length});
     renderPagination();
 }
 
@@ -471,15 +487,15 @@ function renderPagination(){
     if(!pg)return;
     if(totalPages<=1){pg.innerHTML='';return;}
     var h='';
-    h+='<button class="page-btn" onclick="goPage(1)"'+(currentPage===1?' disabled':'')+'>&laquo; 首页</button>';
-    h+='<button class="page-btn" onclick="goPage('+(currentPage-1)+')"'+(currentPage===1?' disabled':'')+'>&lsaquo; 上一页</button>';
+    h+='<button class="page-btn" onclick="goPage(1)"'+(currentPage===1?' disabled':'')+'>&laquo; '+tr('pagination.first')+'</button>';
+    h+='<button class="page-btn" onclick="goPage('+(currentPage-1)+')"'+(currentPage===1?' disabled':'')+'>&lsaquo; '+tr('pagination.prev')+'</button>';
     var start=Math.max(1,currentPage-3),end=Math.min(totalPages,currentPage+3);
     if(start>1)h+='<span class="page-info">...</span>';
     for(var i=start;i<=end;i++)h+='<button class="page-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
     if(end<totalPages)h+='<span class="page-info">...</span>';
-    h+='<button class="page-btn" onclick="goPage('+(currentPage+1)+')"'+(currentPage===totalPages?' disabled':'')+'>下一页 &rsaquo;</button>';
-    h+='<button class="page-btn" onclick="goPage('+totalPages+')"'+(currentPage===totalPages?' disabled':'')+'>末页 &raquo;</button>';
-    h+='<span class="page-info">第 '+currentPage+' / '+totalPages+' 页 (共 '+totalFiltered+' 个)</span>';
+    h+='<button class="page-btn" onclick="goPage('+(currentPage+1)+')"'+(currentPage===totalPages?' disabled':'')+'>'+tr('pagination.next')+' &rsaquo;</button>';
+    h+='<button class="page-btn" onclick="goPage('+totalPages+')"'+(currentPage===totalPages?' disabled':'')+'>'+tr('pagination.last')+' &raquo;</button>';
+    h+='<span class="page-info">'+tr('pagination.summary',{page:currentPage,pages:totalPages,count:totalFiltered})+'</span>';
     pg.innerHTML=h;
 }
 
@@ -596,15 +612,17 @@ var out=parseFloat(c.dataset.out)||0;
 var cur=c.dataset.cur||'CNY';
 var ctx=c.dataset.ctxDisplay||'';
 var priceStatus=c.dataset.priceStatus||'unknown';
+var offeringId=c.dataset.offeringId||'';
 var cmd=c.getAttribute('onclick')||'';
 var mIdx=selModels.findIndex(function(m){return m.name===mName});
 if(cb.checked){
 if(selModels.length>=3){cb.checked=false;alert('最多选择3个模型对比');return}
-if(mIdx===-1)selModels.push({name:mName,prov:prov,inp:inp,out:out,cur:cur,ctx:ctx,cmd:cmd,priceStatus:priceStatus});
+if(mIdx===-1)selModels.push({name:mName,prov:prov,inp:inp,out:out,cur:cur,ctx:ctx,cmd:cmd,priceStatus:priceStatus,offeringId:offeringId});
 }else{
 if(mIdx!==-1)selModels.splice(mIdx,1);
 }
 updateCmpPanel();
+saveState();metric('compare_created',{count:selModels.length});
 }
 function updateCmpPanel(){
 var panel=document.getElementById('cmpPanel');
@@ -625,7 +643,7 @@ var cbs=document.querySelectorAll('.mc-cb');cbs.forEach(function(cb){
 var c=cb.closest('.mc');var n=(c.querySelector('.mname')||{}).textContent||'';
 if(!selModels.find(function(m){return m.name===n}))cb.checked=false;
 });}
-function clearCmp(){selModels=[];updateCmpPanel();
+function clearCmp(){selModels=[];updateCmpPanel();saveState();
 document.querySelectorAll('.mc-cb').forEach(function(cb){cb.checked=false});}
 function showCmp(){
 if(selModels.length<2){alert('请至少选择2个模型');return}
@@ -666,6 +684,7 @@ else{return m.inp*inTok/1e6+m.out*outTok/1e6;}
 }
 function runCalc(){
 var params=getCalcParams();
+metric('calculator_completed',{mode:'selected'});
 var results=selModels.map(function(m){
 return {name:m.name,cost:calcModelCost(m,params),cur:m.cur,inp:m.inp,out:m.out};
 }).filter(function(r){return r.cost!==null;});
@@ -678,6 +697,7 @@ renderCalcResult(results,params);
 }
 function runCalcAll(){
 var params=getCalcParams();
+metric('calculator_completed',{mode:'all'});
 var results=[];
 activeCatalogViews().forEach(function(m){
 if(m.priceStatus!=='priced'&&m.priceStatus!=='free')return;
@@ -695,6 +715,7 @@ function runCalcReverse(){
 var budget=parseFloat(document.getElementById('calcBudget').value)||0;
 if(budget<=0){alert('请输入月预算金额');return;}
 var params=getCalcParams();
+metric('calculator_completed',{mode:'budget'});
 if(params.chats<=0||params.tokens<=0){alert('请先设置对话次数和Token数');return;}
 var results=[];
 activeCatalogViews().forEach(function(m){
@@ -1018,12 +1039,14 @@ document.getElementById("crossList").innerHTML='<div style="padding:8px;font-siz
 
 // ─── 代码片段模态框 ───
 var _codeModalData = null;
-function showCodeModal(baseUrl, modelName, platformId){
+function showCodeModal(baseUrl, modelName, platformId, offeringId){
 var modal = document.getElementById('codeModal');
 if(!modal) return;
 // 从 base_url 提取 base_url (去掉 /chat/completions 后缀)
 var apiBase = baseUrl.replace(/\/chat\/completions\/?$/,'');
 _codeModalData = {baseUrl:baseUrl, apiBase:apiBase, model:modelName, platform:platformId};
+currentOfferingId=offeringId||'';
+saveState();
 // 更新标题
 var titleEl = modal.querySelector('.cm-model');
 if(titleEl) titleEl.textContent = modelName;
@@ -1066,6 +1089,7 @@ var btn = block.querySelector('.code-copy-btn');
 if(navigator.clipboard && navigator.clipboard.writeText){
 navigator.clipboard.writeText(code).then(function(){
 if(btn){btn.classList.add('copied');btn.textContent='已复制';}
+metric('code_copied',{language:document.querySelector('.code-tab.active')?.dataset.lang||'unknown'});
 setTimeout(function(){if(btn){btn.classList.remove('copied');btn.textContent='复制';}},2000);
 });
 }else{
@@ -1101,17 +1125,20 @@ try{document.execCommand("copy");}catch(e){}
 document.body.removeChild(ta);
 }
 
-// ─── 状态持久化 ───
+// ─── 状态持久化与分享 ───
+function currentState(){
+return {p:curP,s:curS,pt:curPT,sort:curSort,tags:curTags,ctx:curCtx,family:curFamily,
+q:(document.getElementById('si').value||''),model:currentOfferingId,
+compare:selModels.map(function(m){return m.offeringId;}).filter(Boolean),calc:getCalcParams(),lang:ModelSelectorI18n.locale};
+}
 function saveState(){
-var state={p:curP,s:curS,pt:curPT,sort:curSort,tags:curTags,ctx:curCtx,family:curFamily,
-q:(document.getElementById('si').value||'')};
-window.location.hash=encodeURIComponent(JSON.stringify(state));
+ModelSelectorRouting.replace(currentState());
 }
 function restoreState(){
 try{
-var hash=window.location.hash.substring(1);
-if(!hash)return;
-var state=JSON.parse(decodeURIComponent(hash));
+var state=ModelSelectorRouting.decode(window.location.hash);
+if(!state)return;
+restoredState=state;
 if(state.p){curP=state.p;var pb=document.querySelector('.pt[data-p="'+state.p+'"]');if(pb){document.querySelectorAll('.pt').forEach(function(x){x.classList.remove('active')});pb.classList.add('active');}}
 if(state.s){curS=state.s;var sb=document.querySelector('.sc[data-sc="'+state.s+'"]');if(sb){document.querySelectorAll('.sc').forEach(function(x){x.classList.remove('active')});sb.classList.add('active');}}
 if(state.pt){curPT=state.pt;var ptb=document.querySelector('.pt-filter[data-pt="'+state.pt+'"]');if(ptb){document.querySelectorAll('.pt-filter').forEach(function(x){x.classList.remove('active')});ptb.classList.add('active');}}
@@ -1120,7 +1147,37 @@ if(state.tags&&state.tags.length>0){curTags=state.tags;state.tags.forEach(functi
 if(state.ctx){curCtx=state.ctx;var cb=document.querySelector('.ctx-btn[data-ctx="'+state.ctx+'"]');if(cb){document.querySelectorAll('.ctx-btn').forEach(function(x){x.classList.remove('active')});cb.classList.add('active');}}
 if(state.family){curFamily=state.family;var fb=document.querySelector('.family-btn[data-family="'+state.family+'"]');if(fb){document.querySelectorAll('.family-btn').forEach(function(x){x.classList.remove('active')});fb.classList.add('active');}}
 if(state.q){document.getElementById('si').value=state.q;}
+if(state.model)currentOfferingId=state.model;
+if(state.calc){
+if(state.calc.chats!=null)document.getElementById('calcChats').value=state.calc.chats;
+if(state.calc.tokens!=null)document.getElementById('calcTokens').value=state.calc.tokens;
+if(state.calc.ratio!=null)document.getElementById('calcRatio').value=state.calc.ratio;
+}
 }catch(e){}
+}
+
+function restoreComparison(){
+if(!restoredState||!Array.isArray(restoredState.compare))return;
+selModels=restoredState.compare.map(function(id){
+var raw=catalogModels.find(function(m){return m.provider_offering_id===id;});
+if(!raw)return null;
+var m=catalogModelView(raw);m.offeringId=id;m.ctx=String(raw.context||'');return m;
+}).filter(Boolean).slice(0,3);
+updateCmpPanel();
+}
+
+function restoreDeepLink(){
+if(!currentOfferingId)return;
+var raw=catalogModels.find(function(m){return m.provider_offering_id===currentOfferingId;});
+if(raw)showCodeModal(String(raw.base_url||''),String(raw.name||''),String(raw.platform_id||''),currentOfferingId);
+}
+
+function copyShareLink(){
+saveState();
+var url=window.location.href;
+if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(url).then(function(){showTip(tr('share.copied'),true);});
+else{fallbackCopy(url);showTip(tr('share.copied'),true);}
+metric('share_created',{compare:selModels.length,hasModel:!!currentOfferingId});
 }
 
 

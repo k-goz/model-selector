@@ -112,7 +112,35 @@ test('English page loads the same catalog', async ({ page }) => {
   await expect(page.locator('#grid .mc')).toHaveCount(Math.min(66, modelData.models.length));
   await expect(page).toHaveTitle(/AI Model Selector/);
   await expect(page.locator('#dataFreshness .freshness-age')).toContainText('Last collected:');
+  await expect(page.locator('#grid .confidence').first()).toContainText(/confidence/i);
+  await openSidebar(page);
+  await expandSidebarGroup(page, 'Use Case');
+  const deepReasoning = page.locator('.sc[data-sc="深度推理"]');
+  await deepReasoning.click();
+  await expect(page.locator('#filterCount strong')).not.toHaveText('0');
   expect(errors).toEqual([]);
+});
+
+test('trust metadata and v2 share state survive reload', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await expect(page.locator('#grid .confidence').first()).toBeVisible();
+  await expect(page.locator('#grid .evidence-time').first()).toBeVisible();
+  const checkboxes = page.locator('#grid .mc .mc-cb');
+  await checkboxes.nth(0).check();
+  await checkboxes.nth(1).check();
+  await expandSidebarGroup(page, '月费计算器');
+  await page.locator('#calcChats').fill('321');
+  await page.locator('#calcTokens').fill('654');
+  await page.locator('#shareBtn').click();
+  await expect.poll(() => page.url()).toContain('#v2=');
+  await page.reload();
+  await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
+  await expect(page.locator('#cmpCount')).toHaveText('2');
+  await expect(page.locator('#calcChats')).toHaveValue('321');
+  await expect(page.locator('#calcTokens')).toHaveValue('654');
 });
 
 test('filter state survives a page reload', async ({ page }) => {

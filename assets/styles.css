@@ -108,6 +108,13 @@ a{color:var(--accent);text-decoration:none}
 .price-mid{background:rgba(245,158,11,.1);color:#fbbf24}
 .price-high{background:rgba(239,68,68,.1);color:#f87171}
 .price-ultra{background:rgba(168,85,247,.1);color:#c084fc}
+.trust-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin:4px 0;font-size:9px;color:var(--text3)}
+.confidence{padding:2px 5px;border-radius:999px;border:1px solid var(--border)}
+.confidence-high{color:#16a34a;border-color:rgba(22,163,74,.35)}
+.confidence-medium{color:#d97706;border-color:rgba(217,119,6,.35)}
+.confidence-low,.confidence-unknown{color:#dc2626;border-color:rgba(220,38,38,.35)}
+.source-link{color:var(--accent);text-decoration:none}.source-link:hover{text-decoration:underline}
+.evidence-time{white-space:nowrap}
 .ctx-row{display:flex;align-items:center;gap:6px;margin-bottom:3px}
 .ctx{font-size:10px;color:var(--text3)}
 .ctx-bar-wrap{flex:1;height:3px;background:var(--surface2);border-radius:2px;overflow:hidden}
