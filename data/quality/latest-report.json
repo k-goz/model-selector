@@ -16,7 +16,15 @@
   "format_version": "1.0",
   "ground_truth_gate": "delegated_to_verify_ground_truth.py",
   "high_risk": [],
-  "large_price_changes": [],
+  "large_price_changes": [
+    {
+      "after": 1.8e-07,
+      "before": 9e-08,
+      "field": "output_price",
+      "provider_offering_id": "offering_83483e023731d50dd730",
+      "ratio": 1.0
+    }
+  ],
   "policy": {
     "large_price_change_ratio": 0.5,
     "max_fallback_ratio_increase": 0.05,
