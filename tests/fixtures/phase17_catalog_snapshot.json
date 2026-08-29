@@ -1,0 +1,67 @@
+{
+  "meta": {
+    "snapshot_commit": "6d10a098114a805f578d0b0c5f121b0bb4f33389",
+    "captured_at": "2026-08-30 00:40",
+    "purpose": "Phase 17 representative semantic compatibility fixture"
+  },
+  "models": [
+    {
+      "platform_id": "deepseek", "name": "deepseek-v4-pro", "input_price": 9.0, "output_price": 27.0,
+      "input_price_display": "¥4.50–9.00/M", "output_price_display": "¥13.50–27.00/M",
+      "pricing_note": "空闲时段至高峰时段；排序按高峰价", "currency": "CNY", "price_unit": "per_token",
+      "price_status": "priced", "billing_unit": "token", "price_src": "S",
+      "price_source_url": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing",
+      "model_source": "api", "source_url": "https://api.deepseek.com/v1/models",
+      "context": "N/A", "context_status": "unknown", "context_source": "unknown",
+      "collected_at": "2026-08-29T16:06:40+00:00", "tags": ["旗舰"]
+    },
+    {
+      "platform_id": "openrouter", "name": "Ling 3.0 Flash Fin (free)", "input_price": 0.0, "output_price": 0.0,
+      "currency": "USD", "price_unit": "per_token", "price_status": "free", "billing_unit": "token",
+      "price_src": "A", "model_source": "api", "context": "262k", "context_status": "known",
+      "context_source": "catalog", "tags": ["免费", "长上下文", "推理"]
+    },
+    {
+      "platform_id": "aliyun", "name": "Qwen-Audio-3.0-ASR-Flash", "input_price": 0.0, "output_price": 0.0,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "free_tier", "billing_unit": "unknown",
+      "price_src": "", "model_source": "api", "context": "N/A", "context_status": "unknown",
+      "context_source": "unknown", "tags": ["免费额度"]
+    },
+    {
+      "platform_id": "aliyun", "name": "HappyHorse-1.1-T2V", "input_price": 0.0, "output_price": 0.0,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "non_token", "billing_unit": "request",
+      "price_src": "", "model_source": "api", "context": "N/A", "context_status": "not_applicable",
+      "context_source": "billing_semantics", "tags": ["视频生成", "按次计费"]
+    },
+    {
+      "platform_id": "aliyun", "name": "Qwen3-VL-32B-Thinking", "input_price": 0.0, "output_price": 0.0,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "unknown", "billing_unit": "unknown",
+      "price_src": "", "model_source": "api", "context": "128k", "context_status": "inferred",
+      "context_source": "catalog_consensus", "tags": ["推理", "视觉"]
+    },
+    {
+      "platform_id": "volcengine", "name": "doubao-lite-128k-240428", "input_price": 0.0, "output_price": 0.0,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "unavailable", "billing_unit": "unknown",
+      "price_src": "", "model_source": "api", "context": "128k", "context_status": "inferred",
+      "context_source": "model_name", "tags": ["已下线", "免费额度"]
+    },
+    {
+      "platform_id": "volcengine", "name": "doubao-embedding-text-240515", "input_price": 0.0, "output_price": 0.0,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "retiring", "billing_unit": "unknown",
+      "price_src": "", "model_source": "api", "context": "N/A", "context_status": "unknown",
+      "context_source": "unknown", "tags": ["即将下线", "免费额度"]
+    },
+    {
+      "platform_id": "siliconflow", "name": "deepseek-ai/DeepSeek-V3", "input_price": 1.0, "output_price": 2.0,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "priced", "billing_unit": "token",
+      "price_src": "DB", "model_source": "fallback", "context": "64k", "context_status": "known",
+      "context_source": "catalog", "tags": ["主力"]
+    },
+    {
+      "platform_id": "ca", "name": "deepseek-v4-flash", "input_price": 1.2, "output_price": 3.6,
+      "currency": "CNY", "price_unit": "per_token", "price_status": "priced", "billing_unit": "token",
+      "price_src": "P", "model_source": "scrape", "context": "128k", "context_status": "known",
+      "context_source": "catalog", "tags": ["主力"]
+    }
+  ]
+}
