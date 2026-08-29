@@ -21,6 +21,7 @@ from .sources import (
     parse_moonshot_pricing_markdown,
     resolve_price_source_url,
 )
+from .official import fetch_official_prices
 
 logger = logging.getLogger(__name__)
 
@@ -328,7 +329,8 @@ class SSOTPriceResolver:
     def __init__(
         self,
         db_path: str = "official_prices_db.json",
-        script_dir: str = ""
+        script_dir: str = "",
+        price_db: Optional[PriceDatabase] = None,
     ):
         """
         初始化解析器
@@ -340,7 +342,7 @@ class SSOTPriceResolver:
         self.script_dir = script_dir or os.path.dirname(os.path.abspath(__file__))
         db_full_path = os.path.join(self.script_dir, db_path) if not os.path.isabs(db_path) else db_path
         
-        self.price_db = PriceDatabase(db_full_path)
+        self.price_db = price_db or PriceDatabase(db_full_path)
         self.official_prices: Dict = {}  # 官方爬取价格
         self.litellm_prices: Dict = {}   # LiteLLM 社区价格
     
@@ -515,6 +517,8 @@ def get_model_family(model_id: str) -> str:
         模型家族名称
     """
     n = model_id.lower()
+    if "wan" in n and "ai" in n:
+        return "Wan"
     
     # 按优先级匹配
     family_patterns = [
@@ -541,8 +545,36 @@ def get_model_family(model_id: str) -> str:
         (['baichuan'], 'Baichuan'),
         (['step'], 'Step'),
         (['ernie', 'wenxin'], 'ERNIE'),
+        (['solar'], 'Solar'),
+        (['wizardlm'], 'WizardLM'),
+        (['zephyr'], 'Zephyr'),
+        (['nous'], 'Nous'),
+        (['hermes'], 'Hermes'),
+        (['openchat'], 'OpenChat'),
+        (['neural'], 'Neural'),
+        (['mythomax'], 'MythoMax'),
+        (['toppy'], 'Toppy'),
+        (['bagel'], 'Bagel'),
+        (['lzlv'], 'LzLv'),
+        (['rwkv'], 'RWKV'),
+        (['falcon'], 'Falcon'),
+        (['starcoder'], 'StarCoder'),
+        (['codellama'], 'CodeLlama'),
+        (['wizardcoder'], 'WizardCoder'),
+        (['phind'], 'Phind'),
+        (['samantha'], 'Samantha'),
+        (['airoboros'], 'Airoboros'),
+        (['vicuna'], 'Vicuna'),
+        (['orca'], 'Orca'),
+        (['dolphin'], 'Dolphin'),
+        (['megamix'], 'MegaMix'),
+        (['cosmic'], 'Cosmic'),
+        (['psymed'], 'PsyMed'),
+        (['biomistral'], 'BioMistral'),
+        (['medllama'], 'MedLlama'),
         (['internlm'], 'InternLM'),
         (['kolors'], 'Kolors'),
+        (['cosyvoice', 'sensevoice'], 'FunAudio'),
         (['bge'], 'BGE'),
     ]
     
@@ -551,3 +583,42 @@ def get_model_family(model_id: str) -> str:
             return family
     
     return 'Other'
+
+
+def infer_tags_and_scene(
+    model_id: str,
+    input_price: float,
+    output_price: float,
+    context: str,
+) -> Tuple[list[str], str]:
+    """Infer the legacy display metadata from normalized model semantics."""
+
+    lowered = model_id.lower()
+    tags: list[str] = []
+    if input_price == 0 and output_price == 0:
+        tags.append("免费额度")
+    elif input_price < 0.1:
+        tags.append("极便宜")
+    elif input_price < 1:
+        tags.append("便宜")
+    elif input_price < 5:
+        tags.append("主力")
+    else:
+        tags.append("旗舰")
+    if any(marker in lowered for marker in ("r1", "reason", "think", "qwq", "kimi-k2")):
+        tags.append("推理")
+    if "coder" in lowered or "code" in lowered:
+        tags.append("代码")
+    if "vision" in lowered or "vl" in lowered:
+        tags.append("视觉")
+    if context and int(re.sub(r"[^\d]", "", str(context)) or 0) >= 200000:
+        tags.append("长上下文")
+    if "推理" in tags:
+        scene = "深度推理"
+    elif "代码" in tags:
+        scene = "编程代码"
+    elif "视觉" in tags:
+        scene = "视觉图片"
+    else:
+        scene = "日常对话"
+    return tags, scene

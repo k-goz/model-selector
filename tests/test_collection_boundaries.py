@@ -78,3 +78,9 @@ def test_catalog_registry_returns_models_and_lineage(tmp_path, monkeypatch):
     collection = catalog_module.collect_platform_catalog({"fake": "key"}, tmp_path)
     assert collection["fake"].models[0]["id"] == "model-a"
     assert collection.source_runs["fake"]["source_type"] == "api"
+
+
+def test_production_registry_contains_every_required_collector():
+    assert set(catalog_module.PLATFORM_CLASSES) == catalog_module.REQUIRED_COLLECTION_PLATFORMS
+    assert len(catalog_module.PLATFORM_CLASSES) == 23
+    assert "openrouter" in catalog_module.PLATFORM_CLASSES
