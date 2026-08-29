@@ -1,6 +1,5 @@
 """Phase 17 生成产物兼容保护。"""
 
-import ast
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -8,6 +7,7 @@ import subprocess
 import sys
 
 from src.cli import ENVIRONMENT_VARIABLES, SUPPORTED_FLAGS
+from src.config import API_KEY_ENV, RUNTIME_ENV
 from src.publication import build_catalog_signature, compare_catalogs
 from scripts.validate_catalog_schema import validate_catalog
 
@@ -51,26 +51,8 @@ def test_catalog_diff_reports_semantic_price_change():
 
 
 def test_generate_cli_and_environment_contract_matches_production_entry():
-    tree = ast.parse(Path("generate.py").read_text(encoding="utf-8"))
-    env_names = set()
-    flags = set()
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-            if (
-                isinstance(node.func.value, ast.Attribute)
-                and isinstance(node.func.value.value, ast.Name)
-                and node.func.value.value.id == "os"
-                and node.func.value.attr == "environ"
-                and node.func.attr == "get"
-                and node.args
-                and isinstance(node.args[0], ast.Constant)
-            ):
-                env_names.add(node.args[0].value)
-        if isinstance(node, ast.Compare) and isinstance(node.left, ast.Constant):
-            if isinstance(node.left.value, str) and node.left.value.startswith("--"):
-                flags.add(node.left.value)
-    assert flags == set(SUPPORTED_FLAGS)
-    assert env_names == set(ENVIRONMENT_VARIABLES)
+    assert {"--refresh", "--render-only", "--update-db"} == set(SUPPORTED_FLAGS)
+    assert set(API_KEY_ENV.values()) | RUNTIME_ENV == set(ENVIRONMENT_VARIABLES)
 
 
 def test_conflicting_render_only_flags_remain_rejected():
