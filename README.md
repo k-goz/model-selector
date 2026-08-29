@@ -17,6 +17,7 @@
 - 提供受 API Key、ETag、分页和限流保护的 `/api/v1/models` 数据接口，详见 [`docs/API_V1.md`](docs/API_V1.md)。
 
 生产刷新、告警和部署事实来源见 [`docs/PHASE16_REFRESH_INCIDENT.md`](docs/PHASE16_REFRESH_INCIDENT.md) 与 [`docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md`](docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md)。
+Phase 20 与整体计划的生产验收证据、已知边界和时间型待观察项见 [`docs/PHASE20_ACCEPTANCE.md`](docs/PHASE20_ACCEPTANCE.md)。
 
 ## 价格语义
 
