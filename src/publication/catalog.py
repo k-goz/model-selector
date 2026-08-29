@@ -11,6 +11,7 @@ import re
 from typing import Any, Iterable
 
 from src.models.context import enrich_context_metadata, restore_inferred_context_metadata
+from src.models.contract import enrich_catalog_contract
 from src.pricing import resolve_price_source_url
 
 
@@ -185,7 +186,7 @@ def build_catalog(
         source_run = source_runs.get(platform_id, {})
         if source_run.get("source_type", "").startswith("legacy_"):
             source_run["model_count"] = count
-    return catalog
+    return enrich_catalog_contract(catalog)
 
 
 def write_catalog(path: Path, catalog: dict[str, Any]) -> None:

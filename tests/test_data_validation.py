@@ -2,6 +2,7 @@
 
 from datetime import datetime
 
+from src.models.contract import enrich_model_contract
 from validate_data import validate_models, validate_price_db
 
 
@@ -26,7 +27,7 @@ def valid_model(**overrides):
         "tags": [],
     }
     model.update(overrides)
-    return model
+    return enrich_model_contract(model)
 
 
 def model_document(models):
@@ -36,6 +37,8 @@ def model_document(models):
         counts[status] = counts.get(status, 0) + 1
     return {
         "meta": {
+            "schema_version": "2.0.0",
+            "identity_version": "1",
             "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
             "total_models": len(models),
             "price_status_counts": counts,

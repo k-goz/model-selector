@@ -25,7 +25,9 @@ REQUIRED_MODEL_FIELDS = {
     "platform_id", "name", "input_price", "output_price", "currency",
     "price_status", "billing_unit", "price_src", "base_url",
     "price_source_url", "model_source", "source_url", "collected_at",
-    "context_status", "context_source",
+    "context_status", "context_source", "canonical_model_id",
+    "provider_offering_id", "provider_id", "provider_model_name",
+    "confidence", "lifecycle", "evidence_at", "data_warnings",
 }
 
 
@@ -65,6 +67,7 @@ def validate_models(
         errors.append(f"模型总数 {len(models)} 低于发布下限 {min_models}")
 
     seen: Counter[tuple[str, str]] = Counter()
+    offering_ids: Counter[str] = Counter()
     status_counts: Counter[str] = Counter()
     lineage_counts: Counter[str] = Counter()
     platform_counts: Counter[str] = Counter()
@@ -80,7 +83,12 @@ def validate_models(
         if not platform or not name:
             errors.append(f"models[{index}] 平台或模型名为空")
         seen[(platform, name)] += 1
+        offering_ids[str(model.get("provider_offering_id", ""))] += 1
         platform_counts[platform] += 1
+        if model.get("provider_id") != platform or model.get("provider_model_name") != name:
+            errors.append(f"{platform}/{name}: provider 身份字段与兼容字段不一致")
+        if not str(model.get("canonical_model_id", "")).startswith("model_"):
+            errors.append(f"{platform}/{name}: canonical_model_id 无效")
 
         status = model.get("price_status")
         billing_unit = model.get("billing_unit")
@@ -126,6 +134,12 @@ def validate_models(
     if duplicates:
         preview = ", ".join(f"{p}/{n}" for p, n in duplicates[:10])
         errors.append(f"存在 {len(duplicates)} 组重复平台模型: {preview}")
+    duplicate_offering_ids = [key for key, count in offering_ids.items() if not key or count > 1]
+    if duplicate_offering_ids:
+        errors.append(f"存在 {len(duplicate_offering_ids)} 个空值或重复 provider_offering_id")
+
+    if meta.get("schema_version") != "2.0.0" or meta.get("identity_version") != "1":
+        errors.append("生产目录必须使用 schema_version=2.0.0 和 identity_version=1")
 
     missing_context = context_status_counts["unknown"]
     if missing_context:
