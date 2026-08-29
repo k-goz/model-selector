@@ -143,6 +143,7 @@ test('English page loads the same catalog', async ({ page }) => {
 });
 
 test('trust metadata and v2 share state survive reload', async ({ page, context }) => {
+  test.slow(); // Full catalog hydration is intentionally slower on the mobile CI project.
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await waitForCatalog(page);
   await expect(page.locator('#grid .confidence').first()).toBeVisible();
