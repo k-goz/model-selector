@@ -1,293 +1,149 @@
 {
   "meta": {
-    "updated_at": "2026-08-13 00:52",
-    "days": 2
+    "updated_at": "2026-08-30 00:06",
+    "days": 1
   },
   "daily": [
     {
-      "date": "2026-08-12",
-      "time": "16:47",
+      "date": "2026-08-30",
+      "time": "00:06",
       "results": [
-        {
-          "platform_id": "fireworks",
-          "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
-          "ms": 42,
-          "status": "error"
-        },
-        {
-          "platform_id": "openrouter",
-          "model": "ByteDance Seed: Seed 2.1 Turbo",
-          "ms": 56,
-          "status": "ok"
-        },
-        {
-          "platform_id": "cohere",
-          "model": "c4ai-aya-expanse-32b",
-          "ms": 79,
-          "status": "ok"
-        },
-        {
-          "platform_id": "aihubmix",
-          "model": "auto",
-          "ms": 80,
-          "status": "ok"
-        },
-        {
-          "platform_id": "n1n",
-          "model": "gpt-4o-mini",
-          "ms": 103,
-          "status": "ok"
-        },
         {
           "platform_id": "groq",
           "model": "llama-3.3-70b-versatile",
-          "ms": 104,
-          "status": "ok"
-        },
-        {
-          "platform_id": "ca",
-          "model": "deepseek-v4-flash",
-          "ms": 130,
-          "status": "ok"
-        },
-        {
-          "platform_id": "deepinfra",
-          "model": "Qwen/Qwen3.7-Max",
-          "ms": 148,
-          "status": "ok"
-        },
-        {
-          "platform_id": "deepseek",
-          "model": "deepseek-v4-flash",
-          "ms": 297,
-          "status": "ok"
-        },
-        {
-          "platform_id": "novita",
-          "model": "moonshotai/kimi-k3",
-          "ms": 303,
-          "status": "ok"
-        },
-        {
-          "platform_id": "together",
-          "model": "moonshotai/Kimi-K3",
-          "ms": 329,
-          "status": "ok"
-        },
-        {
-          "platform_id": "tencent",
-          "model": "hunyuan-turbos",
-          "ms": 631,
-          "status": "ok"
-        },
-        {
-          "platform_id": "siliconflow",
-          "model": "deepseek-ai/DeepSeek-V3",
-          "ms": 656,
-          "status": "ok"
-        },
-        {
-          "platform_id": "volcengine",
-          "model": "doubao-lite-128k-240428",
-          "ms": 714,
-          "status": "ok"
-        },
-        {
-          "platform_id": "infini",
-          "model": "qwen2.5-72b-instruct",
-          "ms": 798,
-          "status": "ok"
-        },
-        {
-          "platform_id": "minimax",
-          "model": "MiniMax-M3",
-          "ms": 892,
-          "status": "ok"
-        },
-        {
-          "platform_id": "spark",
-          "model": "generalv3.5",
-          "ms": 924,
-          "status": "ok"
-        },
-        {
-          "platform_id": "aliyun",
-          "model": "Qwen3.8-Max",
-          "ms": 1031,
-          "status": "ok"
-        },
-        {
-          "platform_id": "baichuan",
-          "model": "baichuan2-turbo",
-          "ms": 1036,
-          "status": "ok"
-        },
-        {
-          "platform_id": "zhipu",
-          "model": "glm-4.5",
-          "ms": 1050,
-          "status": "ok"
-        },
-        {
-          "platform_id": "yi",
-          "model": "yi-light",
-          "ms": 1075,
-          "status": "ok"
-        },
-        {
-          "platform_id": "moonshot",
-          "model": "kimi-k2.7-code",
-          "ms": 1113,
-          "status": "ok"
-        },
-        {
-          "platform_id": "jieyue",
-          "model": "step-tts-mini",
-          "ms": 1601,
-          "status": "ok"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-13",
-      "time": "00:52",
-      "results": [
-        {
-          "platform_id": "openrouter",
-          "model": "ByteDance Seed: Seed 2.1 Turbo",
-          "ms": 27,
+          "ms": 63,
           "status": "ok"
         },
         {
           "platform_id": "fireworks",
           "model": "accounts/fireworks/models/llama-v3p3-70b-instruct",
-          "ms": 43,
+          "ms": 73,
           "status": "error"
-        },
-        {
-          "platform_id": "groq",
-          "model": "llama-3.3-70b-versatile",
-          "ms": 62,
-          "status": "ok"
-        },
-        {
-          "platform_id": "together",
-          "model": "moonshotai/Kimi-K3",
-          "ms": 76,
-          "status": "ok"
         },
         {
           "platform_id": "aihubmix",
           "model": "auto",
-          "ms": 89,
+          "ms": 83,
+          "status": "ok"
+        },
+        {
+          "platform_id": "together",
+          "model": "zai-org/GLM-5.3",
+          "ms": 97,
           "status": "ok"
         },
         {
           "platform_id": "cohere",
           "model": "c4ai-aya-expanse-32b",
-          "ms": 148,
+          "ms": 126,
           "status": "ok"
         },
         {
           "platform_id": "deepinfra",
-          "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
-          "ms": 211,
+          "model": "stepfun-ai/Step-3.7-Flash",
+          "ms": 174,
           "status": "ok"
         },
         {
           "platform_id": "n1n",
-          "model": "gpt-4o-mini",
-          "ms": 229,
-          "status": "ok"
-        },
-        {
-          "platform_id": "novita",
-          "model": "moonshotai/kimi-k3",
-          "ms": 324,
+          "model": "gpt-5.6-sol",
+          "ms": 193,
           "status": "ok"
         },
         {
           "platform_id": "ca",
           "model": "deepseek-v4-flash",
-          "ms": 360,
+          "ms": 236,
+          "status": "ok"
+        },
+        {
+          "platform_id": "novita",
+          "model": "zai-org/glm-5.3-flash",
+          "ms": 260,
           "status": "ok"
         },
         {
           "platform_id": "deepseek",
           "model": "deepseek-v4-flash",
-          "ms": 410,
+          "ms": 349,
           "status": "ok"
         },
         {
-          "platform_id": "tencent",
-          "model": "hunyuan-turbos",
-          "ms": 650,
-          "status": "ok"
-        },
-        {
-          "platform_id": "jieyue",
-          "model": "step-tts-mini",
-          "ms": 767,
+          "platform_id": "openrouter",
+          "model": "Tencent: Hy4 preview",
+          "ms": 545,
           "status": "ok"
         },
         {
           "platform_id": "aliyun",
           "model": "Qwen3.8-Max",
-          "ms": 794,
+          "ms": 758,
           "status": "ok"
         },
         {
-          "platform_id": "siliconflow",
-          "model": "deepseek-ai/DeepSeek-V3",
-          "ms": 897,
-          "status": "ok"
-        },
-        {
-          "platform_id": "volcengine",
-          "model": "doubao-lite-128k-240428",
-          "ms": 963,
+          "platform_id": "tencent",
+          "model": "hunyuan-turbos",
+          "ms": 810,
           "status": "ok"
         },
         {
           "platform_id": "infini",
           "model": "qwen2.5-72b-instruct",
-          "ms": 983,
+          "ms": 878,
           "status": "ok"
         },
         {
-          "platform_id": "baichuan",
-          "model": "baichuan2-turbo",
-          "ms": 1078,
-          "status": "ok"
-        },
-        {
-          "platform_id": "spark",
-          "model": "generalv3.5",
-          "ms": 1154,
-          "status": "ok"
-        },
-        {
-          "platform_id": "minimax",
-          "model": "MiniMax-M3",
-          "ms": 1223,
+          "platform_id": "siliconflow",
+          "model": "deepseek-ai/DeepSeek-V3",
+          "ms": 889,
           "status": "ok"
         },
         {
           "platform_id": "zhipu",
           "model": "glm-4.5",
-          "ms": 1307,
+          "ms": 909,
+          "status": "ok"
+        },
+        {
+          "platform_id": "volcengine",
+          "model": "doubao-lite-128k-240428",
+          "ms": 927,
+          "status": "ok"
+        },
+        {
+          "platform_id": "spark",
+          "model": "generalv3.5",
+          "ms": 990,
+          "status": "ok"
+        },
+        {
+          "platform_id": "baichuan",
+          "model": "baichuan2-turbo",
+          "ms": 1067,
           "status": "ok"
         },
         {
           "platform_id": "moonshot",
-          "model": "kimi-k2.7-code-highspeed",
-          "ms": 1355,
+          "model": "moonshot-v1-8k",
+          "ms": 1081,
+          "status": "ok"
+        },
+        {
+          "platform_id": "minimax",
+          "model": "MiniMax-M3",
+          "ms": 1142,
+          "status": "ok"
+        },
+        {
+          "platform_id": "jieyue",
+          "model": "step-tts-mini",
+          "ms": 1389,
           "status": "ok"
         },
         {
           "platform_id": "yi",
           "model": "yi-light",
-          "ms": 1455,
+          "ms": 1479,
           "status": "ok"
         }
       ]
