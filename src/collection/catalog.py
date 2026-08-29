@@ -25,6 +25,7 @@ PLATFORM_CLASSES = {
     "moonshot": MoonshotPlatform,
     "zhipu": ZhipuPlatform,
     "volcengine": VolcenginePlatform,
+    "openrouter": OpenRouterPlatform,
     "tencent": TencentPlatform,
     "spark": SparkPlatform,
     "minimax": MiniMaxPlatform,
@@ -43,6 +44,18 @@ PLATFORM_CLASSES = {
     "n1n": N1NPlatform,
     "ca": ChatAnywherePlatform,
 }
+
+REQUIRED_COLLECTION_PLATFORMS = {
+    "aliyun", "siliconflow", "moonshot", "zhipu", "volcengine", "openrouter",
+    "tencent", "spark", "minimax", "yi", "baichuan", "jieyue", "deepseek",
+    "groq", "together", "fireworks", "cohere", "infini", "novita",
+    "deepinfra", "aihubmix", "n1n", "ca",
+}
+
+if set(PLATFORM_CLASSES) != REQUIRED_COLLECTION_PLATFORMS:
+    missing = sorted(REQUIRED_COLLECTION_PLATFORMS - set(PLATFORM_CLASSES))
+    extra = sorted(set(PLATFORM_CLASSES) - REQUIRED_COLLECTION_PLATFORMS)
+    raise RuntimeError(f"平台注册表不完整: missing={missing}, extra={extra}")
 
 
 @dataclass(frozen=True)

@@ -16,22 +16,25 @@ import json
 import sys
 import urllib.request
 import re
-import html
 import logging
 from datetime import datetime
 from collections import Counter
 from typing import Dict, List, Tuple, Optional, Any
 
 from src.pricing import (
+    PriceDatabase,
+    SSOTPriceResolver,
     classify_price,
-    parse_deepseek_pricing_html,
-    parse_moonshot_pricing_markdown,
-    resolve_price_source_url,
+    fetch_official_prices,
+    get_model_family,
+    get_price_tier,
+    infer_tags_and_scene as infer_model_metadata,
+    normalize_for_match as normalize_model_name,
 )
 from src.collection import CachedHttpClient, collect_platform_catalog
 from src.config import RuntimeConfig
 from src.monitoring import update_ping_history
-from src.models.context import enrich_context_metadata, restore_inferred_context_metadata
+from src.publication import build_catalog, write_catalog
 from src.rendering import compose_page, load_asset, render_template
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -67,328 +70,12 @@ RENDER_ONLY = CONFIG.render_only
 USD_TO_CNY = 7.25
 
 # ─── 从官方定价页爬取价格 ───
-def fetch_official_prices():
-    """从官方定价页爬取价格，返回 {model_name: {"input": float, "output": float, "currency": str, "source": str}}"""
-    prices = {}
-
-    def _fh(url, timeout=20):
-        h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
-        for attempt in range(2):
-            try:
-                req = urllib.request.Request(url, headers=h)
-                with urllib.request.urlopen(req, timeout=timeout) as r:
-                    return r.read().decode("utf-8", errors="ignore")
-            except Exception as e:
-                if attempt == 0:
-                    time.sleep(1)
-                else:
-                    print("  fetch_official_prices fetch error: %s [%s]" % (str(e)[:60], url), file=sys.stderr)
-                    return None
-
-    # 1. DeepSeek - 官方表格含空闲/高峰双价；发布高峰价并保留区间。
-    try:
-        src = "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"
-        h = _fh(src)
-        if h:
-            for model_name, price in parse_deepseek_pricing_html(h).items():
-                prices[model_name] = {**price, "source": src}
-            print("  fetch_official_prices: DeepSeek %d models" % sum(1 for k in prices if k.startswith("deepseek")), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: DeepSeek error:", str(e)[:80], file=sys.stderr)
-
-    # 2. 月之暗面 - 使用官方机器可读 Markdown，避免 SSR 混入其他表格。
-    try:
-        source_url = "https://platform.kimi.com/docs/pricing/chat-v1.md"
-        h = _fh(source_url)
-        if h:
-            for model_name, price in parse_moonshot_pricing_markdown(h).items():
-                prices[model_name] = {**price, "source": source_url}
-            print("  fetch_official_prices: Moonshot %d models" % sum(1 for k in prices if k.startswith("moonshot")), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: Moonshot error:", str(e)[:80], file=sys.stderr)
-
-    # 3. 腾讯混元 - 通过 Jina Reader 提取 SPA 页面
-    try:
-        jina_url = "https://r.jina.ai/https://cloud.tencent.com/document/product/1729"
-        jina_h = {"User-Agent": "Mozilla/5.0", "Accept": "text/plain"}
-        jina_req = urllib.request.Request(jina_url, headers=jina_h)
-        with urllib.request.urlopen(jina_req, timeout=20) as jina_r:
-            jina_text = jina_r.read().decode("utf-8", errors="ignore")
-        # 在 markdown 文本中寻找价格表格行 (如 "hunyuan-turbos 0.8 2")
-        for line in jina_text.split("\n"):
-            if "hunyuan" in line.lower() and "|" in line:
-                parts = [p.strip() for p in line.split("|") if p.strip()]
-                if len(parts) >= 3:
-                    _mn = parts[0].strip().lower()
-                    _iv = re.search(r'([\d.]+)', parts[1])
-                    _ov = re.search(r'([\d.]+)', parts[2]) if len(parts) > 2 else None
-                    if _iv and _ov:
-                        prices[_mn] = {"input": float(_iv.group(1)), "output": float(_ov.group(1)), "currency": "CNY", "source": "jina:腾讯混元"}
-        if any("hunyuan" in k for k in prices):
-            print("  fetch_official_prices: Tencent (Jina) %d models" % sum(1 for k in prices if "hunyuan" in k), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: Tencent Jina error:", str(e)[:60], file=sys.stderr)
-    # 如需爬取，需使用 headless browser（selenium/playwright）
-    # try:
-    #     h = _fh("https://cloud.tencent.com/document/product/1729/97731")
-    #     ...
-    # except Exception as e:
-    #     print("  fetch_official_prices: Tencent error:", str(e)[:80], file=sys.stderr)
-
-    # 4. MiniMax - Mintlify SSR，表格含 model / input / output / cache_read / cache_write
-    try:
-        h = _fh("https://platform.minimaxi.com/docs/guides/pricing-paygo")
-        if h:
-            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
-            for i in range(len(tds) - 2):
-                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip()
-                ml = model_txt.lower()
-                if not model_txt or not ('minimax' in ml or 'abab' in ml or 'm2' in ml):
-                    continue
-                mn = ml.replace(' ', '-').strip()
-                if mn in prices:
-                    continue
-                for j in range(i + 1, min(i + 3, len(tds))):
-                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
-                    inp_m = re.search(r'^([\d.]+)', inp_txt)
-                    if inp_m and float(inp_m.group(1)) > 0:
-                        iv = float(inp_m.group(1))
-                        for k in range(j + 1, min(j + 3, len(tds))):
-                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
-                            out_m = re.search(r'^([\d.]+)', out_txt)
-                            if out_m and float(out_m.group(1)) > 0:
-                                ov = float(out_m.group(1))
-                                if ov >= iv:
-                                    prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
-                                                 "source": "https://platform.minimaxi.com/docs/guides/pricing-paygo"}
-                                    break
-                        break
-            print("  fetch_official_prices: MiniMax %d models" % sum(1 for k in prices if "minimax" in k or "abab" in k or "m2" in k), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: MiniMax error:", str(e)[:80], file=sys.stderr)
-
-    # 5. 阿里百炼 - 阿里云帮助文档
-    try:
-        h = _fh("https://help.aliyun.com/zh/model-studio/getting-started/models")
-        if h:
-            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
-            for i in range(len(tds) - 2):
-                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip().lower()
-                if not model_txt or not ('qwen' in model_txt or 'qwq' in model_txt):
-                    continue
-                mn = model_txt.strip()
-                if mn in prices:
-                    continue
-                for j in range(i + 1, min(i + 4, len(tds))):
-                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
-                    inp_m = re.search(r'^([\d.]+)', inp_txt)
-                    if inp_m and float(inp_m.group(1)) > 0:
-                        iv = float(inp_m.group(1))
-                        for k in range(j + 1, min(j + 3, len(tds))):
-                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
-                            out_m = re.search(r'^([\d.]+)', out_txt)
-                            if out_m and float(out_m.group(1)) > 0:
-                                ov = float(out_m.group(1))
-                                if ov >= iv:
-                                    prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
-                                                 "source": "https://help.aliyun.com/zh/model-studio/getting-started/models"}
-                                    break
-                        break
-            print("  fetch_official_prices: Aliyun %d models" % sum(1 for k in prices if "qwen" in k or "qwq" in k), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: Aliyun error:", str(e)[:80], file=sys.stderr)
-
-    # 6. 硅基流动 - Next.js RSC 接口，无需 API Key，无需 Playwright
-    try:
-        rsc_url = "https://siliconflow.cn/models?_rsc=1wtp7"
-        rsc_headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-            "RSC": "1",
-            "Next-Router-State-Tree": "%5B%22%22%2C%7B%22children%22%3A%5B%22models%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%5D%7D%5D%7D%2Cnull%2Cnull%2Ctrue%5D",
-        }
-        req = urllib.request.Request(rsc_url, headers=rsc_headers)
-        with urllib.request.urlopen(req, timeout=30) as r:
-            raw = r.read().decode("utf-8", errors="ignore")
-        lines = raw.split("\n")
-        # 数据在第5行(0-indexed)，包含 "data":[ 数组
-        for line in lines:
-            data_start = line.find('"data":[')
-            if data_start == -1:
-                continue
-            arr_start = line.find("[", data_start + 6)
-            # 用栈匹配括号
-            depth = 0
-            arr_end = arr_start
-            for ci in range(arr_start, min(arr_start + 300000, len(line))):
-                if line[ci] == "[":
-                    depth += 1
-                elif line[ci] == "]":
-                    depth -= 1
-                    if depth == 0:
-                        arr_end = ci + 1
-                        break
-            json_str = line[arr_start:arr_end]
-            models_arr = json.loads(json_str)
-            sf_count = 0
-            for m in models_arr:
-                if m.get("type") not in ("text",):
-                    continue
-                if m.get("subType") not in ("chat",):
-                    continue
-                mn_raw = m.get("modelName", "")
-                mn = mn_raw.lower().strip()
-                if not mn:
-                    continue
-                ip = float(m.get("inputPrice", 0) or 0)
-                op = float(m.get("outputPrice", 0) or 0)
-                # 存储多个键以覆盖不同命名格式
-                keys = ["sf:" + mn]
-                # 去掉 Pro/ 前缀
-                if mn.startswith("pro/"):
-                    keys.append("sf:" + mn[4:])
-                # 去掉 provider 前缀
-                for pfx in ["deepseek-ai/", "thudm/", "qwen/", "minimaxai/", "moonshotai/", "stepfun-ai/", "inclusionai/", "zai-org/", "bytedance-seed/", "tencent/", "internlm/", "paddlepaddle/", "kwaipilot/"]:
-                    if mn.startswith(pfx):
-                        keys.append("sf:" + mn[len(pfx):])
-                    if mn.startswith("pro/" + pfx):
-                        keys.append("sf:" + mn[4 + len(pfx):])
-                entry = {
-                    "input": ip,
-                    "output": op,
-                    "currency": "CNY",
-                    "source": "https://siliconflow.cn/models",
-                    "platform": "siliconflow",
-                    "raw_name": mn_raw,
-                }
-            for key in keys:
-                if key not in prices:
-                    prices[key] = entry
-            sf_count += 1
-        print("  fetch_official_prices: SiliconFlow RSC %d models" % sf_count, file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: SiliconFlow RSC error:", str(e)[:80], file=sys.stderr)
-
-    # 7. 百度文心 - 百度智能云文档
-    try:
-        h = _fh("https://cloud.baidu.com/doc/WENXINWORKSHOP/s/hlxqvkx82")
-        if h:
-            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
-            for i in range(len(tds) - 3):
-                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip().lower()
-                if not model_txt or 'ernie' not in model_txt:
-                    continue
-                mn = model_txt.replace(' ', '-').strip()
-                if mn in prices:
-                    continue
-                for j in range(i + 1, min(i + 4, len(tds))):
-                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
-                    inp_m = re.search(r'([\d.]+)\s*(?:元|/)', inp_txt)
-                    if inp_m and float(inp_m.group(1)) > 0:
-                        iv = float(inp_m.group(1))
-                        # 通常按千 tokens 计费，我们需要转为百万 tokens
-                        if "千" in inp_txt or "1000" in inp_txt:
-                            iv *= 1000
-                        for k in range(j + 1, min(j + 3, len(tds))):
-                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
-                            out_m = re.search(r'([\d.]+)\s*(?:元|/)', out_txt)
-                            if out_m and float(out_m.group(1)) > 0:
-                                ov = float(out_m.group(1))
-                                if "千" in out_txt or "1000" in out_txt:
-                                    ov *= 1000
-                                prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
-                                             "source": "https://cloud.baidu.com/doc/WENXINWORKSHOP/s/hlxqvkx82"}
-                                break
-                        break
-            print("  fetch_official_prices: Baidu %d models" % sum(1 for k in prices if "ernie" in k), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: Baidu error:", str(e)[:80], file=sys.stderr)
-
-    # 8. 火山引擎 (Doubao)
-    try:
-        h = _fh("https://www.volcengine.com/docs/82379/1099320")
-        if h:
-            tds = re.findall(r'<td[^>]*>(.*?)</td>', h, re.DOTALL)
-            for i in range(len(tds) - 3):
-                model_txt = re.sub(r'<[^>]+>', '', tds[i]).strip().lower()
-                if not model_txt or 'doubao' not in model_txt:
-                    continue
-                mn = model_txt.replace(' ', '-').strip()
-                if mn in prices:
-                    continue
-                for j in range(i + 1, min(i + 4, len(tds))):
-                    inp_txt = re.sub(r'<[^>]+>', '', tds[j]).strip()
-                    inp_m = re.search(r'([\d.]+)\s*(?:元|/)', inp_txt)
-                    if inp_m and float(inp_m.group(1)) > 0:
-                        iv = float(inp_m.group(1))
-                        if "千" in inp_txt or "1000" in inp_txt:
-                            iv *= 1000
-                        for k in range(j + 1, min(j + 3, len(tds))):
-                            out_txt = re.sub(r'<[^>]+>', '', tds[k]).strip()
-                            out_m = re.search(r'([\d.]+)\s*(?:元|/)', out_txt)
-                            if out_m and float(out_m.group(1)) > 0:
-                                ov = float(out_m.group(1))
-                                if "千" in out_txt or "1000" in out_txt:
-                                    ov *= 1000
-                                prices[mn] = {"input": iv, "output": ov, "currency": "CNY",
-                                             "source": "https://www.volcengine.com/docs/82379/1099320"}
-                                break
-                        break
-            print("  fetch_official_prices: Volcengine %d models" % sum(1 for k in prices if "doubao" in k), file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: Volcengine error:", str(e)[:80], file=sys.stderr)
-
-    # 9. 加载本地 tencent_prices.json 兜底
-    try:
-        tencent_file = os.path.join(SCRIPT_DIR, "tencent_prices.json")
-        if os.path.exists(tencent_file):
-            with open(tencent_file, 'r', encoding='utf-8') as f:
-                t_data = json.load(f)
-            t_count = 0
-            for k, v in t_data.items():
-                mn = v.get("model_id", "").lower().strip()
-                if mn and mn not in prices and float(v.get("input_price", 0)) > 0:
-                    prices[mn] = {"input": float(v.get("input_price")), "output": float(v.get("output_price")), "currency": "CNY", "source": "tencent_prices.json"}
-                    t_count += 1
-            print("  fetch_official_prices: Tencent JSON %d models" % t_count, file=sys.stderr)
-    except Exception as e:
-        print("  fetch_official_prices: Tencent JSON error:", str(e)[:80], file=sys.stderr)
-
-    print("  fetch_official_prices: total %d models" % len(prices), file=sys.stderr)
-    return prices
 
 OFFICIAL_PRICES = {}
 
 # ─── 模型名标准化（用于跨平台匹配） ───
 def normalize_for_match(model_name):
-    n = model_name.strip()
-    for pfx in ["deepseek-ai/", "deepseek/", "Qwen/", "qwen/", "Pro/", "meta-llama/",
-                "mistralai/", "google/", "microsoft/", "THUDM/", "zai-org/", "moonshotai/",
-                "minimaxai/", "stepfun-ai/", "inclusionai/", "bytedance-seed/",
-                "ByteDance-Seed/", "bytedance/", "tencent/", "internlm/", "paddlepaddle/",
-                "PaddlePaddle/", "kwaipilot/", "Kwai-Kolors/", "FunAudioLLM/",
-                "IndexTeam/", "BAAI/", "TeleAI/", "LoRA/", "netease-youdao/",
-                "accounts/fireworks/models/", "turing/", "nvidia/",
-                "openai/", "anthropic/", "cohere/"]:
-        if n.startswith(pfx):
-            n = n[len(pfx):]
-            break
-    if "/" in n:
-        n = n.split("/")[-1]
-    n = re.sub(r'-\d{6,8}$', '', n)
-    n = re.sub(r'-\d{4}$', '', n)
-    n = re.sub(r'-(instruct|it|fp\d+|latest|main|default|base)$', '', n, flags=re.IGNORECASE)
-    # qwen variant normalization: qwen-2.5 <-> qwen2.5
-    n = re.sub(r'qwen-(\d)', r'qwen\1', n)
-    n = re.sub(r'glm-(\d)', r'glm\1', n)
-    n = re.sub(r'doubao-(\d)', r'doubao\1', n)
-    # Known alias mapping
-    ALIAS_MAP = {
-        "deepseek-chat": "deepseek-v3",
-        "deepseek-reasoner": "deepseek-r1",
-    }
-    if n in ALIAS_MAP:
-        n = ALIAS_MAP[n]
-    return n.lower().strip()
+    return normalize_model_name(model_name)
 
 # ─── 官方价格数据库（SSOT: Single Source of Truth） ───
 OFFICIAL_PRICES_DB = {}
@@ -401,6 +88,8 @@ if os.path.exists(_opdb_path):
         print("  official_prices_db.json: %d platforms, %d entries" % (len([k for k in OFFICIAL_PRICES_DB if k != "_meta"]), _opdb_count), file=sys.stderr)
     except Exception as e:
         print("  official_prices_db.json load error:", e, file=sys.stderr)
+
+PRICE_DATABASE = PriceDatabase(_opdb_path)
 
 TENCENT_PRICES = {}
 _tp_path = os.path.join(SCRIPT_DIR, "tencent_prices.json")
@@ -425,34 +114,7 @@ def get_tencent_price(model_id):
     return 0, 0, "N/A"
 
 def get_db_price(platform_key, raw_model_id):
-    """从 official_prices_db.json 查找价格（精确匹配 → 前缀匹配）"""
-    if platform_key not in OFFICIAL_PRICES_DB:
-        return 0, 0, "N/A"
-    platform_rules = OFFICIAL_PRICES_DB[platform_key]
-    model_id = raw_model_id.lower()
-    # 去掉常见前缀
-    for pfx in ["deepseek-ai/", "qwen/", "thudm/", "meta-llama/", "mistralai/",
-                 "google/", "microsoft/", "zai-org/", "moonshotai/", "pro/",
-                 "minimaxai/", "stepfun-ai/", "inclusionai/", "bytedance-seed/",
-                 "tencent/", "internlm/", "paddlepaddle/", "kwaipilot/",
-                 "nvidia/", "openai/", "anthropic/", "accounts/fireworks/models/"]:
-        if model_id.startswith(pfx):
-            stripped = model_id[len(pfx):]
-            # Try stripped version first
-            if stripped in platform_rules:
-                e = platform_rules[stripped]
-                return e.get("input", 0), e.get("output", 0), e.get("context", "N/A")
-    # 精确匹配
-    if model_id in platform_rules:
-        e = platform_rules[model_id]
-        return e.get("input", 0), e.get("output", 0), e.get("context", "N/A")
-    # 前缀匹配（按键长度倒序，最长匹配优先）
-    sorted_keys = sorted([k for k in platform_rules if not k.startswith("_")], key=len, reverse=True)
-    for rule_key in sorted_keys:
-        if model_id.startswith(rule_key):
-            e = platform_rules[rule_key]
-            return e.get("input", 0), e.get("output", 0), e.get("context", "N/A")
-    return 0, 0, "N/A"
+    return PRICE_DATABASE.get_price(platform_key, raw_model_id)
 
 
 # ─── 价格漂移检测（已移除：不再依赖第三方数据源交叉验证） ───
@@ -464,34 +126,7 @@ def fj(url: str, tok: str = "", to: int = 20, retries: int = 3, platform: str = 
 
 # ─── 价格分级 ───
 def PT(inp: float, out: float, cur: str = "CNY", price_unit: str = "per_token") -> str:
-    """
-    价格分级函数
-    
-    Args:
-        inp: 输入价格
-        out: 输出价格
-        cur: 货币类型 (CNY/USD)
-        price_unit: 价格单位 (per_token/per_1m)
-    
-    Returns:
-        价格级别: free/cheap/mid/high/ultra
-    """
-    inp = float(inp or 0)
-    out = float(out or 0)
-    if inp == 0 and out == 0:
-        return "free"
-    if cur == "USD" and price_unit == "per_token":
-        p = inp * 1e6
-    else:
-        p = inp
-    if p < 0.1:
-        return "cheap"
-    elif p < 10:
-        return "mid"
-    elif p < 100:
-        return "high"
-    else:
-        return "ultra"
+    return get_price_tier(inp, out, cur, price_unit)
 
 # ─── HTML 转义 ───
 def Te(s: str) -> str:
@@ -650,64 +285,7 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
 
 # ─── 模型家族识别 ───
 def get_family(mid):
-    """根据模型名称识别家族标签"""
-    n = mid.lower()
-    if any(x in n for x in ['gpt-', 'gpt4', 'gpt3', 'o1-', 'o3-', 'o4-']): return 'GPT'
-    if 'claude' in n: return 'Claude'
-    if 'gemini' in n: return 'Gemini'
-    if 'llama' in n: return 'Llama'
-    if 'mistral' in n or 'mixtral' in n or 'codestral' in n or 'pixtral' in n: return 'Mistral'
-    if 'deepseek' in n: return 'DeepSeek'
-    if 'qwen' in n or 'qwq' in n: return 'Qwen'
-    if 'glm' in n: return 'GLM'
-    if 'kimi' in n or 'moonshot' in n: return 'Kimi'
-    if 'doubao' in n or 'seed' in n: return 'Doubao'
-    if 'yi-' in n or 'yi ' in n: return 'Yi'
-    if 'phi' in n: return 'Phi'
-    if 'command' in n: return 'Command'
-    if 'jamba' in n: return 'Jamba'
-    if 'grok' in n: return 'Grok'
-    if 'nova' in n: return 'Nova'
-    if 'sonar' in n: return 'Sonar'
-    if 'hunyuan' in n: return 'Hunyuan'
-    if 'spark' in n or 'generalv' in n: return 'Spark'
-    if 'minimax' in n or 'abab' in n: return 'MiniMax'
-    if 'baichuan' in n: return 'Baichuan'
-    if 'step' in n: return 'Step'
-    if 'ernie' in n or 'wenxin' in n: return 'ERNIE'
-    if 'solar' in n: return 'Solar'
-    if 'wizardlm' in n: return 'WizardLM'
-    if 'zephyr' in n: return 'Zephyr'
-    if 'nous' in n: return 'Nous'
-    if 'hermes' in n: return 'Hermes'
-    if 'openchat' in n: return 'OpenChat'
-    if 'neural' in n: return 'Neural'
-    if 'mythomax' in n: return 'MythoMax'
-    if 'toppy' in n: return 'Toppy'
-    if 'bagel' in n: return 'Bagel'
-    if 'lzlv' in n: return 'LzLv'
-    if 'rwkv' in n: return 'RWKV'
-    if 'falcon' in n: return 'Falcon'
-    if 'starcoder' in n: return 'StarCoder'
-    if 'codellama' in n: return 'CodeLlama'
-    if 'wizardcoder' in n: return 'WizardCoder'
-    if 'phind' in n: return 'Phind'
-    if 'samantha' in n: return 'Samantha'
-    if 'airoboros' in n: return 'Airoboros'
-    if 'vicuna' in n: return 'Vicuna'
-    if 'orca' in n: return 'Orca'
-    if 'dolphin' in n: return 'Dolphin'
-    if 'megamix' in n: return 'MegaMix'
-    if 'cosmic' in n: return 'Cosmic'
-    if 'psymed' in n: return 'PsyMed'
-    if 'biomistral' in n: return 'BioMistral'
-    if 'medllama' in n: return 'MedLlama'
-    if 'internlm' in n: return 'InternLM'
-    if 'kolors' in n: return 'Kolors'
-    if 'wan' in n and 'ai' in n: return 'Wan'
-    if 'cosyvoice' in n or 'sensevoice' in n: return 'FunAudio'
-    if 'bge' in n: return 'BGE'
-    return 'Other'
+    return get_model_family(mid)
 
 # ═══════════════════════════════════════════════════════════
 # 双轨制价格获取：海外走 LiteLLM，国内走 official_prices_db.json
@@ -744,33 +322,10 @@ try:
 except Exception as _e:
     print("  LiteLLM fetch skipped:", str(_e)[:60], file=sys.stderr)
 
-def get_litellm_price(platform_key, model_name):
-    provider = LITELLM_KEY_MAP.get(platform_key, platform_key)
-    if provider not in LITELLM_DB: return 0, 0, "N/A"
-    ml = model_name.lower()
-    norm = normalize_for_match(model_name)
-    for k in (ml, norm):
-        if k in LITELLM_DB[provider]:
-            e = LITELLM_DB[provider][k]
-            return e["input"], e["output"], e["context"]
-    return 0, 0, "N/A"
+PRICE_RESOLVER = SSOTPriceResolver(db_path=_opdb_path, price_db=PRICE_DATABASE)
+
 def infer_tags_and_scene(mid, inp, out, ctx):
-    n = mid.lower()
-    tt = []
-    if inp == 0 and out == 0: tt.append("免费额度")
-    elif inp < 0.1: tt.append("极便宜")
-    elif inp < 1: tt.append("便宜")
-    elif inp < 5: tt.append("主力")
-    else: tt.append("旗舰")
-    if "r1" in n or "reason" in n or "think" in n or "qwq" in n or "kimi-k2" in n: tt.append("推理")
-    if "coder" in n or "code" in n: tt.append("代码")
-    if "vision" in n or "vl" in n: tt.append("视觉")
-    if ctx and int(re.sub(r'[^\d]', '', str(ctx)) or 0) >= 200000: tt.append("长上下文")
-    if "推理" in tt: ss = "深度推理"
-    elif "代码" in tt: ss = "编程代码"
-    elif "视觉" in tt: ss = "视觉图片"
-    else: ss = "日常对话"
-    return tt, ss
+    return infer_model_metadata(mid, inp, out, ctx)
 
 def n1np(mid):
     """n1n.ai - 国内聚合平台（¥/M tokens，仅使用API获取的真实价格）"""
@@ -800,46 +355,10 @@ def cap(mid):
 
 
 def get_absolute_price(platform, model_name, api_price=None):
-    """
-    统一价格解析 - 严格 4 层 SSOT:
-    1. API 直接返回的价格（T1 平台）
-    2. 官方爬取结果（fetch_official_prices, 硅基流动 RSC 等）
-    3. official_prices_db.json（精确匹配 → 前缀匹配）
-    4. LiteLLM 社区价格数据（海外平台兜底）
-    
-    找不到 → 返回 (0, 0, "N/A", "") 并打印 WARNING
-    source_tag: "A"=API, "S"=官方爬取, "DB"=官方价格数据库, "L"=LiteLLM社区, ""=未知
-    """
-    # 1. API 直接返回的价格
-    if api_price and (api_price[0] > 0 or api_price[1] > 0):
-        return api_price[0], api_price[1], api_price[2] if len(api_price) > 2 else "N/A", "A"
-
-    # 2. 官方爬取结果 (fetch_official_prices)
-    mn_lower = model_name.lower()
-    official = OFFICIAL_PRICES.get(mn_lower)
-    if not official:
-        official = OFFICIAL_PRICES.get("sf:" + mn_lower)
-    if not official:
-        for sf_pfx in ["deepseek-ai/", "thudm/", "qwen/"]:
-            official = OFFICIAL_PRICES.get("sf:" + sf_pfx + mn_lower)
-            if official:
-                break
-    if official and (official.get("input", 0) > 0 or official.get("output", 0) > 0):
-        return official["input"], official["output"], official.get("context", "N/A"), "S"
-
-    # 3. official_prices_db.json
-    db_i, db_o, db_c = get_db_price(platform, model_name)
-    if db_i > 0 or db_o > 0:
-        return db_i, db_o, db_c, "DB"
-
-    # 4. LiteLLM 社区价格（海外平台兜底）
-    ll_i, ll_o, ll_c = get_litellm_price(platform, model_name)
-    if ll_i > 0 or ll_o > 0:
-        return ll_i, ll_o, ll_c, "L"
-
-    # 未找到 → 0 + WARNING
-    print("  ⚠️ PRICE_MISSING: [%s] %s → 价格为0，请在 official_prices_db.json 中添加" % (platform, model_name), file=sys.stderr)
-    return 0, 0, "N/A", ""
+    PRICE_RESOLVER.official_prices = OFFICIAL_PRICES
+    PRICE_RESOLVER.litellm_prices = LITELLM_DB
+    result = PRICE_RESOLVER.get_absolute_price(platform, model_name, api_price)
+    return result.input_price, result.output_price, result.context, result.source_tag
 
 
 
@@ -852,7 +371,7 @@ def get_absolute_price(platform, model_name, api_price=None):
 
 # ─── 始终从官方源抓取最新价格（无论是否使用 JSON 缓存） ───
 print("Fetching official prices..." if not RENDER_ONLY else "Render-only: skipping official price fetch", file=sys.stderr)
-OFFICIAL_PRICES = {} if RENDER_ONLY else fetch_official_prices()
+OFFICIAL_PRICES = {} if RENDER_ONLY else fetch_official_prices(CONFIG.project_dir)
 print("  Official prices: %d models loaded" % len(OFFICIAL_PRICES), file=sys.stderr)
 
 if UPDATE_DB:
@@ -2088,147 +1607,24 @@ with open(OUT,"w",encoding="utf-8") as f:
 sz = os.path.getsize(OUT)
 
 # ─── 自动更新 models_data.json（保持数据同步） ───
-try:
-    if RENDER_ONLY:
-        raise RuntimeError("render-only mode: preserve models_data.json")
-    _pinfo = {
-        "aliyun":{"name":"阿里百炼","color":"#ff6a00"},
-        "siliconflow":{"name":"硅基流动","color":"#7C3AED"},
-        "moonshot":{"name":"月之暗面","color":"#4f46e5"},
-        "zhipu":{"name":"智谱 AI","color":"#00c4b4"},
-        "volcengine":{"name":"火山引擎","color":"#dc2626"},
-        "baidu":{"name":"百度文心","color":"#2932e1"},
-        "tencent":{"name":"腾讯混元","color":"#07c160"},
-        "spark":{"name":"讯飞星火","color":"#ff6347"},
-        "minimax":{"name":"MiniMax","color":"#2563eb"},
-        "yi":{"name":"零一万物","color":"#8b5cf6"},
-        "baichuan":{"name":"百川智能","color":"#16a34a"},
-        "jieyue":{"name":"阶跃星辰","color":"#ea580c"},
-        "deepseek":{"name":"DeepSeek","color":"#0ea5e9"},
-        "openrouter":{"name":"OpenRouter","color":"#6366f1"},
-        "groq":{"name":"Groq","color":"#f97316"},
-        "together":{"name":"Together AI","color":"#06b6d4"},
-        "fireworks":{"name":"Fireworks AI","color":"#ef4444"},
-        "cohere":{"name":"Cohere","color":"#d946ef"},
-        "infini":{"name":"无问芯穹","color":"#84cc16"},
-        "novita":{"name":"Novita AI","color":"#f472b6"},
-        "deepinfra":{"name":"DeepInfra","color":"#a78bfa"},
-        "aihubmix":{"name":"AiHubMix","color":"#fb923c"},
-        "n1n":{"name":"n1n.ai","color":"#22d3ee"},
-        "ca":{"name":"ChatAnywhere","color":"#fbbf24"},
-    }
-    def _price_source_url(platform_id, model_name, source_tag, source_run):
-        official_price_url = ""
-        if source_tag in ("S", "SP"):
-            candidates = [model_name.lower(), "sf:" + model_name.lower()]
-            for candidate in candidates:
-                price = OFFICIAL_PRICES.get(candidate)
-                if price and price.get("source"):
-                    official_price_url = price["source"]
-                    break
-        return resolve_price_source_url(
-            platform_id,
-            source_tag,
-            source_run_url=source_run.get("source_url", ""),
-            database_url=(OFFICIAL_PRICES_DB.get(platform_id) or {}).get("_source", ""),
-            official_price_url=official_price_url,
+if RENDER_ONLY:
+    print("  Render-only: models_data.json preserved", file=sys.stderr)
+else:
+    try:
+        catalog = build_catalog(
+            cards=cards,
+            updated_at=data_updated_at,
+            source_runs=source_runs,
+            price_changes=price_changes,
+            use_json_data=USE_JSON_DATA,
+            official_prices=OFFICIAL_PRICES,
+            official_prices_db=OFFICIAL_PRICES_DB,
+            prior_context_models=prior_context_models,
         )
-
-    _mj = {"meta":{"updated_at":data_updated_at,"generated_at":datetime.now().strftime("%Y-%m-%d %H:%M"),"total_models":total,
-        "platform_counts":{},"price_tiers":{},"price_status_counts":{},"lineage_counts":{},
-        "source_runs":source_runs,"price_changes":price_changes},
-        "platforms":_pinfo,"models":[]}
-    _pc = {}; _ptc = {}; _psc = {}; _lc = {}
-    for c in cards:
-        # 从卡片 HTML 提取 data 属性
-        _dp = re.search(r'data-p="([^"]*)"', c)
-        _dn = re.search(r'data-ctx-display="([^"]*)"', c)
-        _di = re.search(r'data-inp="([^"]*)"', c)
-        _do = re.search(r'data-out="([^"]*)"', c)
-        _dc = re.search(r'data-cur="([^"]*)"', c)
-        _ds = re.search(r'data-s="([^"]*)"', c)
-        _df = re.search(r'data-family="([^"]*)"', c)
-        _pu = re.search(r'data-pu="([^"]*)"', c)
-        _dpt = re.search(r'data-pt="([^"]*)"', c)
-        _dsrc = re.search(r'data-src="([^"]*)"', c)
-        _dip = re.search(r'data-inp-display="([^"]*)"', c)
-        _dop = re.search(r'data-out-display="([^"]*)"', c)
-        _dpn = re.search(r'data-pricing-note="([^"]*)"', c)
-        _dps = re.search(r'data-price-status="([^"]*)"', c)
-        _dbu = re.search(r'data-billing-unit="([^"]*)"', c)
-        _mn = re.search(r'class="mname">([^<]*)', c)
-        _pn = re.search(r'class="prov">([^<]*)', c)
-        _bu = re.search(r'class="base-url">([^<]*)', c)
-        _tg = re.findall(r'class="tg[^"]*">([^<]*)', c)
-        if not _dp or not _mn or not _mn.group(1).strip():
-            logger.warning("跳过无法序列化的空模型卡片")
-            continue
-        pid = _dp.group(1)
-        if pid not in source_runs:
-            source_runs[pid] = {
-                "platform_id": pid,
-                "source_type": "legacy_snapshot" if USE_JSON_DATA else "legacy_generator",
-                "source_url": "",
-                "collected_at": data_updated_at,
-                "model_count": 0,
-                "error": "",
-            }
-        source_run = source_runs[pid]
-        source_run["model_count"] = source_run.get("model_count") or 0
-        model_source = source_run.get("source_type", "legacy_generator")
-        _lc[model_source] = _lc.get(model_source, 0) + 1
-        _pc[pid] = _pc.get(pid, 0) + 1
-        if _dpt: _ptc[_dpt.group(1)] = _ptc.get(_dpt.group(1), 0) + 1
-        if _dps: _psc[_dps.group(1)] = _psc.get(_dps.group(1), 0) + 1
-        _mj["models"].append({
-            "platform_id":pid,
-            "platform_name":html.unescape(_pn.group(1)) if _pn else "",
-            "platform_color":_pinfo.get(pid,{}).get("color",""),
-            "name":html.unescape(_mn.group(1)) if _mn else "",
-            "input_price":float(_di.group(1)) if _di else 0,
-            "output_price":float(_do.group(1)) if _do else 0,
-            "input_price_display":html.unescape(_dip.group(1)) if _dip else "",
-            "output_price_display":html.unescape(_dop.group(1)) if _dop else "",
-            "pricing_note":html.unescape(_dpn.group(1)) if _dpn else "",
-            "currency":_dc.group(1) if _dc else "CNY",
-            "price_unit":_pu.group(1) if _pu else "per_token",
-            "context":_dn.group(1) if _dn else "",
-            "tags":_tg,
-            "scene":_ds.group(1) if _ds else "",
-            "family":_df.group(1) if _df else "",
-            "base_url":html.unescape(_bu.group(1)) if _bu else "",
-            "price_src":_dsrc.group(1) if _dsrc else "",
-            "price_source_url":_price_source_url(
-                pid,
-                html.unescape(_mn.group(1)) if _mn else "",
-                _dsrc.group(1) if _dsrc else "",
-                source_run,
-            ),
-            "price_status":_dps.group(1) if _dps else "unknown",
-            "billing_unit":_dbu.group(1) if _dbu else "unknown",
-            "model_source":model_source,
-            "source_url":source_run.get("source_url", ""),
-            "collected_at":source_run.get("collected_at", data_updated_at),
-        })
-    _mj["meta"]["platform_counts"] = _pc
-    _mj["meta"]["price_tiers"] = _ptc
-    _mj["meta"]["price_status_counts"] = _psc
-    _mj["meta"]["lineage_counts"] = _lc
-    restore_inferred_context_metadata(_mj["models"], prior_context_models)
-    _mj["meta"]["context_status_counts"] = dict(enrich_context_metadata(_mj["models"]))
-    for _source_pid, _source_count in _pc.items():
-        _source_run = source_runs.get(_source_pid, {})
-        if _source_run.get("source_type", "").startswith("legacy_"):
-            _source_run["model_count"] = _source_count
-    with open(MODELS_JSON, "w", encoding="utf-8") as _jf:
-        json.dump(_mj, _jf, ensure_ascii=False, separators=(',',':'))
-    print("  models_data.json updated (%d models)" % total, file=sys.stderr)
-except Exception as _e:
-    if RENDER_ONLY:
-        print("  Render-only: models_data.json preserved", file=sys.stderr)
-    else:
-        print("  models_data.json update failed:", str(_e)[:80], file=sys.stderr)
-
+        write_catalog(CONFIG.models_file, catalog)
+        print("  models_data.json updated (%d models)" % total, file=sys.stderr)
+    except Exception as error:
+        print("  models_data.json update failed:", str(error)[:80], file=sys.stderr)
 # ─── 每日测速并保存历史数据 ───
 try:
     if RENDER_ONLY:
