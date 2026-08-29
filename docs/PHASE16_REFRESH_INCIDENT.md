@@ -1,0 +1,65 @@
+# Phase 16 数据刷新中断事件报告
+
+更新时间：2026-08-29（Asia/Shanghai）
+
+## 结论
+
+生产站可访问，但每日模型数据刷新已经中断。仓库和生产 `models_data.json` 的最后采集时间均为 `2026-08-13 00:52`，数据产品不能再被描述为实时。
+
+本次取证只能确认“旧刷新入口停止产生定时运行，且存在四条 GitHub 状态异常的 queued runs”。没有足够证据把唯一根因写死为 concurrency、Secrets 或 GitHub schedule 服务。
+
+## 事件基线
+
+- 默认分支：`main`
+- 事件基线提交：`c55fcfa8b009205d38a7363c9685c70b1d69bc7a`
+- 远程回退标签：`phase16-baseline-20260829`
+- 本地与 `origin/main`：取证时一致，工作区干净
+- 生产域名：`https://model.ai-selector.top`
+- 生产托管：Vercel，响应头包含 `server: Vercel`
+- 数据记录：2279 个模型，23 个有数据的平台
+- 最后采集：`2026-08-13 00:52`
+- 最近健康检查：持续因数据超过 48 小时新鲜度门禁而失败
+
+## GitHub Actions 证据
+
+取证时工作流均为 active：`CI`、`Deploy to Aliyun`、`Deployment Health`、`Refresh Model Data on Main`、`Update Model Data`。
+
+四条手工刷新从 2026-08-12 起长期显示 queued：
+
+| Run ID | 触发方式 | 原始 HEAD | 状态 |
+|---|---|---|---|
+| 31616940314 | workflow_dispatch | 829b9aa | queued |
+| 31617426392 | workflow_dispatch | 829b9aa | queued |
+| 31618066335 | workflow_dispatch | 6bd7d16 | queued |
+| 31618365140 | workflow_dispatch | 76222bc | queued |
+
+调用取消 API 时 GitHub 返回 `Cannot cancel a workflow run that is completed`，但运行列表仍返回 queued。这些记录不能被正常取消，应视为 GitHub 状态不一致的幽灵队列，并通过全新的入口工作流身份和 concurrency 组绕开。
+
+旧 `Update Model Data` 最近可见的 schedule 运行停在 2026-07-09；8 月 13 日的数据恢复来自单独的 main push 调用链，之后没有新的每日 schedule 运行。
+
+仓库 Actions 已启用，允许全部 Actions；默认 `GITHUB_TOKEN` 权限为 read。生产刷新入口必须显式声明最小的 `contents: write` 权限。
+
+## Secrets 核验边界
+
+GitHub 只允许核验 Secret 名称，不能读取或证明其值仍有效。取证时 25 个数据平台/通知 Secret 名称存在，包括 `SF_KEY`、`ALIYUN_KEY`、`MS_KEY`、`ZH_KEY`、`VOLC_KEY`、`TENCENT_KEY`、`TELEGRAM_BOT_TOKEN` 和 `TELEGRAM_CHAT_ID` 等。
+
+工作流声明的 `YI_KEY` 不在仓库 Secret 名称列表中，因此零一万物采集会明确降级为 fallback；它不应拖垮其他平台刷新。
+
+历史腾讯 Cookie/凭据是否已在供应商侧轮换，无法通过当前仓库证明。当前树只从环境变量或被 Git 忽略的 `tencent_cookie.json` 读取凭据；安全责任人仍需在腾讯控制台确认旧凭据失效并记录轮换日期，不能把新值写入仓库或本报告。
+
+## 修复设计
+
+1. 新建 `refresh-model-data.yml`，独立承载 `schedule` 和 `workflow_dispatch`。
+2. `update-models.yml` 只保留 `workflow_call`，作为唯一执行体。
+3. 新入口使用 `production-model-data-refresh-v2` concurrency 组，绕开旧工作流幽灵队列，同时保证生产刷新串行。
+4. 删除用于临时恢复的 `refresh-on-main.yml`，避免任意 main push 都触发全量刷新。
+5. 部署健康检查只验证正式域名，数据过期时至多每 24 小时通知和触发一次恢复刷新。
+6. 告警状态通过 GitHub Actions cache 跨运行保存；状态恢复时发送一次恢复通知。
+7. 刷新失败保留数据、价格基准和 Playwright 诊断产物。
+8. 本地页面 dry run 使用 `python3 generate.py --render-only`；即使快照过期也不联网、不覆盖 JSON、不伪造采集时间。
+
+## 验收与待观察项
+
+一次手工全量刷新、自动提交、Vercel 部署和 2 小时新鲜度门禁必须在合并后现场验证。
+
+连续三次每日 schedule 成功属于时间型验收，当前开发会话不能提前宣称完成。判定标准：三个相邻自然日均由 `schedule` 触发，刷新工作流成功，提交/无变化结论合理，生产健康检查通过，且没有重复故障告警。

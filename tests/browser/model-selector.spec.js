@@ -43,6 +43,8 @@ test('loads the complete catalog without browser errors', async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await waitForCatalog(page);
   await expect(page).toHaveTitle(/AI 模型选择器/);
+  await expect(page.locator('#dataFreshness')).toHaveClass(/freshness-(fresh|warning|stale)/);
+  await expect(page.locator('#dataFreshness .freshness-age')).toContainText(modelData.meta.updated_at);
   expect(errors).toEqual([]);
 });
 
@@ -86,6 +88,7 @@ test('English page loads the same catalog', async ({ page }) => {
   await page.goto('/en/');
   await expect(page.locator('#grid .mc')).toHaveCount(modelData.models.length);
   await expect(page).toHaveTitle(/AI Model Selector/);
+  await expect(page.locator('#dataFreshness .freshness-age')).toContainText('Last collected:');
   expect(errors).toEqual([]);
 });
 
