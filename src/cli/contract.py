@@ -1,0 +1,35 @@
+"""Phase 17 重构期间必须保持兼容的公开运行接口。"""
+
+SUPPORTED_FLAGS = ("--refresh", "--render-only", "--update-db")
+
+ENVIRONMENT_VARIABLES = (
+    "AIHUBMIX_KEY",
+    "ALIYUN_KEY",
+    "BAICHUAN_KEY",
+    "BAIDU_KEY",
+    "CACHE_DIR",
+    "CA_KEY",
+    "COHERE_KEY",
+    "DEEPINFRA_KEY",
+    "DEEPSEEK_KEY",
+    "DEFER_SUCCESS_NOTIFICATION",
+    "FIREWORKS_KEY",
+    "GROQ_KEY",
+    "INFINI_KEY",
+    "JIEYUE_KEY",
+    "MINIMAX_KEY",
+    "MODELS_JSON",
+    "MS_KEY",
+    "N1N_KEY",
+    "NOVITA_KEY",
+    "OUTPUT_FILE",
+    "SF_KEY",
+    "SPARK_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TENCENT_KEY",
+    "TOGETHER_KEY",
+    "VOLC_KEY",
+    "YI_KEY",
+    "ZH_KEY",
+)

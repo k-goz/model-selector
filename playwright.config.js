@@ -1,4 +1,6 @@
 const { defineConfig, devices } = require('@playwright/test');
+const port = Number(process.env.PLAYWRIGHT_PORT || 8765);
+const baseURL = `http://127.0.0.1:${port}`;
 
 module.exports = defineConfig({
   testDir: './tests/browser',
@@ -9,13 +11,13 @@ module.exports = defineConfig({
   reporter: process.env.CI ? 'github' : 'list',
   outputDir: 'output/playwright/test-results',
   use: {
-    baseURL: 'http://127.0.0.1:8765',
+    baseURL,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'python3 -m http.server 8765 --bind 127.0.0.1',
-    url: 'http://127.0.0.1:8765',
+    command: `python3 -m http.server ${port} --bind 127.0.0.1`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
   },
   projects: [
