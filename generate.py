@@ -15,7 +15,6 @@ import time
 import json
 import sys
 import urllib.request
-import hashlib
 import re
 import html
 import logging
@@ -29,31 +28,8 @@ from src.pricing import (
     parse_moonshot_pricing_markdown,
     resolve_price_source_url,
 )
-from src.platforms import (
-    AiHubMixPlatform,
-    AliyunPlatform,
-    BaichuanPlatform,
-    ChatAnywherePlatform,
-    CoherePlatform,
-    DeepInfraPlatform,
-    DeepSeekPlatform,
-    FireworksPlatform,
-    GroqPlatform,
-    InfiniPlatform,
-    JieyuePlatform,
-    MiniMaxPlatform,
-    MoonshotPlatform,
-    N1NPlatform,
-    NovitaPlatform,
-    OpenRouterPlatform,
-    SiliconFlowPlatform,
-    SparkPlatform,
-    TencentPlatform,
-    TogetherPlatform,
-    VolcenginePlatform,
-    ZhipuPlatform,
-    YiPlatform,
-)
+from src.collection import CachedHttpClient, collect_platform_catalog
+from src.config import RuntimeConfig
 from src.monitoring import update_ping_history
 from src.models.context import enrich_context_metadata, restore_inferred_context_metadata
 from src.rendering import compose_page, load_asset, render_template
@@ -71,133 +47,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ═══════════════════════════════════════════════════════════════════════════
-# API Keys 配置（仅从环境变量读取，无硬编码默认值）
+# 运行配置（仅从环境变量读取，无硬编码密钥默认值）
 # ═══════════════════════════════════════════════════════════════════════════
-# 国内平台
-SF  = os.environ.get("SF_KEY", "")           # 硅基流动
-ALI = os.environ.get("ALIYUN_KEY", "")       # 阿里百炼
-MS  = os.environ.get("MS_KEY", "")           # 月之暗面
-ZH  = os.environ.get("ZH_KEY", "")           # 智谱 AI
-VC  = os.environ.get("VOLC_KEY", "")         # 火山引擎
-TX  = os.environ.get("TENCENT_KEY", "")      # 腾讯混元
-XH  = os.environ.get("SPARK_KEY", "")        # 讯飞星火
-MM  = os.environ.get("MINIMAX_KEY", "")      # MiniMax
-YW  = os.environ.get("YI_KEY", "")           # 零一万物
-BC  = os.environ.get("BAICHUAN_KEY", "")     # 百川智能
-JC  = os.environ.get("JIEYUE_KEY", "")       # 阶跃星辰
-DS  = os.environ.get("DEEPSEEK_KEY", "")     # DeepSeek
-BDK = os.environ.get("BAIDU_KEY", "")        # 百度文心
-
-# 国外平台
-GQ  = os.environ.get("GROQ_KEY", "")         # Groq
-TG  = os.environ.get("TOGETHER_KEY", "")     # Together AI
-FW  = os.environ.get("FIREWORKS_KEY", "")    # Fireworks AI
-CO  = os.environ.get("COHERE_KEY", "")       # Cohere
-DEEPINFRA = os.environ.get("DEEPINFRA_KEY", "")  # DeepInfra
-AIHUBMIX = os.environ.get("AIHUBMIX_KEY", "")    # AiHubMix
-
-# 聚合平台
-INFINI = os.environ.get("INFINI_KEY", "")    # 无问芯穹
-NOVITA = os.environ.get("NOVITA_KEY", "")    # Novita AI
-N1N = os.environ.get("N1N_KEY", "")          # n1n.ai
-CA = os.environ.get("CA_KEY", "")            # ChatAnywhere
-
-def check_api_keys() -> Dict[str, bool]:
-    """检查各平台 API Key 配置状态"""
-    keys_status = {
-        "硅基流动": bool(SF),
-        "阿里百炼": bool(ALI),
-        "月之暗面": bool(MS),
-        "智谱AI": bool(ZH),
-        "火山引擎": bool(VC),
-        "腾讯混元": bool(TX),
-        "讯飞星火": bool(XH),
-        "MiniMax": bool(MM),
-        "零一万物": bool(YW),
-        "百川智能": bool(BC),
-        "阶跃星辰": bool(JC),
-        "DeepSeek": bool(DS),
-        "百度文心": bool(BDK),
-        "Groq": bool(GQ),
-        "Together AI": bool(TG),
-        "Fireworks AI": bool(FW),
-        "Cohere": bool(CO),
-        "DeepInfra": bool(DEEPINFRA),
-        "AiHubMix": bool(AIHUBMIX),
-        "无问芯穹": bool(INFINI),
-        "Novita AI": bool(NOVITA),
-        "n1n.ai": bool(N1N),
-        "ChatAnywhere": bool(CA),
-    }
-    configured = sum(1 for v in keys_status.values() if v)
-    total = len(keys_status)
-    logger.info(f"API Key 配置状态: {configured}/{total} 个平台已配置")
-    
-    # 显示未配置的平台（仅显示有对应 API 的平台）
-    unconfigured = [k for k, v in keys_status.items() if not v]
-    if unconfigured:
-        logger.info(f"未配置的平台将使用缓存数据或硬编码列表: {', '.join(unconfigured)}")
-    
-    return keys_status
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 自定义异常类
-# ═══════════════════════════════════════════════════════════════════════════
-class ModelSelectorError(Exception):
-    """模型选择器基础异常"""
-    pass
-
-class PriceNotFoundError(ModelSelectorError):
-    """价格未找到异常"""
-    def __init__(self, platform: str, model: str, message: str = ""):
-        self.platform = platform
-        self.model = model
-        self.message = message or f"价格未找到: [{platform}] {model}"
-        super().__init__(self.message)
-
-class APIFetchError(ModelSelectorError):
-    """API 获取失败异常"""
-    def __init__(self, platform: str, url: str, original_error: Exception = None):
-        self.platform = platform
-        self.url = url
-        self.original_error = original_error
-        message = f"API 获取失败: [{platform}] {url}"
-        if original_error:
-            message += f" - {str(original_error)[:100]}"
-        super().__init__(message)
-
-class PriceParseError(ModelSelectorError):
-    """价格解析异常"""
-    def __init__(self, source: str, raw_data: str = "", message: str = ""):
-        self.source = source
-        self.raw_data = raw_data[:200] if raw_data else ""  # 限制长度
-        self.message = message or f"价格解析失败: {source}"
-        super().__init__(self.message)
-
-class CacheError(ModelSelectorError):
-    """缓存操作异常"""
-    def __init__(self, operation: str, path: str, original_error: Exception = None):
-        self.operation = operation
-        self.path = path
-        self.original_error = original_error
-        message = f"缓存{operation}失败: {path}"
-        if original_error:
-            message += f" - {str(original_error)[:80]}"
-        super().__init__(message)
+CONFIG = RuntimeConfig.from_environment(__file__, sys.argv)
 
 # ─── 输出路径 (支持 OUTPUT_FILE 环境变量覆盖，适配 CI 环境) ───
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-OUT = os.environ.get("OUTPUT_FILE", os.path.join(SCRIPT_DIR, "index.html"))
-CACHE_DIR = os.environ.get("CACHE_DIR", os.path.join(SCRIPT_DIR, ".cache"))
-PREV_DATA = os.path.join(CACHE_DIR, "prev_models.json")
-os.makedirs(CACHE_DIR, exist_ok=True)
+SCRIPT_DIR = str(CONFIG.project_dir)
+OUT = str(CONFIG.output_file)
+CACHE_DIR = str(CONFIG.cache_dir)
+PREV_DATA = str(CONFIG.previous_data_file)
+HTTP_CLIENT = CachedHttpClient(CONFIG.cache_dir)
 
 # ─── 解析参数 ───
-UPDATE_DB = "--update-db" in sys.argv
-FORCE_REFRESH = "--refresh" in sys.argv
-RENDER_ONLY = "--render-only" in sys.argv
-if RENDER_ONLY and (FORCE_REFRESH or UPDATE_DB):
-    raise SystemExit("--render-only 不能与 --refresh 或 --update-db 同时使用")
+UPDATE_DB = CONFIG.update_db
+FORCE_REFRESH = CONFIG.force_refresh
+RENDER_ONLY = CONFIG.render_only
 
 # ─── 汇率 ───
 USD_TO_CNY = 7.25
@@ -595,64 +459,8 @@ def get_db_price(platform_key, raw_model_id):
 
 # ─── 通用请求函数 (带重试和缓存) ───
 def fj(url: str, tok: str = "", to: int = 20, retries: int = 3, platform: str = "") -> Optional[Dict]:
-    """
-    通用 JSON API 请求函数，带重试和缓存机制
-    
-    Args:
-        url: API URL
-        tok: Bearer Token（可选）
-        to: 超时时间（秒）
-        retries: 重试次数
-        platform: 平台名称（用于日志）
-    
-    Returns:
-        JSON 数据字典，失败返回 None
-    """
-    h = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"}
-    if tok: 
-        h["Authorization"] = "Bearer " + tok
-    
-    for attempt in range(retries):
-        try:
-            req = urllib.request.Request(url, headers=h)
-            with urllib.request.urlopen(req, timeout=to) as r:
-                data = r.read()
-                # 缓存到本地
-                ch = hashlib.md5(url.encode()).hexdigest()
-                cache_path = os.path.join(CACHE_DIR, ch + ".json")
-                try:
-                    with open(cache_path, "wb") as cf:
-                        cf.write(data)
-                except IOError as e:
-                    logger.warning(f"缓存写入失败: {cache_path} - {e}")
-                return json.loads(data)
-        except urllib.error.URLError as e:
-            logger.warning(f"网络请求失败 (尝试 {attempt + 1}/{retries}): [{platform}] {url} - {e}")
-            if attempt < retries - 1:
-                wait_time = 1 * (attempt + 1)
-                logger.info(f"等待 {wait_time} 秒后重试...")
-                time.sleep(wait_time)
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON 解析失败: [{platform}] {url} - {e}")
-            return None
-        except Exception as e:
-            logger.error(f"未知错误 (尝试 {attempt + 1}/{retries}): [{platform}] {url} - {e}")
-            if attempt < retries - 1:
-                time.sleep(1 * (attempt + 1))
-    
-    # 所有重试失败，尝试从缓存读取
-    ch = hashlib.md5(url.encode()).hexdigest()
-    cp = os.path.join(CACHE_DIR, ch + ".json")
-    if os.path.exists(cp):
-        try:
-            logger.info(f"使用缓存数据: {url}")
-            with open(cp, "r", encoding="utf-8") as cf:
-                return json.load(cf)
-        except (IOError, json.JSONDecodeError) as e:
-            logger.warning(f"缓存读取失败: {cp} - {e}")
-    
-    logger.warning(f"API 获取失败且无缓存: [{platform}] {url}")
-    return None
+    """Legacy-compatible wrapper around the collection HTTP boundary."""
+    return HTTP_CLIENT.fetch_json(url, tok, timeout=to, retries=retries, platform=platform)
 
 # ─── 价格分级 ───
 def PT(inp: float, out: float, cur: str = "CNY", price_unit: str = "per_token") -> str:
@@ -1098,7 +906,7 @@ if UPDATE_DB:
 
 
 # ─── 检查 models_data.json（伪动态方案：优先从静态 JSON 加载） ───
-MODELS_JSON = os.environ.get("MODELS_JSON", os.path.join(SCRIPT_DIR, "models_data.json"))
+MODELS_JSON = str(CONFIG.models_file)
 USE_JSON_DATA = False
 t0 = time.time()
 cards = []
@@ -1232,10 +1040,11 @@ if not USE_JSON_DATA:
     print("Fetching data...")
     t0 = time.time()
     data_updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
+    catalog_collection = collect_platform_catalog(CONFIG.api_keys, CONFIG.cache_dir, HTTP_CLIENT)
+    source_runs.update(catalog_collection.source_runs)
 
     # ─── 已迁移平台：统一抓取结果 + 数据血缘 ───
-    ali_result = AliyunPlatform(api_key=ALI).fetch_result()
-    source_runs["aliyun"] = ali_result.metadata.to_dict()
+    ali_result = catalog_collection["aliyun"]
     ali = [{
         "n": model["id"],
         "i": float(model.get("input_price") or 0),
@@ -1247,35 +1056,27 @@ if not USE_JSON_DATA:
     } for model in ali_result.models]
     print("  Aliyun:", len(ali), file=sys.stderr)
 
-    siliconflow_result = SiliconFlowPlatform(api_key=SF).fetch_result()
-    source_runs["siliconflow"] = siliconflow_result.metadata.to_dict()
+    siliconflow_result = catalog_collection["siliconflow"]
     sf_ids = [model["id"] for model in siliconflow_result.models]
     print("  SF:", len(sf_ids), file=sys.stderr)
 
     # ─── 月之暗面 ───
-    moonshot_result = MoonshotPlatform(api_key=MS).fetch_result()
-    source_runs["moonshot"] = moonshot_result.metadata.to_dict()
+    moonshot_result = catalog_collection["moonshot"]
     ms_list = moonshot_result.models
     print("  Moonshot:", len(ms_list), file=sys.stderr)
 
     # ─── 智谱AI ───
-    zhipu_result = ZhipuPlatform(api_key=ZH).fetch_result()
-    source_runs["zhipu"] = zhipu_result.metadata.to_dict()
+    zhipu_result = catalog_collection["zhipu"]
     zh_ids = [model["id"] for model in zhipu_result.models]
     print("  Zhipu:", len(zh_ids), file=sys.stderr)
 
     # ─── 火山引擎 ───
-    volcengine_result = VolcenginePlatform(api_key=VC).fetch_result()
-    source_runs["volcengine"] = volcengine_result.metadata.to_dict()
+    volcengine_result = catalog_collection["volcengine"]
     vc_list = volcengine_result.models
     print("  Volcengine:", len(vc_list), file=sys.stderr)
 
     # ─── OpenRouter（公开目录，失败时使用本地缓存） ───
-    openrouter_result = OpenRouterPlatform(
-        cache_path=os.path.join(CACHE_DIR, "openrouter_full.json"),
-        json_fetcher=lambda url, key: fj(url, key, retries=3),
-    ).fetch_result()
-    source_runs["openrouter"] = openrouter_result.metadata.to_dict()
+    openrouter_result = catalog_collection["openrouter"]
     OR = openrouter_result.models
     print("  OpenRouter:", len(OR), file=sys.stderr)
 
@@ -1293,26 +1094,22 @@ if not USE_JSON_DATA:
     print("  OpenRouter prices lookup: %d models" % len(or_prices), file=sys.stderr)
 
     # ─── 腾讯混元 ───
-    tencent_result = TencentPlatform(api_key=TX).fetch_result()
-    source_runs["tencent"] = tencent_result.metadata.to_dict()
+    tencent_result = catalog_collection["tencent"]
     tx_ids = [model["id"] for model in tencent_result.models]
     print("  Tencent:", len(tx_ids), file=sys.stderr)
 
     # ─── 讯飞星火 ───
-    spark_result = SparkPlatform(api_key=XH).fetch_result()
-    source_runs["spark"] = spark_result.metadata.to_dict()
+    spark_result = catalog_collection["spark"]
     xh_ids = [model["id"] for model in spark_result.models]
     print("  Spark:", len(xh_ids), file=sys.stderr)
 
     # ─── MiniMax ───
-    minimax_result = MiniMaxPlatform(api_key=MM).fetch_result()
-    source_runs["minimax"] = minimax_result.metadata.to_dict()
+    minimax_result = catalog_collection["minimax"]
     mm_ids = [model["id"] for model in minimax_result.models]
     print("  MiniMax:", len(mm_ids), file=sys.stderr)
 
     # ─── 零一万物 ───
-    yi_result = YiPlatform(api_key=YW).fetch_result()
-    source_runs["yi"] = yi_result.metadata.to_dict()
+    yi_result = catalog_collection["yi"]
     yw_ids = [model["id"] for model in yi_result.models]
     print("  Yi:", len(yw_ids), file=sys.stderr)
 
@@ -1320,83 +1117,63 @@ if not USE_JSON_DATA:
     BD = []
 
     # ─── 百川智能 ───
-    baichuan_result = BaichuanPlatform(api_key=BC).fetch_result()
-    source_runs["baichuan"] = baichuan_result.metadata.to_dict()
+    baichuan_result = catalog_collection["baichuan"]
     bc_ids = [model["id"] for model in baichuan_result.models]
     print("  Baichuan:", len(bc_ids), file=sys.stderr)
 
     # ─── 阶跃星辰 ───
-    jieyue_result = JieyuePlatform(api_key=JC).fetch_result()
-    source_runs["jieyue"] = jieyue_result.metadata.to_dict()
+    jieyue_result = catalog_collection["jieyue"]
     jc_ids = [model["id"] for model in jieyue_result.models]
     print("  Jieyue:", len(jc_ids), file=sys.stderr)
 
     # ─── DeepSeek 官方 ───
-    deepseek_result = DeepSeekPlatform(api_key=DS).fetch_result()
-    source_runs["deepseek"] = deepseek_result.metadata.to_dict()
+    deepseek_result = catalog_collection["deepseek"]
     ds_ids = [model["id"] for model in deepseek_result.models]
     print("  DeepSeek:", len(ds_ids), file=sys.stderr)
 
     # ─── Groq ───
-    groq_result = GroqPlatform(api_key=GQ).fetch_result()
-    source_runs["groq"] = groq_result.metadata.to_dict()
+    groq_result = catalog_collection["groq"]
     gq_ids = [model["id"] for model in groq_result.models]
     print("  Groq:", len(gq_ids), file=sys.stderr)
 
     # ─── Together AI ───
-    together_result = TogetherPlatform(
-        api_key=TG,
-        json_fetcher=lambda url, key: fj(url, key),
-    ).fetch_result()
-    source_runs["together"] = together_result.metadata.to_dict()
+    together_result = catalog_collection["together"]
     tg_list = together_result.models
     print("  Together:", len(tg_list), file=sys.stderr)
 
     # ─── Fireworks AI ───
-    fireworks_result = FireworksPlatform(api_key=FW).fetch_result()
-    source_runs["fireworks"] = fireworks_result.metadata.to_dict()
+    fireworks_result = catalog_collection["fireworks"]
     fw_list = fireworks_result.models
     print("  Fireworks:", len(fw_list), file=sys.stderr)
 
     # ─── Cohere ───
-    cohere_result = CoherePlatform(api_key=CO).fetch_result()
-    source_runs["cohere"] = cohere_result.metadata.to_dict()
+    cohere_result = catalog_collection["cohere"]
     co_list = cohere_result.models
     print("  Cohere:", len(co_list), file=sys.stderr)
 
     # 无问芯穹 (InfiniAI)
-    infini_result = InfiniPlatform(api_key=INFINI).fetch_result()
-    source_runs["infini"] = infini_result.metadata.to_dict()
+    infini_result = catalog_collection["infini"]
     infini_list = [model["id"] for model in infini_result.models]
     print("  InfiniAI:", len(infini_list), file=sys.stderr)
 
     # Novita AI
-    novita_result = NovitaPlatform(
-        api_key=NOVITA,
-        json_fetcher=lambda url, key: fj(url, key),
-    ).fetch_result()
-    source_runs["novita"] = novita_result.metadata.to_dict()
+    novita_result = catalog_collection["novita"]
     novita_list = novita_result.models
     print("  Novita:", len(novita_list), file=sys.stderr)
 
     # DeepInfra（公开目录，包含真实定价）
-    deepinfra_result = DeepInfraPlatform(
-        json_fetcher=lambda url, key: fj(url, key),
-    ).fetch_result()
-    source_runs["deepinfra"] = deepinfra_result.metadata.to_dict()
+    deepinfra_result = catalog_collection["deepinfra"]
     di_list = deepinfra_result.models
     print("  DeepInfra:", len(di_list), file=sys.stderr)
 
 
     # AiHubMix
-    aihubmix_result = AiHubMixPlatform(api_key=AIHUBMIX).fetch_result()
-    source_runs["aihubmix"] = aihubmix_result.metadata.to_dict()
+    aihubmix_result = catalog_collection["aihubmix"]
     ahm_list = [model["id"] for model in aihubmix_result.models]
     print("  AiHubMix:", len(ahm_list), file=sys.stderr)
 
     # n1n.ai
-    n1n_result = N1NPlatform().fetch_result()
-    source_runs["n1n"] = n1n_result.metadata.to_dict()
+    n1n_result = catalog_collection["n1n"]
     n1n_list = [model["id"] for model in n1n_result.models]
     n1n_prices = {
         model["id"]: (float(model.get("input_price") or 0), float(model.get("output_price") or 0))
@@ -1406,8 +1183,7 @@ if not USE_JSON_DATA:
     print("  n1n.ai:", len(n1n_list), file=sys.stderr)
 
     # ChatAnywhere
-    chatanywhere_result = ChatAnywherePlatform().fetch_result()
-    source_runs["ca"] = chatanywhere_result.metadata.to_dict()
+    chatanywhere_result = catalog_collection["ca"]
     ca_list = [model["id"] for model in chatanywhere_result.models]
     ca_prices = {
         model["id"]: (float(model.get("input_price") or 0), float(model.get("output_price") or 0))
@@ -1777,8 +1553,8 @@ drift_list = []
 # ─── Telegram 通知（每次运行都发送）───
 def send_telegram_notification(total_models, changes):
     """发送每日更新通知到 Telegram（无论是否有价格变动）"""
-    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    bot_token = CONFIG.telegram_bot_token
+    chat_id = CONFIG.telegram_chat_id
     if not bot_token or not chat_id:
         return
     
@@ -1834,7 +1610,7 @@ def send_telegram_notification(total_models, changes):
         print("  Telegram notification failed:", e, file=sys.stderr)
 
 # 每次运行都发送通知
-if not RENDER_ONLY and os.environ.get("DEFER_SUCCESS_NOTIFICATION") != "1":
+if not RENDER_ONLY and not CONFIG.defer_success_notification:
     send_telegram_notification(total, price_changes)
 
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
