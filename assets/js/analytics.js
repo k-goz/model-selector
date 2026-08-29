@@ -1,6 +1,6 @@
 (function(global){
 'use strict';
-var allowed=['catalog_loaded','search_used','filter_used','compare_created','calculator_completed','code_copied','share_created','provider_clicked','web_vital'];
+var allowed=['catalog_loaded','search_used','filter_used','compare_created','calculator_completed','code_copied','share_created','provider_clicked','price_subscription_created','price_subscription_removed','price_alert_delivered','web_vital'];
 function track(name,properties){
 if(allowed.indexOf(name)===-1)return false;
 var event={name:name,at:new Date().toISOString(),properties:properties||{}};

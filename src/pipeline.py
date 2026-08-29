@@ -1260,6 +1260,7 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
         "assets/js/routing.js",
         "assets/js/analytics.js",
         "assets/js/core.js",
+        "assets/js/alerts.js",
     ]
     for script_path in frontend_scripts:
         load_asset(script_path)

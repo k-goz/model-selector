@@ -48,10 +48,10 @@ jobs:
           python validate_site.py
           python scripts/check_frontend_budget.py
 
-      - name: Run browser regression tests
-        run: npm run test:browser
-
       - name: Run Lighthouse budgets
         run: |
           npm run serve:test >/tmp/model-selector-http.log 2>&1 &
           npm run test:lighthouse
+
+      - name: Run browser regression tests
+        run: npm run test:browser

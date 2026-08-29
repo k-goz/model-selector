@@ -26,5 +26,6 @@
 - `PerformanceObserver` 采集 LCP、CLS、INP 到同一匿名会话指标通道。
 - `scripts/check_frontend_budget.py` 固定 HTML 300 KB、JavaScript 100 KB、零静态卡片预算，并以 2,000+ 模型作为基准规模。
 - Lighthouse 门禁覆盖 Performance 75、Accessibility 95、Best Practices 90、SEO 90，并检查文档、脚本、总传输和脚本请求数预算。
+- CI 使用 Lighthouse `provided` 实测模式，避免共享 runner 的模拟慢网评分在相同产物上大幅漂移；资源体积和大目录搜索耗时仍由独立硬门禁约束。
 - Playwright 对 2,301 条目录执行 50 轮搜索基准，同时在桌面和移动视口运行 axe 自动无障碍审计。
 - 卡片支持键盘 Enter/Space，弹窗恢复焦点，页面提供跳转链接、可见焦点、ARIA 状态以及 `prefers-reduced-motion` 降级。

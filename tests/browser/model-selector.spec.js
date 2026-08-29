@@ -142,26 +142,34 @@ test('English page loads the same catalog', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('trust metadata and v2 share state survive reload', async ({ page, context }) => {
+test('trust metadata and v2 share state survive reload', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chromium', 'Full restoration is covered on desktop; mobile share creation is covered separately.');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await waitForCatalog(page);
-  await openSidebar(page);
-  await expandSidebarGroup(page, '工具');
   await expect(page.locator('#grid .confidence').first()).toBeVisible();
   await expect(page.locator('#grid .evidence-time').first()).toBeVisible();
   const checkboxes = page.locator('#grid .mc .mc-cb');
   await checkboxes.nth(0).check();
   await checkboxes.nth(1).check();
+  await openSidebar(page);
   await expandSidebarGroup(page, '月费计算器');
   await page.locator('#calcChats').fill('321');
   await page.locator('#calcTokens').fill('654');
-  await page.locator('#shareBtn').click();
+  await page.evaluate(() => copyShareLink());
   await expect.poll(() => page.url()).toContain('#v2=');
-  await page.reload();
+  await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: 10_000 });
   await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
   await expect(page.locator('#cmpCount')).toHaveText('2');
   await expect(page.locator('#calcChats')).toHaveValue('321');
   await expect(page.locator('#calcTokens')).toHaveValue('654');
+});
+
+test('share action creates a versioned URL', async ({ page }) => {
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await page.locator('#shareBtn').click();
+  await expect.poll(() => page.url()).toContain('#v2=');
 });
 
 test('filter state survives a page reload', async ({ page }) => {
@@ -171,7 +179,7 @@ test('filter state survives a page reload', async ({ page }) => {
   await expect.poll(() => page.url()).toContain('#');
   const filteredCount = await page.locator('#filterCount strong').textContent();
 
-  await page.reload();
+  await page.goto(page.url(), { waitUntil: 'domcontentloaded', timeout: 10_000 });
   await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
   await expect(page.locator('#si')).toHaveValue('deepseek-v4-pro');
   await expect(page.locator('#filterCount strong')).toHaveText(filteredCount);
@@ -201,4 +209,24 @@ test('model card opens switchable and copyable integration code', async ({ page,
   await expect(page.locator('#codeBlock pre')).toContainText('curl ');
   await page.locator('.code-copy-btn').click();
   await expect(page.locator('.code-copy-btn')).toHaveText('已复制');
+});
+
+test('browser price alert supports subscribe, delivery record and unsubscribe', async ({ page, context }) => {
+  await context.grantPermissions(['notifications']);
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await page.locator('#priceAlertBtn').click();
+  await expect(page.locator('#alertModal')).toHaveClass(/show/);
+  await page.locator('#alertKind').selectOption('drop');
+  await page.locator('#alertThreshold').fill('15');
+  await page.locator('#alertCreate').click();
+  await expect(page.locator('.alert-item')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => window.ModelSelectorAlerts.subscriptions().length)).toBe(1);
+  await page.evaluate(() => window.ModelSelectorAlerts.setTransport(async () => true));
+  await page.locator('#alertTest').click();
+  await expect.poll(() => page.evaluate(() => window.ModelSelectorAlerts.deliveries()[0]?.status)).toBe('sent');
+  await expect(page.locator('.alert-log')).toContainText('已发送');
+  await page.locator('.alert-item button').click();
+  await expect(page.locator('.alert-item')).toHaveCount(0);
 });
