@@ -63,6 +63,15 @@ test('search and platform filters update visible model count', async ({ page }) 
   expect(openRouterCount).toBe(modelData.meta.platform_counts.openrouter);
 });
 
+test('time-tiered prices remain visible after JSON hydration', async ({ page }) => {
+  await waitForCatalog(page);
+  const card = page.locator('.mc[data-p="deepseek"][data-model-name="deepseek-v4-pro"]');
+  await expect(card.locator('.price-badge')).toContainText('IN:¥4.50–9.00/M OUT:¥13.50–27.00/M');
+  await expect(card.locator('.price-badge')).toHaveAttribute('title', /空闲时段至高峰时段/);
+  await expect(card).toHaveAttribute('data-inp', '9');
+  await expect(card).toHaveAttribute('data-out', '27');
+});
+
 test('currency, layout, theme and compare interactions remain functional', async ({ page }) => {
   await waitForCatalog(page);
   await openSidebar(page);

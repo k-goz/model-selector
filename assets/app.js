@@ -112,6 +112,9 @@ function renderModelsFromJSON(data) {
         var priceInfo = classifyModelPrice(m, tags);
         var priceStatus = priceInfo.status;
         var billingUnit = priceInfo.billingUnit;
+        var inputPriceDisplay = String(m.input_price_display || '');
+        var outputPriceDisplay = String(m.output_price_display || '');
+        var pricingNote = String(m.pricing_note || '');
 
         // 价格分级
         var pt = 'mid';
@@ -151,6 +154,9 @@ function renderModelsFromJSON(data) {
         if (priceStatus !== 'priced') {
             var statusClass = priceStatus === 'free' ? 'price-free' : 'price-unknown';
             priceHtml = '<span class="price-badge ' + statusClass + '">' + escapeHtml(priceInfo.label) + '</span>';
+        } else if (cur === 'CNY' && inputPriceDisplay && outputPriceDisplay) {
+            priceHtml = '<span class="price-badge price-mid" title="' + escapeHtml(pricingNote) + '">IN:'
+                + escapeHtml(inputPriceDisplay) + ' OUT:' + escapeHtml(outputPriceDisplay) + '</span>';
         } else if (cur === 'CNY') {
             if (inpF === outF) { var cc2 = inpF < 1 ? 'price-cheap' : inpF < 10 ? 'price-mid' : inpF < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc2 + '">¥' + inpF.toFixed(2) + '/M</span>'; }
             else priceHtml = '<span class="price-badge price-mid">IN:¥' + inpF.toFixed(2) + ' OUT:¥' + outF.toFixed(2) + '/M</span>';
@@ -177,6 +183,8 @@ function renderModelsFromJSON(data) {
         var cardHtml = '<div class="mc" style="--c:' + pc + '" data-s="' + escapeHtml(scen) + '" data-p="' + escapeHtml(pid) + '" data-pt="' + pt + '" '
             + 'data-inp="' + inpS + '" data-out="' + outS + '" data-cur="' + cur + '" data-pu="' + pu + '" '
             + 'data-ctx="' + ctxNum + '" data-ctx-display="' + escapeHtml(ctx) + '" data-price-status="' + priceStatus + '" '
+            + 'data-inp-display="' + escapeHtml(inputPriceDisplay) + '" data-out-display="' + escapeHtml(outputPriceDisplay) + '" '
+            + 'data-pricing-note="' + escapeHtml(pricingNote) + '" '
             + 'data-billing-unit="' + billingUnit + '" data-base-url="' + escapeHtml(baseUrl) + '" '
             + 'data-model-name="' + escapeHtml(mname) + '" ' + famAttr + ' '
             + 'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p)">'
