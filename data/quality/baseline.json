@@ -1,0 +1,21 @@
+{
+  "format_version": "1.0",
+  "established_from": "models_data.json@2026-08-30 00:06",
+  "baseline": {
+    "models": 2301,
+    "platforms": 23,
+    "fallback_ratio": 0.0456323338,
+    "unknown_context": 567,
+    "unknown_price": 4
+  },
+  "policy": {
+    "max_model_drop_ratio": 0.05,
+    "max_platform_drop": 0,
+    "max_fallback_ratio_increase": 0.05,
+    "max_unknown_context_increase": 100,
+    "max_removed_offerings": 100,
+    "large_price_change_ratio": 0.5,
+    "max_large_price_changes": 20
+  },
+  "review_after_successful_refreshes": 7
+}

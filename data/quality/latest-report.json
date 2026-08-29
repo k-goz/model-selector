@@ -1,0 +1,30 @@
+{
+  "baseline": {
+    "fallback_ratio": 0.04563233376792699,
+    "models": 2301,
+    "platforms": 23,
+    "unknown_context": 567,
+    "unknown_price": 4
+  },
+  "candidate": {
+    "fallback_ratio": 0.04563233376792699,
+    "models": 2301,
+    "platforms": 23,
+    "unknown_context": 567,
+    "unknown_price": 4
+  },
+  "format_version": "1.0",
+  "ground_truth_gate": "delegated_to_verify_ground_truth.py",
+  "high_risk": [],
+  "large_price_changes": [],
+  "policy": {
+    "large_price_change_ratio": 0.5,
+    "max_fallback_ratio_increase": 0.05,
+    "max_large_price_changes": 20,
+    "max_model_drop_ratio": 0.05,
+    "max_platform_drop": 0,
+    "max_removed_offerings": 100,
+    "max_unknown_context_increase": 100
+  },
+  "status": "passed"
+}

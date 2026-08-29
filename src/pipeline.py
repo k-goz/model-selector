@@ -43,7 +43,8 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
     from src.config import RuntimeConfig
     from src.monitoring import update_ping_history
     from src.notifications import send_telegram_refresh
-    from src.history import write_history_artifacts
+    from src.history import write_history_artifacts, write_lifecycle_archive
+    from src.quality import assess_catalog_risk, load_policy, write_quality_report
     from src.publication import build_catalog, write_catalog
     from src.rendering import (
         compose_page,
@@ -1449,11 +1450,27 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
                 diff_path=history_root / "diffs" / "latest.json",
                 summary_path=history_root / "history" / "summary.json",
             )
+            write_lifecycle_archive(
+                history_root / "history" / "lifecycle-archive.json",
+                history_before,
+                catalog,
+                history_diff,
+            )
+            quality_report = assess_catalog_risk(
+                history_before,
+                catalog,
+                history_diff,
+                policy=load_policy(history_root / "quality" / "baseline.json"),
+            )
+            write_quality_report(history_root / "quality" / "latest-report.json", quality_report)
+            if quality_report["status"] == "blocked":
+                raise RuntimeError("高风险目录差异阻止发布: %s" % quality_report["high_risk"])
             write_catalog(CONFIG.models_file, catalog)
             print("  models_data.json updated (%d models)" % total, file=sys.stderr)
             print("  Catalog diff: %s" % history_diff["summary"], file=sys.stderr)
         except Exception as error:
             print("  models_data.json update failed:", str(error)[:80], file=sys.stderr)
+            raise
     # ─── 每日测速并保存历史数据 ───
     try:
         if RENDER_ONLY:

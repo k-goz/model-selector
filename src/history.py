@@ -199,3 +199,56 @@ def write_history_artifacts(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return diff
+
+
+def update_lifecycle_archive(
+    existing: dict[str, Any] | None,
+    before: dict[str, Any],
+    after: dict[str, Any],
+    diff: dict[str, Any],
+) -> dict[str, Any]:
+    """归档消失的 offering，并标记后来重新出现的 offering。"""
+    archive = dict(existing or {"format_version": "1.0", "offerings": []})
+    records = {record["provider_offering_id"]: dict(record) for record in archive.get("offerings", [])}
+    before_index, after_index = _index(before), _index(after)
+    for removed in diff.get("removed", []):
+        offering_id = removed["provider_offering_id"]
+        model = before_index[offering_id]
+        records[offering_id] = {
+            **_identity(model),
+            "status": "retired",
+            "last_seen_at": model.get("evidence_at") or model.get("collected_at"),
+            "retired_at": diff["discovered_at"],
+            "restored_at": None,
+            "last_known": {
+                "input_price": model.get("input_price"),
+                "output_price": model.get("output_price"),
+                "currency": model.get("currency"),
+                "price_status": model.get("price_status"),
+                "price_source_url": model.get("price_source_url"),
+                "lifecycle": model.get("lifecycle"),
+            },
+        }
+    for added in diff.get("added", []):
+        offering_id = added["provider_offering_id"]
+        if offering_id in records:
+            records[offering_id]["status"] = "restored"
+            records[offering_id]["restored_at"] = diff["discovered_at"]
+            records[offering_id]["last_seen_at"] = after_index[offering_id].get("evidence_at")
+    archive["format_version"] = "1.0"
+    archive["updated_at"] = diff["discovered_at"]
+    archive["offerings"] = [records[key] for key in sorted(records)]
+    return archive
+
+
+def write_lifecycle_archive(
+    path: Path,
+    before: dict[str, Any],
+    after: dict[str, Any],
+    diff: dict[str, Any],
+) -> dict[str, Any]:
+    existing = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+    archive = update_lifecycle_archive(existing, before, after, diff)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(archive, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return archive
