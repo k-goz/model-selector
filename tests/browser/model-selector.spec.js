@@ -156,7 +156,7 @@ test('trust metadata and v2 share state survive reload', async ({ page, context 
   await page.locator('#calcTokens').fill('654');
   await page.evaluate(() => copyShareLink());
   await expect.poll(() => page.url()).toContain('#v2=');
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.reload({ waitUntil: 'commit', timeout: 10_000 });
   await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
   await expect(page.locator('#cmpCount')).toHaveText('2');
   await expect(page.locator('#calcChats')).toHaveValue('321');
@@ -170,7 +170,7 @@ test('filter state survives a page reload', async ({ page }) => {
   await expect.poll(() => page.url()).toContain('#');
   const filteredCount = await page.locator('#filterCount strong').textContent();
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.reload({ waitUntil: 'commit', timeout: 10_000 });
   await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
   await expect(page.locator('#si')).toHaveValue('deepseek-v4-pro');
   await expect(page.locator('#filterCount strong')).toHaveText(filteredCount);
