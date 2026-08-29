@@ -202,3 +202,23 @@ test('model card opens switchable and copyable integration code', async ({ page,
   await page.locator('.code-copy-btn').click();
   await expect(page.locator('.code-copy-btn')).toHaveText('已复制');
 });
+
+test('browser price alert supports subscribe, delivery record and unsubscribe', async ({ page, context }) => {
+  await context.grantPermissions(['notifications']);
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await page.locator('#priceAlertBtn').click();
+  await expect(page.locator('#alertModal')).toHaveClass(/show/);
+  await page.locator('#alertKind').selectOption('drop');
+  await page.locator('#alertThreshold').fill('15');
+  await page.locator('#alertCreate').click();
+  await expect(page.locator('.alert-item')).toHaveCount(1);
+  await expect.poll(() => page.evaluate(() => window.ModelSelectorAlerts.subscriptions().length)).toBe(1);
+  await page.evaluate(() => window.ModelSelectorAlerts.setTransport(async () => true));
+  await page.locator('#alertTest').click();
+  await expect.poll(() => page.evaluate(() => window.ModelSelectorAlerts.deliveries()[0]?.status)).toBe('sent');
+  await expect(page.locator('.alert-log')).toContainText('已发送');
+  await page.locator('.alert-item button').click();
+  await expect(page.locator('.alert-item')).toHaveCount(0);
+});

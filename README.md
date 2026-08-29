@@ -12,6 +12,7 @@
 - 数据缓存的采集时间与页面生成时间分开记录，缓存重建页面不会伪装成一次新采集。
 - 每日刷新由 `.github/workflows/refresh-model-data.yml` 唯一触发，执行体依次完成测试、采集、数据校验、价格基准校验、静态页面门禁、桌面/移动端浏览器回归和静态产物提交。
 - 页面根据 `models_data.json.meta.updated_at` 动态显示数据年龄，并区分新鲜、延迟、过期和未知状态。
+- 支持浏览器本地价格变化订阅；订阅数据不上传，网站打开时检测变化并通过系统通知发送。
 
 生产刷新、告警和部署事实来源见 [`docs/PHASE16_REFRESH_INCIDENT.md`](docs/PHASE16_REFRESH_INCIDENT.md) 与 [`docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md`](docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md)。
 
@@ -135,7 +136,7 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ├── src/platforms/catalog.py          # 已接入生产的关键平台抓取器
 ├── src/rendering/                     # 前端资源读取与页面组合
 ├── assets/styles.css                  # 页面样式源码，生成时内联
-├── assets/app.js                      # 浏览器交互源码，生成时内联
+├── assets/js/                         # 模块化浏览器交互、路由、i18n、埋点与订阅
 ├── templates/page.html                # 页面组合骨架
 ├── templates/document_head.html       # 文档头、导航与概览区块
 ├── templates/insights.html            # Insights 内容区块
@@ -155,10 +156,10 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 4. 每次数据更新必须通过结构校验和核心价格样本校验。
 5. 逐步将 `generate.py` 中的平台抓取、归一化、渲染拆分，但在拆分完成前保持单一生产入口，避免形成两套失真的架构。
 
-## 下一阶段
+## 后续运营与验证
 
 - 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
 - 连续观察三次真实每日 schedule，确认刷新、提交、Vercel 发布、告警恢复闭环稳定。
-- 将页面区块继续拆成更小模板，并为筛选状态、计算器和复制命令补充更细粒度测试。
+- 观察价格订阅的实际创建率与送达失败率，再决定是否增加服务器端 Web Push 或邮件渠道。
 
 价格数据仅供选型参考，最终以平台控制台和正式账单为准。
