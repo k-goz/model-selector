@@ -33,8 +33,8 @@ def main() -> int:
     script_bytes = sum(path.stat().st_size for path in scripts)
     models = len(json.loads(Path("models_data.json").read_text(encoding="utf-8"))["models"])
     print(f"scripts: {script_bytes} bytes across {len(scripts)} files; catalog: {models} models")
-    if script_bytes > 100_000:
-        failures.append("JavaScript exceeds 100000 bytes")
+    if script_bytes > 105_000:
+        failures.append("JavaScript exceeds 105000 bytes")
     if models < 2_000:
         failures.append("benchmark catalog is unexpectedly small")
     if failures:

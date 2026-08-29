@@ -1,5 +1,11 @@
 {
   "buildCommand": null,
   "outputDirectory": ".",
-  "cleanUrls": true
+  "cleanUrls": true,
+  "functions": {
+    "api/v1/*.js": {
+      "includeFiles": "models_data.json",
+      "maxDuration": 10
+    }
+  }
 }

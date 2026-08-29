@@ -1378,7 +1378,8 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
         '<p>&#128202; 数据来源：各平台 API 直接采集 + 官网公告（更新时间：' + now + '）</p>'
         '<p>OpenRouter 显示原始美元价格 &middot; 国内平台显示人民币价格 &middot; 点击卡片复制接入方式</p>'
         '<p>快捷键: / 搜索 | Esc 清空 | D 暗色 | V 视图 | 1-9 切换平台</p>'
-        '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a> &middot; <a href="https://cloud.siliconflow.cn/i/exbVXMa4" target="_blank" class="invite-link">&#9734; 支持开发者 — 注册硅基流动领代金券</a></p>'
+        '<p><a href="https://github.com/k-goz/model-selector" target="_blank" rel="noopener">GitHub</a> &middot; <a href="https://github.com/k-goz/model-selector/issues/new?title=%E4%BC%81%E4%B8%9A%E6%A8%A1%E5%9E%8B%E9%80%89%E5%9E%8B%E5%92%A8%E8%AF%A2" target="_blank" rel="noopener" onclick="ModelSelectorAnalytics.track(\'enterprise_inquiry\')">企业选型咨询</a> &middot; <a href="https://cloud.siliconflow.cn/i/exbVXMa4" target="_blank" rel="sponsored noopener" class="invite-link" onclick="ModelSelectorAnalytics.track(\'provider_clicked\',{provider:\'siliconflow\',commercial:true})">推广链接 · 注册硅基流动领代金券</a></p>'
+        '<p>商业披露：推广链接可能产生返佣，但不影响模型排序、价格事实或可信度评级。</p>'
         '</footer>\n'
         # My Insights 板块（小红书同步内容）
         + load_asset("templates/insights.html")

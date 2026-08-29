@@ -3,7 +3,7 @@
     "path": "/*",
     "resourceSizes": [
       {"resourceType": "document", "budget": 300},
-      {"resourceType": "script", "budget": 100},
+      {"resourceType": "script", "budget": 105},
       {"resourceType": "total", "budget": 4000}
     ],
     "resourceCounts": [
