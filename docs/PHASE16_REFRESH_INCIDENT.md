@@ -47,6 +47,19 @@ GitHub 只允许核验 Secret 名称，不能读取或证明其值仍有效。�
 
 历史腾讯 Cookie/凭据是否已在供应商侧轮换，无法通过当前仓库证明。当前树只从环境变量或被 Git 忽略的 `tencent_cookie.json` 读取凭据；安全责任人仍需在腾讯控制台确认旧凭据失效并记录轮换日期，不能把新值写入仓库或本报告。
 
+## Vercel Git 连接纠偏
+
+首次合并后的现场验证发现，GitHub 状态检查部署到重复项目 `model-selector`，而自定义域名实际绑定在 `ai-model-selector`。这说明“Vercel check 成功”此前不能证明正式域名已经更新。
+
+2026-08-29 已完成：
+
+- 将 `k-goz/model-selector` GitHub 仓库连接到正式 Vercel 项目 `ai-model-selector`；
+- 从重复项目 `model-selector` 断开 Git 自动部署；
+- 保留重复项目本身，不执行不可逆删除；
+- 删除本地临时链接目录及其中的短期 OIDC 环境文件。
+
+后续必须以 `model.ai-selector.top` 的响应、部署 commit 和线上 JSON 为验收依据，不能只看 GitHub 的 Vercel 状态为绿色。
+
 ## 修复设计
 
 1. 新建 `refresh-model-data.yml`，独立承载 `schedule` 和 `workflow_dispatch`。

@@ -4,7 +4,7 @@
 
 ## 唯一正式生产路径
 
-`main` 分支是发布分支，Vercel 项目 `ai-model-selector` 是唯一生产托管，`https://model.ai-selector.top` 是唯一对外验收域名。
+`main` 分支是发布分支，Vercel 项目 `ai-model-selector` 是唯一连接本仓库的生产托管，`https://model.ai-selector.top` 是唯一对外验收域名。
 
 ```text
 refresh-model-data.yml
@@ -21,6 +21,8 @@ deployment-health.yml
 ```
 
 Vercel 备用 deployment URL 只用于诊断，不作为第二个生产事实来源。健康检查、README 和验收报告统一以自定义域名为准。
+
+2026-08-29 现场发现 Vercel 中还存在历史重复项目 `model-selector`。该项目曾错误接收 GitHub 自动部署，但没有承载正式域名；现已断开其 Git 连接。为保留回退证据，本阶段没有删除该历史项目。
 
 ## 必须发布的静态产物
 
