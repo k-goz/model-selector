@@ -1,6 +1,6 @@
 # 生产部署事实来源
 
-更新时间：2026-08-29
+更新时间：2026-08-30
 
 ## 唯一正式生产路径
 
@@ -54,3 +54,15 @@ python3 check_deployment.py \
 ```
 
 同时核对：Vercel deployment 的 Git commit、线上 `models_data.json.meta.updated_at`、中英文页面显示时间、模型数量与当前 `main` 生成产物一致。
+
+## Phase 16 最终现场证据
+
+- 当前已验证数据提交：`7d71db3`
+- 当前已验证应用提交：`8b74a1f`
+- 当前已验证 Production deployment：`dpl_9R5DVWVn72dJD2hNceDq3fat7SH5`
+- 自定义域名数据时间：`2026-08-30 00:06`
+- 模型总数：2301
+- 生产 JSON 与 Git SHA-256：`04260600df496ec1bfdd4077884b814fde1e523cc08ad4a7389b35a0d2e9cf95`
+- 2 小时新鲜度门禁与独立 Deployment Health 均通过
+
+这些值是一次现场验收证据，不是永久常量；后续每次发布仍须按上面的命令重新核验。
