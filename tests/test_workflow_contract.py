@@ -15,6 +15,7 @@ def test_refresh_entry_owns_schedule_manual_trigger_and_concurrency():
     assert "workflow_call:" in reusable
     assert "schedule:" not in reusable
     assert "workflow_dispatch:" not in reusable
+    assert 'DEFER_SUCCESS_NOTIFICATION: "1"' in reusable
 
 
 def test_vercel_is_the_only_production_deployment_path():

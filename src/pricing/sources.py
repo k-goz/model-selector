@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from typing import Mapping
+import html
 import re
 
 
@@ -42,6 +43,81 @@ def parse_moonshot_pricing_markdown(content: str) -> dict[str, dict[str, float |
             "input": float(input_match.group(1)),
             "output": float(output_match.group(1)),
             "currency": "CNY",
+        }
+    return prices
+
+
+def parse_deepseek_pricing_html(content: str) -> dict[str, dict[str, float | str]]:
+    """解析 DeepSeek 官方时段定价表，发布高峰价并保留完整价格区间。
+
+    站点的排序和预算计算使用高峰价，避免把仅在空闲时段生效的折扣价
+    当作全天价格；展示层可用 ``*_min`` 字段呈现空闲至高峰区间。
+    """
+
+    def clean(cell: str) -> str:
+        value = re.sub(r"<[^>]+>", " ", cell)
+        return re.sub(r"\s+", " ", html.unescape(value).replace("\x00", "")).strip()
+
+    rows: list[list[str]] = []
+    for row in re.findall(r"<tr[^>]*>(.*?)</tr>", content, re.DOTALL | re.IGNORECASE):
+        cells = [clean(cell) for cell in re.findall(
+            r"<t[dh][^>]*>(.*?)</t[dh]>", row, re.DOTALL | re.IGNORECASE
+        )]
+        if cells:
+            rows.append(cells)
+
+    models: list[str] = []
+    for cells in rows:
+        if cells[0] == "模型":
+            models = [cell.lower() for cell in cells[1:] if cell.lower().startswith("deepseek-")]
+            break
+    if not models:
+        return {}
+
+    values: dict[str, dict[str, float]] = {model: {} for model in models}
+    metric = ""
+    for cells in rows:
+        joined = " ".join(cells)
+        if "缓存未命中" in joined:
+            metric = "input"
+        elif "百万tokens输出" in joined:
+            metric = "output"
+        if not metric:
+            continue
+
+        period = ""
+        if "空闲时段" in cells:
+            period = "min"
+            value_start = cells.index("空闲时段") + 1
+        elif cells[0] == "高峰时段":
+            period = "max"
+            value_start = 1
+        else:
+            continue
+
+        parsed: list[float] = []
+        for cell in cells[value_start:value_start + len(models)]:
+            match = re.fullmatch(r"([\d.]+)元", cell)
+            if not match:
+                parsed = []
+                break
+            parsed.append(float(match.group(1)))
+        if len(parsed) != len(models):
+            continue
+        for model, value in zip(models, parsed):
+            values[model][f"{metric}_{period}"] = value
+
+    prices: dict[str, dict[str, float | str]] = {}
+    for model, tiers in values.items():
+        required = {"input_min", "input_max", "output_min", "output_max"}
+        if not required.issubset(tiers):
+            continue
+        prices[model] = {
+            "input": tiers["input_max"],
+            "output": tiers["output_max"],
+            **tiers,
+            "currency": "CNY",
+            "pricing_note": "空闲时段至高峰时段；排序按高峰价",
         }
     return prices
 

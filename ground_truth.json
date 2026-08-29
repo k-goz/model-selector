@@ -1,14 +1,14 @@
 {
   "_meta": {
     "description": "Ground Truth 基准测试集 — 核心模型的准确价格（CNY/M tokens）",
-    "updated": "2026-08-12",
+    "updated": "2026-08-29",
     "sources": "各平台官网定价页，详见每个模型的 source 字段",
     "tolerance_pct": 5,
-    "note": "input/output 单位为 CNY/1M tokens，与 domestic_prices.json / LiteLLM 中价格一致"
+    "note": "input/output 单位为 CNY/1M tokens；时段浮动价模型按高峰价断言，页面同时展示空闲至高峰区间"
   },
   "models": [
-    {"platform": "deepseek",  "model": "deepseek-v4-flash",      "input": 1,   "output": 2,   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"},
-    {"platform": "deepseek",  "model": "deepseek-v4-pro",        "input": 3,   "output": 6,   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing"},
+    {"platform": "deepseek",  "model": "deepseek-v4-flash",      "input": 3,   "output": 9,   "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing", "pricing_basis": "peak"},
+    {"platform": "deepseek",  "model": "deepseek-v4-pro",        "input": 9,   "output": 27,  "source": "https://api-docs.deepseek.com/zh-cn/quick_start/pricing", "pricing_basis": "peak"},
     {"platform": "moonshot",  "model": "moonshot-v1-8k",         "input": 2,   "output": 10,  "source": "https://platform.moonshot.cn/docs/pricing"},
     {"platform": "moonshot",  "model": "moonshot-v1-32k",        "input": 5,   "output": 20,  "source": "https://platform.moonshot.cn/docs/pricing"},
     {"platform": "moonshot",  "model": "moonshot-v1-128k",       "input": 10,  "output": 30,  "source": "https://platform.moonshot.cn/docs/pricing"},
