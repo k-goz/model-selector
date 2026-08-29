@@ -1256,7 +1256,17 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
     # JavaScript (完整前端逻辑)
     # ═══════════════════════════════════════════════════════════
     
-    JS = load_asset("assets/app.js")
+    frontend_scripts = [
+        "assets/js/i18n.js",
+        "assets/js/routing.js",
+        "assets/js/analytics.js",
+        "assets/js/core.js",
+    ]
+    for script_path in frontend_scripts:
+        load_asset(script_path)
+    script_tags = "\n".join(
+        f'<script src="/{script_path}" defer></script>' for script_path in frontend_scripts
+    )
     
     
     # ═══════════════════════════════════════════════════════════
@@ -1325,6 +1335,7 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
         '<button class="tool-btn" onclick="toggleDark()">&#9728; 亮色</button>\n'
         '<button class="tool-btn" onclick="showTokenCalc()">&#128270; 计价</button>\n'
         '<button class="tool-btn" onclick="showPingModal()">&#9889; 测速</button>\n'
+        '<button class="tool-btn" id="shareBtn" onclick="copyShareLink()">&#128279; 分享</button>\n'
         '</div></div>\n'
         '</div>\n'
         # 侧面板（默认折叠）
@@ -1416,7 +1427,7 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
         '<div class="code-block" id="codeBlock"><button class="code-copy-btn" onclick="copyCodeBlock()">复制</button><pre></pre></div>'
         '<div class="code-info"><strong>使用说明：</strong>将 <code>YOUR_API_KEY</code> 替换为你的 API 密钥即可直接运行。所有平台均兼容 <code>OpenAI SDK</code> 接入方式。</div>'
         '</div></div></div>\n'
-        '<script>\n' + JS + '\n</script>\n'
+        + script_tags + '\n'
         '</body>\n</html>'
     )
     

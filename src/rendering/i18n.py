@@ -1,6 +1,9 @@
 """中英文静态页面转换与写入。"""
 
 import logging
+import hashlib
+from html import escape
+from html.parser import HTMLParser
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -384,20 +387,98 @@ ZH_EN_MAP = [
     ("价格无变动", "No price changes"),
 ]
 
+TRANSLATIONS = {
+    "text." + hashlib.sha1(zh.encode("utf-8")).hexdigest()[:12]: {"zh": zh, "en": en}
+    for zh, en in ZH_EN_MAP if en
+}
+
+
+def validate_translation_catalog() -> None:
+    """翻译 key 必须稳定且两个语言都有非空文本。"""
+    for key, values in TRANSLATIONS.items():
+        if set(values) != {"zh", "en"} or not all(values.values()):
+            raise ValueError(f"翻译不完整: {key}")
+
+
+class _StructuredEnglishRenderer(HTMLParser):
+    """仅翻译文本节点和属性，绝不对整份 HTML 做字符串替换。"""
+
+    _VOID = {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "param", "source", "track", "wbr"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.parts: list[str] = []
+        self.raw_depth = 0
+        self.phrases = sorted(
+            ((entry["zh"], entry["en"]) for entry in TRANSLATIONS.values() if "<" not in entry["zh"]),
+            key=lambda pair: len(pair[0]), reverse=True,
+        )
+        self.exact = {zh: en for zh, en in self.phrases}
+        self.exact.update({
+            "首页": "Home", "评测": "Reviews", "关于": "About", "隐私": "Privacy",
+            "EN": "中文", "English": "中文", "分享": "Share", "AI 模型选择器": "AI Model Selector",
+            "全部": "All", "其他": "Other",
+            "请启用 JavaScript 以加载模型目录；原始数据可直接访问 models_data.json。":
+                "Enable JavaScript to load the model catalog, or open models_data.json directly.",
+        })
+
+    def _translate(self, value: str) -> str:
+        stripped = value.strip()
+        if stripped in self.exact:
+            start = value[:len(value) - len(value.lstrip())]
+            end = value[len(value.rstrip()):]
+            return start + self.exact[stripped] + end
+        return value
+
+    def handle_decl(self, decl: str) -> None:
+        self.parts.append(f"<!{decl}>")
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        rendered = []
+        for name, value in attrs:
+            if tag == "html" and name == "lang":
+                value = "en"
+            elif value is not None and not name.startswith("data-") and name not in {"onclick", "oninput", "onkeydown", "onfocus", "onblur"}:
+                value = self._translate(value)
+                if name in {"href", "content"}:
+                    value = value.replace("https://model.ai-selector.top/en/", "https://model.ai-selector.top/__EN__/")
+                    value = value.replace("https://model.ai-selector.top/", "https://model.ai-selector.top/en/")
+                    value = value.replace("https://model.ai-selector.top/__EN__/", "https://model.ai-selector.top/")
+            rendered.append(name if value is None else f'{name}="{escape(value, quote=True)}"')
+        suffix = (" " + " ".join(rendered)) if rendered else ""
+        self.parts.append(f"<{tag}{suffix}>")
+        if tag in {"script", "style"}:
+            self.raw_depth += 1
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.handle_starttag(tag, attrs)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"}:
+            self.raw_depth = max(0, self.raw_depth - 1)
+        if tag not in self._VOID:
+            self.parts.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data if self.raw_depth else self._translate(data))
+
+    def handle_entityref(self, name: str) -> None:
+        self.parts.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.parts.append(f"&#{name};")
+
+    def handle_comment(self, data: str) -> None:
+        self.parts.append(f"<!--{data}-->")
+
+
 def generate_english_version(html_content: str) -> str:
-    """
-    将中文 HTML 转换为英文版
-    
-    Args:
-        html_content: 中文 HTML 内容
-    
-    Returns:
-        英文 HTML 内容
-    """
-    result = html_content
-    for zh, en in ZH_EN_MAP:
-        result = result.replace(zh, en)
-    return result
+    """使用结构化节点翻译生成英文页面。"""
+    validate_translation_catalog()
+    renderer = _StructuredEnglishRenderer()
+    renderer.feed(html_content)
+    renderer.close()
+    return "".join(renderer.parts)
 
 
 def write_english_version(html_content: str, output_path: Path) -> None:
@@ -407,4 +488,3 @@ def write_english_version(html_content: str, output_path: Path) -> None:
     english_html = generate_english_version(html_content)
     output_path.write_text(english_html, encoding="utf-8")
     logger.info("英文版生成成功: %s (%s bytes)", output_path, output_path.stat().st_size)
-

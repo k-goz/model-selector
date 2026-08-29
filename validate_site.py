@@ -36,7 +36,7 @@ class SiteParser(HTMLParser):
             self._in_script = True
         for key in ("href", "src", "data-base-url"):
             value = values.get(key)
-            if not value or value.startswith(("#", "./", "../", "data:")):
+            if not value or value.startswith(("#", "/", "./", "../", "data:")):
                 continue
             parsed = urlparse(value)
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -61,9 +61,9 @@ def validate_page(page_path: Path, expected_models: int) -> list[str]:
         errors.append(f"{page_path}: {parser.cards - parser.card_names} 个卡片缺少模型名节点")
     if parser.invalid_urls:
         errors.append(f"{page_path}: 非法 URL: {parser.invalid_urls[:5]}")
-    if parser.inline_scripts < 1:
-        errors.append(f"{page_path}: 没有浏览器交互脚本")
-    if "renderModelsFromJSON" not in source or "models_data.json" not in source:
+    if "/assets/js/i18n.js" not in source or "/assets/js/routing.js" not in source:
+        errors.append(f"{page_path}: 缺少模块化前端依赖")
+    if "/assets/js/core.js" not in source or "models_data.json" not in source:
         errors.append(f"{page_path}: 缺少数据驱动目录加载器")
     if "<noscript>" not in source:
         errors.append(f"{page_path}: 缺少无 JavaScript 基础说明")
