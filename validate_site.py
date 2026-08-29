@@ -49,19 +49,24 @@ class SiteParser(HTMLParser):
 
 def validate_page(page_path: Path, expected_models: int) -> list[str]:
     parser = SiteParser()
-    parser.feed(page_path.read_text(encoding="utf-8"))
+    source = page_path.read_text(encoding="utf-8")
+    parser.feed(source)
     errors: list[str] = []
     duplicates = [item for item, count in Counter(parser.ids).items() if count > 1]
     if duplicates:
         errors.append(f"{page_path}: 重复 DOM id: {', '.join(duplicates[:10])}")
-    if parser.cards != expected_models:
-        errors.append(f"{page_path}: 模型卡片 {parser.cards}，数据模型 {expected_models}")
+    if parser.cards != 0:
+        errors.append(f"{page_path}: 数据驱动页面仍内嵌 {parser.cards} 个模型卡片")
     if parser.card_names != parser.cards:
         errors.append(f"{page_path}: {parser.cards - parser.card_names} 个卡片缺少模型名节点")
     if parser.invalid_urls:
         errors.append(f"{page_path}: 非法 URL: {parser.invalid_urls[:5]}")
     if parser.inline_scripts < 1:
         errors.append(f"{page_path}: 没有浏览器交互脚本")
+    if "renderModelsFromJSON" not in source or "models_data.json" not in source:
+        errors.append(f"{page_path}: 缺少数据驱动目录加载器")
+    if "<noscript>" not in source:
+        errors.append(f"{page_path}: 缺少无 JavaScript 基础说明")
     return errors
 
 
