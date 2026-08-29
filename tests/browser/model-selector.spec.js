@@ -230,3 +230,35 @@ test('browser price alert supports subscribe, delivery record and unsubscribe', 
   await page.locator('.alert-item button').click();
   await expect(page.locator('.alert-item')).toHaveCount(0);
 });
+
+test('enterprise report traces every cost to catalog data and exports Markdown', async ({ page }) => {
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await page.locator('#enterpriseReportBtn').click();
+  await page.locator('#reportDaily').fill('1200');
+  await page.locator('#reportInput').fill('900');
+  await page.locator('#reportOutput').fill('300');
+  await page.locator('#reportLatency').selectOption('strict');
+  await page.locator('#reportGenerate').click();
+  await expect(page.locator('#reportResult .report-table tbody tr')).not.toHaveCount(0);
+  const audit = await page.evaluate(() => {
+    const report = window.ModelSelectorReports.last();
+    const first = report.candidates[0];
+    const model = first.model;
+    const fx = report.input.fx;
+    const perToken = (key) => model.currency === 'USD'
+      ? Number(model[key]) * (model.price_unit === 'per_1m' ? 1 / 1e6 : 1) * fx
+      : Number(model[key]) / 1e6;
+    const expected = report.input.daily * 30 * (report.input.inTokens * perToken('input_price') + report.input.outTokens * perToken('output_price'));
+    return { cost: first.cost, expected, source: model.price_source_url || model.source_url, markdown: window.ModelSelectorReports.markdown(), updatedAt: report.dataUpdatedAt };
+  });
+  expect(audit.cost).toBeCloseTo(audit.expected, 8);
+  expect(audit.source).toMatch(/^https?:\/\//);
+  expect(audit.markdown).toContain(audit.source);
+  expect(audit.markdown).toContain(audit.updatedAt);
+  await expect(page.locator('.report-risks')).toContainText('真实请求');
+  const download = page.waitForEvent('download');
+  await page.locator('#reportMarkdown').click();
+  expect((await download).suggestedFilename()).toBe('ai-model-selection-report.md');
+});

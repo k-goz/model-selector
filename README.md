@@ -13,6 +13,7 @@
 - 每日刷新由 `.github/workflows/refresh-model-data.yml` 唯一触发，执行体依次完成测试、采集、数据校验、价格基准校验、静态页面门禁、桌面/移动端浏览器回归和静态产物提交。
 - 页面根据 `models_data.json.meta.updated_at` 动态显示数据年龄，并区分新鲜、延迟、过期和未知状态。
 - 支持浏览器本地价格变化订阅；订阅数据不上传，网站打开时检测变化并通过系统通知发送。
+- 支持基于当前版本化数据生成可追溯的企业模型选型报告，并导出 Markdown/HTML。
 
 生产刷新、告警和部署事实来源见 [`docs/PHASE16_REFRESH_INCIDENT.md`](docs/PHASE16_REFRESH_INCIDENT.md) 与 [`docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md`](docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md)。
 
