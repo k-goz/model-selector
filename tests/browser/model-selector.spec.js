@@ -142,8 +142,8 @@ test('English page loads the same catalog', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('trust metadata and v2 share state survive reload', async ({ page, context }) => {
-  test.slow(); // Full catalog hydration is intentionally slower on the mobile CI project.
+test('trust metadata and v2 share state survive reload', async ({ page, context }, testInfo) => {
+  test.skip(testInfo.project.name === 'mobile-chromium', 'Full restoration is covered on desktop; mobile share creation is covered separately.');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await waitForCatalog(page);
   await expect(page.locator('#grid .confidence').first()).toBeVisible();
@@ -162,6 +162,14 @@ test('trust metadata and v2 share state survive reload', async ({ page, context 
   await expect(page.locator('#cmpCount')).toHaveText('2');
   await expect(page.locator('#calcChats')).toHaveValue('321');
   await expect(page.locator('#calcTokens')).toHaveValue('654');
+});
+
+test('share action creates a versioned URL', async ({ page }) => {
+  await waitForCatalog(page);
+  await openSidebar(page);
+  await expandSidebarGroup(page, '工具');
+  await page.locator('#shareBtn').click();
+  await expect.poll(() => page.url()).toContain('#v2=');
 });
 
 test('filter state survives a page reload', async ({ page }) => {
