@@ -32,3 +32,9 @@ python scripts/validate_catalog_schema.py
 - `data/history/summary.json`：按日、ISO 周和月聚合价格事件。
 
 价格事件保留旧值、新值、发现时间、价格生效时间和证据。来源没有给出生效时间时使用发现时间作为事件排序时间，但原始目录的 `price_effective_at` 仍保持 `null`。历史最多保留最近 5000 条事件，避免静态产物无限增长。
+
+## 生命周期与发布门禁
+
+`data/history/lifecycle-archive.json` 保存已从当前目录消失的 offering、最后证据和最后价格；同一 offering 重新出现时标记为 `restored`。当前站点目录无需永久展示已退役记录，但历史链接和报告可继续按稳定 ID 解释。
+
+`data/quality/baseline.json` 固化 2026-08-30 的 2301 模型、23 平台生产基线，并使用保守阈值阻止模型/平台骤降、fallback 激增、未知上下文恶化、批量移除和大幅价格变化。基线要求累计 7 次成功刷新后复核；允许收紧，不得为通过单次异常而临时放宽。`verify_ground_truth.py` 继续作为独立核心价格门禁。
