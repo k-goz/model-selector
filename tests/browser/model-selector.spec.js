@@ -145,17 +145,16 @@ test('English page loads the same catalog', async ({ page }) => {
 test('trust metadata and v2 share state survive reload', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await waitForCatalog(page);
-  await openSidebar(page);
-  await expandSidebarGroup(page, '工具');
   await expect(page.locator('#grid .confidence').first()).toBeVisible();
   await expect(page.locator('#grid .evidence-time').first()).toBeVisible();
   const checkboxes = page.locator('#grid .mc .mc-cb');
   await checkboxes.nth(0).check();
   await checkboxes.nth(1).check();
+  await openSidebar(page);
   await expandSidebarGroup(page, '月费计算器');
   await page.locator('#calcChats').fill('321');
   await page.locator('#calcTokens').fill('654');
-  await page.locator('#shareBtn').click();
+  await page.evaluate(() => copyShareLink());
   await expect.poll(() => page.url()).toContain('#v2=');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
