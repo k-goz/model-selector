@@ -46,6 +46,12 @@ jobs:
           python validate_data.py --max-age-hours 10000
           python verify_ground_truth.py
           python validate_site.py
+          python scripts/check_frontend_budget.py
 
       - name: Run browser regression tests
         run: npm run test:browser
+
+      - name: Run Lighthouse budgets
+        run: |
+          npm run serve:test >/tmp/model-selector-http.log 2>&1 &
+          npm run test:lighthouse

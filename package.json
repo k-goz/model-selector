@@ -2,10 +2,14 @@
   "name": "model-selector-regression",
   "private": true,
   "scripts": {
+    "serve:test": "node scripts/serve_static.mjs",
     "test:browser": "playwright test",
-    "test:browser:headed": "playwright test --headed"
+    "test:browser:headed": "playwright test --headed",
+    "test:lighthouse": "mkdir -p output && lighthouse http://127.0.0.1:4173/ --chrome-flags='--headless --no-sandbox' --only-categories=performance,accessibility,best-practices,seo --budgets-path=lighthouse-budget.json --output=json --output-path=output/lighthouse.json --quiet && node scripts/check-lighthouse.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.62.1",
+    "lighthouse": "^13.4.1"
   }
 }

@@ -185,7 +185,7 @@ function renderModelCard(m,data) {
         + 'data-model-name="' + escapeHtml(mname) + '" data-offering-id="' + escapeHtml(m.provider_offering_id || '') + '" data-confidence="' + escapeHtml((m.confidence || {}).grade || 'unknown') + '" ' + famAttr + ' '
         + 'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p,this.dataset.offeringId)">'
         + '<div class="dot"></div><div class="prov">' + escapeHtml(pname) + '</div>'
-        + '<div class="mname">' + escapeHtml(mname) + '</div><div class="tags">' + tagsHtml + '</div>'
+        + '<button type="button" class="mname" onclick="event.stopPropagation();showCodeModal(this.closest(\'.mc\').dataset.baseUrl,this.closest(\'.mc\').dataset.modelName,this.closest(\'.mc\').dataset.p,this.closest(\'.mc\').dataset.offeringId)">' + escapeHtml(mname) + '</button><div class="tags">' + tagsHtml + '</div>'
         + '<div class="prow">' + priceHtml + sourceHtml + '</div>'
         + '<div class="trust-row"><span class="confidence confidence-'+escapeHtml(confidenceGrade)+'">'+escapeHtml(tr('trust.confidence.'+(confidenceGrade==='high'||confidenceGrade==='medium'||confidenceGrade==='low'?confidenceGrade:'unknown')))+'</span>'
         + (evidenceUrl?'<a class="source-link" href="'+escapeHtml(evidenceUrl)+'" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">'+escapeHtml(tr('trust.source'))+'</a>':'')
@@ -196,7 +196,7 @@ function renderModelCard(m,data) {
         + '<div class="hint">' + escapeHtml(tr('catalog.integration')) + '</div>'
         + '<div class="card-actions">'
         + '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="' + escapeHtml(tr('catalog.favorite')) + '">&#9734;</span>'
-        + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">' + escapeHtml(tr('catalog.compare')) + '</label></div>'
+        + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" aria-label="' + escapeHtml(tr('catalog.compare')+' '+mname) + '" onclick="event.stopPropagation();toggleSel(this)"><span class="cb-lbl">' + escapeHtml(tr('catalog.compare')) + '</span></div>'
         + '</div></div>';
 
     return cardHtml;
@@ -236,6 +236,7 @@ function renderCurrentPage() {
     grid.innerHTML=pageModels.map(function(model){return renderModelCard(model,catalogData);}).join('');
     grid.dataset.total=String(catalogModels.length);
     grid.dataset.rendered=String(pageModels.length);
+    grid.setAttribute('aria-busy','false');
     favs.forEach(function(f){var c=findCardByName(f);if(c){c.classList.add('fav-card');var fb=c.querySelector('.fav-btn');if(fb)fb.classList.add('active');}});
     if(curCur!=='CNY')updatePrices();
 }
@@ -1039,6 +1040,7 @@ document.getElementById("crossList").innerHTML='<div style="padding:8px;font-siz
 
 // ─── 代码片段模态框 ───
 var _codeModalData = null;
+var _focusBeforeModal = null;
 function showCodeModal(baseUrl, modelName, platformId, offeringId){
 var modal = document.getElementById('codeModal');
 if(!modal) return;
@@ -1053,10 +1055,13 @@ if(titleEl) titleEl.textContent = modelName;
 // 默认显示 Python
 switchCodeTab('python');
 modal.classList.add('show');
+_focusBeforeModal=document.activeElement;
+var closeButton=modal.querySelector('.code-modal-close');if(closeButton)closeButton.focus();
 }
 function closeCodeModal(){
 var modal = document.getElementById('codeModal');
 if(modal) modal.classList.remove('show');
+if(_focusBeforeModal&&_focusBeforeModal.focus)_focusBeforeModal.focus();
 }
 function switchCodeTab(lang){
 if(!_codeModalData) return;
@@ -1449,5 +1454,5 @@ function clearAllFilters(){
 }
 function toggleSidebar(){
     var sb=document.getElementById('sidebar');
-    if(sb)sb.classList.toggle('open');
+    if(sb){sb.classList.toggle('open');var toggle=document.querySelector('.sidebar-toggle');if(toggle)toggle.setAttribute('aria-expanded',sb.classList.contains('open')?'true':'false');}
 }
