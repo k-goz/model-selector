@@ -190,6 +190,9 @@ os.makedirs(CACHE_DIR, exist_ok=True)
 # ─── 解析参数 ───
 UPDATE_DB = "--update-db" in sys.argv
 FORCE_REFRESH = "--refresh" in sys.argv
+RENDER_ONLY = "--render-only" in sys.argv
+if RENDER_ONLY and (FORCE_REFRESH or UPDATE_DB):
+    raise SystemExit("--render-only 不能与 --refresh 或 --update-db 同时使用")
 
 # ─── 汇率 ───
 USD_TO_CNY = 7.25
@@ -759,7 +762,7 @@ def make_card(pid, pname, pc, mname, inp, out, ctx, tags, scen, cmd_base, cur="C
     pt = price_classification.tier
     ts = th(tags)
     bg = bc(inp, out, price_classification) if cur == "CNY" else bo(inp, out, price_unit, price_classification)
-    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
+    src_map = {"A": "API直接采集", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
                "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据",
                "D": "国内官方价格库", "DB": "官方价格数据库", "CV": "交叉验证修正"}
     src_title = src_map.get(price_src, price_src or "硬编码")
@@ -800,7 +803,7 @@ def make_or_card(pv, nn, inp, out, cc, tt, ss, mid2, family="", price_unit="per_
     pp = price_classification.tier
     tts = th(tt)
     bg = bo(inp, out, price_unit, price_classification)
-    src_map = {"A": "API实时", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
+    src_map = {"A": "API直接采集", "H": "硬编码(可能过时)", "P": "代理平台自营价(非官方)",
                "S": "官方定价页爬取", "SP": "SPA页面爬取", "OR": "OpenRouter回填", "L": "LiteLLM社区数据",
                "D": "国内官方价格库", "DB": "官方价格数据库", "CV": "交叉验证修正"}
     src_title = src_map.get(price_src, price_src or "硬编码")
@@ -909,6 +912,8 @@ LITELLM_KEY_MAP = {
     "cohere": "cohere", "groq": "groq", "novita": "novita", "deepinfra": "deepinfra",
 }
 try:
+    if RENDER_ONLY:
+        raise RuntimeError("render-only mode")
     _llm_url = "https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json"
     _llm_req = urllib.request.Request(_llm_url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(_llm_req, timeout=30) as _r:
@@ -1038,8 +1043,8 @@ def get_absolute_price(platform, model_name, api_price=None):
 # ═══════════════════════════════════════════════════════════
 
 # ─── 始终从官方源抓取最新价格（无论是否使用 JSON 缓存） ───
-print("Fetching official prices...", file=sys.stderr)
-OFFICIAL_PRICES = fetch_official_prices()
+print("Fetching official prices..." if not RENDER_ONLY else "Render-only: skipping official price fetch", file=sys.stderr)
+OFFICIAL_PRICES = {} if RENDER_ONLY else fetch_official_prices()
 print("  Official prices: %d models loaded" % len(OFFICIAL_PRICES), file=sys.stderr)
 
 if UPDATE_DB:
@@ -1108,7 +1113,7 @@ OR = []         # OpenRouter 原始数据
 if os.path.exists(MODELS_JSON) and not FORCE_REFRESH:
     _json_age_hours = (time.time() - os.path.getmtime(MODELS_JSON)) / 3600
     print("Loading models from JSON:", MODELS_JSON, "(age: %.1fh)" % _json_age_hours, file=sys.stderr)
-    if _json_age_hours > 24:
+    if _json_age_hours > 24 and not RENDER_ONLY:
         print("  ⚠️ models_data.json 已超过24小时，将重新生成", file=sys.stderr)
     try:
         with open(MODELS_JSON, "r", encoding="utf-8") as jf:
@@ -1190,13 +1195,16 @@ if os.path.exists(MODELS_JSON) and not FORCE_REFRESH:
                             })
                         inp_orig = new_i
                         out_orig = new_o
-                # 用 get_absolute_price 确定价格来源标签
-                _, _, _, _src_tag = get_absolute_price(pid, mname)
-                _effective_src = _src_tag or m.get("price_src","") or "H"
+                # 渲染模式严格沿用快照来源；刷新模式才重新解析价格来源。
+                if RENDER_ONLY:
+                    _src_tag = m.get("price_src", "") or "H"
+                else:
+                    _, _, _, _src_tag = get_absolute_price(pid, mname)
+                _effective_src = _src_tag or m.get("price_src", "") or "H"
                 cards.append(make_card(pid, pname, pc, Te(mname), inp_orig, out_orig, ctx, tags, scen, base_url, cur, family=fam, price_unit=pu, price_src=_effective_src))
             all_models.append({"p": pid, "n": mname, "i": inp_orig, "o": out_orig, "cur": cur, "src": m.get("price_src","") or _src_tag})
         price_changes = jmeta.get("price_changes", [])
-        USE_JSON_DATA = _json_age_hours <= 24
+        USE_JSON_DATA = _json_age_hours <= 24 or RENDER_ONLY
         if not USE_JSON_DATA:
             print("  缓存过期，将重新从API生成", file=sys.stderr)
         print("  Loaded %d models from JSON" % len(jmodels), file=sys.stderr)
@@ -1826,7 +1834,8 @@ def send_telegram_notification(total_models, changes):
         print("  Telegram notification failed:", e, file=sys.stderr)
 
 # 每次运行都发送通知
-send_telegram_notification(total, price_changes)
+if not RENDER_ONLY:
+    send_telegram_notification(total, price_changes)
 
 def cn(p): return sum(1 for c in cards if 'data-p="' + p + '"' in c)
 ac = cn("aliyun"); sc2 = cn("siliconflow"); mc2 = cn("moonshot")
@@ -1901,8 +1910,8 @@ tabs_bar = (
 
 snote = (
     "&#9888; <strong>数据说明：</strong>"
-    "阿里百炼 <strong>" + str(ac) + "个模型</strong>从 API 实时拉取，含真实价格；"
-    "硅基流动/" + str(sc2) + "个、月之暗面/" + str(mc2) + "个、智谱/" + str(zc) + "个等从 API 拉取列表，价格来自各平台官网公告（2026年4月）；"
+    "阿里百炼 <strong>" + str(ac) + "个模型</strong>从 API 直接采集；"
+    "硅基流动/" + str(sc2) + "个、月之暗面/" + str(mc2) + "个、智谱/" + str(zc) + "个等从 API 采集列表，价格来自各平台官网公告；"
     "OpenRouter 显示原始美元价格，国内平台显示人民币价格；"
     "标注「价格待确认」的模型请至平台控制台核实。"
     "数据更新时间：" + now
@@ -2143,6 +2152,7 @@ HDR = render_template("templates/document_head.html", {
     "STYLES": CSS,
     "TOTAL": total,
     "DATA_NOTE": snote,
+    "UPDATED_AT": now,
     "PRICE_CHANGE_HTML": price_change_html,
 }) + (
     # ─── 左侧筛选栏 + 右侧内容 布局 ───
@@ -2238,7 +2248,7 @@ FTR = (
     '<img src="data:image/jpeg;base64,' + WECHAT_QR + '" alt="微信二维码" class="qr-img">'
     '<p class="qr-text">扫码加微信 &middot; 获取最新AI模型资讯</p>'
     '</div>'
-    '<p>&#128202; 数据来源：各平台 API 实时拉取 + 官网公告（更新时间：' + now + '）</p>'
+    '<p>&#128202; 数据来源：各平台 API 直接采集 + 官网公告（更新时间：' + now + '）</p>'
     '<p>OpenRouter 显示原始美元价格 &middot; 国内平台显示人民币价格 &middot; 点击卡片复制接入方式</p>'
     '<p>快捷键: / 搜索 | Esc 清空 | D 暗色 | V 视图 | 1-9 切换平台</p>'
     '<p><a href="https://github.com/k-goz/model-selector" target="_blank">GitHub</a> &middot; <a href="https://cloud.siliconflow.cn/i/exbVXMa4" target="_blank" class="invite-link">&#9734; 支持开发者 — 注册硅基流动领代金券</a></p>'
@@ -2303,6 +2313,8 @@ sz = os.path.getsize(OUT)
 
 # ─── 自动更新 models_data.json（保持数据同步） ───
 try:
+    if RENDER_ONLY:
+        raise RuntimeError("render-only mode: preserve models_data.json")
     _pinfo = {
         "aliyun":{"name":"阿里百炼","color":"#ff6a00"},
         "siliconflow":{"name":"硅基流动","color":"#7C3AED"},
@@ -2431,10 +2443,15 @@ try:
         json.dump(_mj, _jf, ensure_ascii=False, separators=(',',':'))
     print("  models_data.json updated (%d models)" % total, file=sys.stderr)
 except Exception as _e:
-    print("  models_data.json update failed:", str(_e)[:80], file=sys.stderr)
+    if RENDER_ONLY:
+        print("  Render-only: models_data.json preserved", file=sys.stderr)
+    else:
+        print("  models_data.json update failed:", str(_e)[:80], file=sys.stderr)
 
 # ─── 每日测速并保存历史数据 ───
 try:
+    if RENDER_ONLY:
+        raise RuntimeError("render-only mode: skip ping probes")
     with open(MODELS_JSON, "r", encoding="utf-8") as _pf:
         _ping_models = json.load(_pf).get("models", [])
     _ok_count, _target_count = update_ping_history(
@@ -2444,7 +2461,10 @@ try:
     )
     print("  Ping: %d/%d platforms tested" % (_ok_count, _target_count), file=sys.stderr)
 except Exception as _e:
-    print("  Ping skipped:", str(_e)[:60], file=sys.stderr)
+    if RENDER_ONLY:
+        print("  Render-only: ping probes skipped", file=sys.stderr)
+    else:
+        print("  Ping skipped:", str(_e)[:60], file=sys.stderr)
 
 
 print("Stats: OR:%d Ali:%d SF:%d MS:%d ZH:%d VC:%d BD:%d TX:%d XH:%d MM:%d YW:%d BC:%d JC:%d DS:%d GQ:%d TG:%d FW:%d CO:%d IF:%d NV:%d DI:%d AH:%d N1:%d CA:%d Total:%d" % (
@@ -2462,12 +2482,12 @@ ZH_EN_MAP = [
     ("lang=\"zh-CN\"", "lang=\"en\""),
     ("AI 模型选择器 - 全网价格对比 2026 | DeepSeek vs GPT-4o vs Claude",
      "AI Model Selector - Cross-Platform Pricing 2026 | DeepSeek vs GPT-4o vs Claude"),
-    ("实时对比25+平台AI模型价格：DeepSeek、GPT-4o、Claude、Qwen等，一键复制API接入命令，支持跨平台比价、Token计价器、接口测速",
+    ("持续更新25+平台AI模型价格：DeepSeek、GPT-4o、Claude、Qwen等，一键复制API接入命令，支持跨平台比价、Token计价器、接口测速",
      "Compare AI model prices across 25+ platforms: DeepSeek, GPT-4o, Claude, Qwen & more. One-click API integration, cross-platform pricing, token calculator & speed test."),
     ("AI模型价格对比,DeepSeek价格,GPT-4o价格,Claude价格,大模型选择器,AI API定价,2026最佳AI模型,免费AI模型,廉价AI模型",
      "AI model pricing, DeepSeek price, GPT-4o price, Claude price, LLM selector, AI API pricing, best AI models 2026, free AI models, cheap AI models"),
     ("AI 模型选择器 - 全网价格对比 2026", "AI Model Selector - Cross-Platform Pricing 2026"),
-    ("实时对比25+平台AI模型价格，支持跨平台比价、Token计价",
+    ("持续更新25+平台AI模型价格，支持跨平台比价、Token计价",
      "Compare AI model prices across 25+ platforms with cross-platform pricing & token calculator"),
 
     # === 导航 ===
@@ -2638,6 +2658,7 @@ ZH_EN_MAP = [
     # === Rate Limits ===
     ("Rate Limits 对比", "Rate Limits Comparison"),
     ("各平台并发限制 (TPM/RPM)，避开上线后频繁报错的坑", "Platform concurrency limits (TPM/RPM)"),
+    ("请以各平台控制台和正式账单为准。", "Verify against provider consoles and final invoices."),
     ("平台", "Platform"),
     ("TPM (tokens/min)", "TPM (tokens/min)"),
     ("RPM (req/min)", "RPM (req/min)"),
@@ -2676,12 +2697,14 @@ ZH_EN_MAP = [
 
     # === 数据说明 ===
     ("数据说明：", "Data Notes:"),
-    ("个模型从 API 实时拉取，含真实价格；", " models fetched from API with real-time prices; "),
+    ("个模型从 API 直接采集；", " models collected directly from provider APIs; "),
     ("OpenRouter 显示原始美元价格，国内平台显示人民币价格；",
      "OpenRouter shows USD prices, Chinese platforms show CNY prices; "),
     ("标注「价格待确认」的模型请至平台控制台核实。",
      "Models marked \"Price TBD\" should be verified on the platform console."),
     ("数据更新时间：", "Last updated: "),
+    ("正在核验数据时间", "Verifying data timestamp"),
+    ("最后采集：", "Last collected: "),
 
     # === 排序 ===
     ("排序:", "Sort:"),
@@ -2711,7 +2734,7 @@ ZH_EN_MAP = [
     ("没有找到符合条件的模型", "No models match your criteria"),
     ("微信二维码", "WeChat QR Code"),
     ("扫码加微信 · 获取最新AI模型资讯", "Scan to add WeChat · Latest AI model news"),
-    ("数据来源：各平台 API 实时拉取 + 官网公告（更新时间：",
+    ("数据来源：各平台 API 直接采集 + 官网公告（更新时间：",
      "Data source: Platform APIs + official announcements (Updated: "),
     ("OpenRouter 显示原始美元价格 · 国内平台显示人民币价格 · 点击卡片复制接入方式",
      "OpenRouter shows USD · Chinese platforms show CNY · Click card to copy API integration"),

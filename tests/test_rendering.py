@@ -25,10 +25,13 @@ def test_document_head_component_renders_required_values():
         "STYLES": "body{}",
         "TOTAL": 12,
         "DATA_NOTE": "fresh",
+        "UPDATED_AT": "2026-08-29 12:00",
         "PRICE_CHANGE_HTML": "<div>changed</div>",
     })
     assert "12 个模型" in rendered
     assert "https://model.ai-selector.top/" in rendered
+    assert 'id="dataFreshness"' in rendered
+    assert 'data-updated-at="2026-08-29 12:00"' in rendered
     assert "{{" not in rendered
 
 

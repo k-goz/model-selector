@@ -5,6 +5,14 @@ on:
     - cron: '17 */6 * * *'
   workflow_dispatch:
 
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: production-deployment-health
+  cancel-in-progress: true
+
 jobs:
   health:
     runs-on: ubuntu-latest
@@ -16,16 +24,51 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Check production origins
-        run: |
-          python check_deployment.py \
-            --base-url https://ai-model-selector-eight.vercel.app \
-            --base-url https://model.ai-selector.top \
-            --max-age-hours 48
+      - name: Restore deployment alert state
+        uses: actions/cache/restore@v4
+        with:
+          path: .monitoring
+          key: deployment-alert-${{ github.run_id }}
+          restore-keys: |
+            deployment-alert-
 
-      - name: Notify failure
-        if: failure()
+      - name: Check production origins
+        id: health
+        continue-on-error: true
+        run: |
+          mkdir -p .monitoring
+          set -o pipefail
+          python check_deployment.py \
+            --base-url https://model.ai-selector.top \
+            --max-age-hours 48 2>&1 | tee .monitoring/deployment-health-summary.txt
+
+      - name: Update deployment alert state
+        id: alert
         env:
+          TASK_STATUS: ${{ steps.health.outcome }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python scripts/notify_ci_failure.py
+        run: |
+          python scripts/notify_ci_status.py \
+            --kind deployment \
+            --status "$TASK_STATUS" \
+            --state-file .monitoring/deployment-alert.json \
+            --summary-file .monitoring/deployment-health-summary.txt \
+            --cooldown-hours 24
+
+      - name: Trigger one recovery refresh
+        if: steps.health.outcome == 'failure' && steps.alert.outputs.should_remediate == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run refresh-model-data.yml --ref main
+
+      - name: Save deployment alert state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .monitoring
+          key: deployment-alert-${{ github.run_id }}
+
+      - name: Enforce deployment health gate
+        if: steps.health.outcome == 'failure'
+        run: exit 1

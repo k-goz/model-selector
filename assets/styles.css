@@ -17,6 +17,17 @@ a{color:var(--accent);text-decoration:none}
 .bd-ultra{background:rgba(168,85,247,.08);color:#c084fc;border-color:rgba(168,85,247,.2)}
 .snote{background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.15);border-radius:var(--radius);padding:10px 14px;margin:10px 0 16px;font-size:11px;color:#fbbf24;line-height:1.7;text-align:center;backdrop-filter:blur(8px)}
 .snote strong{color:#f59e0b}
+.data-freshness{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:-6px 0 16px;padding:9px 12px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface);font-size:11px;color:var(--text2)}
+.freshness-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;box-shadow:0 0 8px rgba(148,163,184,.45)}
+.freshness-label{color:var(--text)}
+.freshness-message{width:100%;text-align:center;color:var(--text3)}
+.freshness-fresh{border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.06)}
+.freshness-fresh .freshness-dot{background:#22c55e;box-shadow:0 0 9px rgba(34,197,94,.55)}
+.freshness-warning{border-color:rgba(245,158,11,.38);background:rgba(245,158,11,.07)}
+.freshness-warning .freshness-dot{background:#f59e0b;box-shadow:0 0 9px rgba(245,158,11,.55)}
+.freshness-stale{border-color:rgba(239,68,68,.45);background:rgba(239,68,68,.09)}
+.freshness-stale .freshness-dot{background:#ef4444;box-shadow:0 0 9px rgba(239,68,68,.6)}
+.freshness-stale .freshness-label,.freshness-stale .freshness-message{color:#f87171}
 /* 平台筛选栏 */
 .pbar{display:flex;gap:6px;overflow-x:auto;padding:8px 0;scrollbar-width:none;flex-wrap:wrap;margin-bottom:2px}
 .pbar::-webkit-scrollbar{display:none}

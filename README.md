@@ -6,13 +6,14 @@
 
 ## 当前状态
 
-- 当前仓库快照：22 个有数据的平台、2345 个模型；页面数字由 `models_data.json` 动态生成，不再在文档中承诺固定数量。
+- 当前模型数、平台数和采集时间以 `models_data.json.meta` 为唯一事实来源，README 不再维护容易漂移的固定数字。
 - 前端是生成后的纯 HTML/CSS/JavaScript，中文页与英文页均可独立部署。
 - `generate.py` 仍是生产编排入口；所有当前有模型数据的平台目录均已迁入 `src/platforms/`，生产生成不再依赖未审计的内联平台目录。
 - 数据缓存的采集时间与页面生成时间分开记录，缓存重建页面不会伪装成一次新采集。
-- 每日 CI 已收敛为单一工作流，依次执行测试、刷新、数据校验、价格基准校验、静态页面门禁、桌面/移动端浏览器回归和静态产物提交。
+- 每日刷新由 `.github/workflows/refresh-model-data.yml` 唯一触发，执行体依次完成测试、采集、数据校验、价格基准校验、静态页面门禁、桌面/移动端浏览器回归和静态产物提交。
+- 页面根据 `models_data.json.meta.updated_at` 动态显示数据年龄，并区分新鲜、延迟、过期和未知状态。
 
-> 当前提交内的数据采集时间是 2026-05-09，属于历史快照。要获得新数据，需要配置平台密钥后执行 `python3 generate.py --refresh`。
+生产刷新、告警和部署事实来源见 [`docs/PHASE16_REFRESH_INCIDENT.md`](docs/PHASE16_REFRESH_INCIDENT.md) 与 [`docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md`](docs/PRODUCTION_DEPLOYMENT_SOURCE_OF_TRUTH.md)。
 
 ## 价格语义
 
@@ -39,7 +40,7 @@
 - `collected_at`：该目录的实际采集时间。
 - `price_source_url`：价格来源 URL；尚未迁移的平台允许为空，但会产生校验警告。
 
-`meta.source_runs` 保存每个平台本次抓取的来源类型、模型数量和失败原因；`meta.lineage_counts` 汇总不同来源类型覆盖的模型数。API 请求失败时会明确记录为 `fallback`，官方文档抓取记录为 `scrape`，不会把缓存或静态回退伪装成实时 API 数据。
+`meta.source_runs` 保存每个平台本次抓取的来源类型、模型数量和失败原因；`meta.lineage_counts` 汇总不同来源类型覆盖的模型数。API 请求失败时会明确记录为 `fallback`，官方文档抓取记录为 `scrape`，不会把缓存或静态回退伪装成当前 API 数据。
 
 ## 数据链路
 
@@ -75,7 +76,7 @@ npm ci
 npx playwright install chromium
 
 # 使用现有 models_data.json 快速重建页面，不刷新采集时间
-python3 generate.py
+python3 generate.py --render-only
 
 # 强制从各平台刷新；密钥缺失的平台会使用脚本内已有的安全回退
 python3 generate.py --refresh
@@ -106,7 +107,7 @@ python3 validate_site.py
 # 桌面 Chromium 与 Pixel 7 移动视口真实交互回归
 npm run test:browser
 
-# 检查默认生产域名、中英文页面和数据新鲜度
+# 检查唯一生产域名、中英文页面和数据新鲜度
 python3 check_deployment.py --max-age-hours 48
 
 # 使用指定快照校验
@@ -142,7 +143,8 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ├── scripts/normalize_official_prices_db.py
 ├── tests/browser/                     # Playwright 真实交互回归
 ├── tests/                             # Python 单元与静态页面测试
-└── .github/workflows/update-models.yml
+├── .github/workflows/refresh-model-data.yml # 定时/手工生产刷新入口
+└── .github/workflows/update-models.yml       # 可复用刷新执行体
 ```
 
 ## 现阶段开发原则
@@ -156,7 +158,7 @@ python3 verify_ground_truth.py --json /path/to/models_data.json
 ## 下一阶段
 
 - 补齐旧平台的 `price_source_url` 和币种转换证据，逐步消除血缘警告。
-- 恢复并验证自定义域名，补充部署健康检查和失败通知。
+- 连续观察三次真实每日 schedule，确认刷新、提交、Vercel 发布、告警恢复闭环稳定。
 - 将页面区块继续拆成更小模板，并为筛选状态、计算器和复制命令补充更细粒度测试。
 
 价格数据仅供选型参考，最终以平台控制台和正式账单为准。

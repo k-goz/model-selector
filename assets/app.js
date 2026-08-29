@@ -9,6 +9,51 @@ var USD_TO_CNY=7.25;
 
 // ─── 从 models_data.json 动态加载模型数据 ───
 var modelsDataLoaded = false;
+function parseDataTimestamp(value) {
+    if (!value) return null;
+    var normalized = String(value).trim().replace(' ', 'T');
+    if (!/[zZ]|[+-]\d\d:\d\d$/.test(normalized)) normalized += ':00+08:00';
+    var parsed = new Date(normalized);
+    return isNaN(parsed.getTime()) ? null : parsed;
+}
+function formatDataAge(hours, english) {
+    if (hours < 1) return english ? 'less than 1 hour old' : '不足 1 小时';
+    if (hours < 48) return english ? Math.floor(hours) + ' hours old' : Math.floor(hours) + ' 小时前';
+    var days = Math.floor(hours / 24);
+    return english ? days + ' days old' : days + ' 天前';
+}
+function updateDataFreshness(updatedAt) {
+    var banner = document.getElementById('dataFreshness');
+    if (!banner) return 'unknown';
+    if (updatedAt) banner.dataset.updatedAt = updatedAt;
+    var timestamp = parseDataTimestamp(banner.dataset.updatedAt);
+    var english = document.documentElement.lang === 'en';
+    var status = 'unknown';
+    var hours = timestamp ? Math.max(0, (Date.now() - timestamp.getTime()) / 3600000) : NaN;
+    if (timestamp) status = hours <= 36 ? 'fresh' : hours <= 72 ? 'warning' : 'stale';
+    banner.classList.remove('freshness-fresh', 'freshness-warning', 'freshness-stale', 'freshness-unknown');
+    banner.classList.add('freshness-' + status);
+    var copy = {
+        zh: {
+            fresh: ['数据新鲜', '数据处于每日更新窗口内。'],
+            warning: ['数据更新延迟', '数据已超过预期更新窗口，请谨慎用于选型。'],
+            stale: ['数据已过期', '价格和模型目录可能已经变化，请先到平台控制台核验。'],
+            unknown: ['数据时间未知', '无法确认数据新鲜度，请勿视为实时数据。']
+        },
+        en: {
+            fresh: ['Data is fresh', 'Data is within the daily update window.'],
+            warning: ['Update delayed', 'Data is outside the expected update window; verify before deciding.'],
+            stale: ['Data is stale', 'Pricing and catalogs may have changed; verify with the provider.'],
+            unknown: ['Data age unknown', 'Freshness cannot be verified; do not treat this as live data.']
+        }
+    }[english ? 'en' : 'zh'][status];
+    banner.querySelector('.freshness-label').textContent = copy[0];
+    banner.querySelector('.freshness-age').textContent = timestamp
+        ? (english ? 'Last collected: ' : '最后采集：') + banner.dataset.updatedAt + ' · ' + formatDataAge(hours, english)
+        : (english ? 'Last collected: unknown' : '最后采集：未知');
+    banner.querySelector('.freshness-message').textContent = copy[1];
+    return status;
+}
 function escapeHtml(value) {
     return String(value == null ? '' : value)
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -41,6 +86,7 @@ function renderModelsFromJSON(data) {
     grid.innerHTML = '';
     var models = data.models;
     var meta = data.meta || {};
+    if (meta.updated_at) updateDataFreshness(meta.updated_at);
     // 更新汇率
     if (meta.usd_to_cny) USD_TO_CNY = meta.usd_to_cny;
     // 更新数据说明中的时间
@@ -115,7 +161,7 @@ function renderModelsFromJSON(data) {
             else priceHtml = '<span class="price-badge price-mid">IN:$' + pI.toFixed(1) + ' OUT:$' + pO.toFixed(1) + '/1M</span>';
         }
 
-        var sourceMap = {A:'API实时',H:'硬编码(可能过时)',P:'代理平台自营价(非官方)',S:'官方定价页爬取',
+        var sourceMap = {A:'API直接采集',H:'硬编码(可能过时)',P:'代理平台自营价(非官方)',S:'官方定价页爬取',
             SP:'SPA页面爬取',OR:'OpenRouter回填',L:'LiteLLM社区数据',DB:'官方价格数据库',CV:'交叉验证修正'};
         var priceSrc = String(m.price_src || '');
         var sourceHtml = priceSrc ? '<span class="price-src' + (priceSrc === 'P' ? ' price-src-proxy' : '')
@@ -172,6 +218,8 @@ function renderModelsFromJSON(data) {
 
 // 初始化
 document.addEventListener('DOMContentLoaded',function(){
+updateDataFreshness();
+setInterval(function(){updateDataFreshness();},60000);
 // ─── 尝试从 models_data.json 动态加载 ───
 var modelsDataUrl=document.documentElement.lang==='en'?'../models_data.json':'models_data.json';
 fetch(modelsDataUrl).then(function(r){return r.json();}).then(function(data){
