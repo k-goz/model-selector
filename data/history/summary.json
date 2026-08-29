@@ -1,0 +1,15 @@
+{
+  "format_version": "1.0",
+  "generated_at": null,
+  "periods": {
+    "day": {
+      "event_counts": {}
+    },
+    "month": {
+      "event_counts": {}
+    },
+    "week": {
+      "event_counts": {}
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "added": [],
+  "baseline_updated_at": "2026-08-30 00:06",
+  "candidate_updated_at": "2026-08-30 00:06",
+  "changes": [],
+  "discovered_at": "2026-08-29T17:34:51+00:00",
+  "format_version": "2.0",
+  "removed": [],
+  "schema_version": "2.0.0",
+  "summary": {
+    "added": 0,
+    "after_models": 2301,
+    "before_models": 2301,
+    "changed": 0,
+    "field_changes": {},
+    "removed": 0
+  }
+}

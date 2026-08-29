@@ -43,6 +43,7 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
     from src.config import RuntimeConfig
     from src.monitoring import update_ping_history
     from src.notifications import send_telegram_refresh
+    from src.history import write_history_artifacts
     from src.publication import build_catalog, write_catalog
     from src.rendering import (
         compose_page,
@@ -298,7 +299,14 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
     all_models = []
     price_changes = []
     source_runs = {}
-    prior_context_models = []
+    existing_catalog = {}
+    if os.path.exists(MODELS_JSON):
+        try:
+            with open(MODELS_JSON, "r", encoding="utf-8") as existing_file:
+                existing_catalog = json.load(existing_file)
+        except (OSError, json.JSONDecodeError) as error:
+            logger.warning("无法读取既有目录作为历史基线: %s", error)
+    prior_context_models = list(existing_catalog.get("models", []))
     data_updated_at = datetime.now().strftime("%Y-%m-%d %H:%M")
     or_prices = {}  # OpenRouter 价格查找表（始终可用）
     OR = []         # OpenRouter 原始数据
@@ -309,8 +317,7 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
         if _json_age_hours > 24 and not RENDER_ONLY:
             print("  ⚠️ models_data.json 已超过24小时，将重新生成", file=sys.stderr)
         try:
-            with open(MODELS_JSON, "r", encoding="utf-8") as jf:
-                jdata = json.load(jf)
+            jdata = existing_catalog
             jmodels = jdata.get("models", [])
             prior_context_models = jmodels
             jmeta = jdata.get("meta", {})
@@ -1433,8 +1440,18 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
                 official_prices_db=OFFICIAL_PRICES_DB,
                 prior_context_models=prior_context_models,
             )
+            history_root = CONFIG.models_file.parent / "data"
+            history_before = existing_catalog if existing_catalog.get("models") else catalog
+            history_diff = write_history_artifacts(
+                history_before,
+                catalog,
+                history_path=history_root / "history" / "price-history.json",
+                diff_path=history_root / "diffs" / "latest.json",
+                summary_path=history_root / "history" / "summary.json",
+            )
             write_catalog(CONFIG.models_file, catalog)
             print("  models_data.json updated (%d models)" % total, file=sys.stderr)
+            print("  Catalog diff: %s" % history_diff["summary"], file=sys.stderr)
         except Exception as error:
             print("  models_data.json update failed:", str(error)[:80], file=sys.stderr)
     # ─── 每日测速并保存历史数据 ───

@@ -1,0 +1,9 @@
+{
+  "events": [],
+  "format_version": "1.0",
+  "retention": {
+    "max_events": 5000,
+    "strategy": "latest-events"
+  },
+  "updated_at": null
+}
