@@ -79,148 +79,177 @@ function classifyModelPrice(model, tags) {
         unavailable:'已下线',retiring:'即将下线',unknown:'价格待确认'};
     return {status:status,billingUnit:billingUnit,label:labels[status] || ''};
 }
-function renderModelsFromJSON(data) {
-    var grid = document.getElementById('grid');
-    if (!grid || !data || !data.models) return false;
-    // 清空现有卡片
-    grid.innerHTML = '';
-    var models = data.models;
-    var meta = data.meta || {};
-    if (meta.updated_at) updateDataFreshness(meta.updated_at);
-    // 更新汇率
-    if (meta.usd_to_cny) USD_TO_CNY = meta.usd_to_cny;
-    // 更新数据说明中的时间
-    var timeEls = document.querySelectorAll('.ftr p, .snote');
-    // 动态生成卡片
-    for (var i = 0; i < models.length; i++) {
-        var m = models[i];
-        var pid = m.platform_id;
-        var pname = String(m.platform_name || '');
-        var pc = m.platform_color;
-        if(!pc && data.platforms && data.platforms[pid]) pc = data.platforms[pid].color;
-        if(!/^#[0-9a-f]{3,8}$/i.test(pc || '')) pc = '#6366f1';
-        var mname = String(m.name || '');
-        var inp = m.input_price;
-        var out = m.output_price;
-        var ctx = String(m.context || 'N/A');
-        var tags = m.tags || [];
-        var scen = m.scene || '日常对话';
-        var fam = m.family || '';
-        var cur = m.currency || 'CNY';
-        var pu = m.price_unit || 'per_token';
-        var baseUrl = String(m.base_url || '');
-        var priceInfo = classifyModelPrice(m, tags);
-        var priceStatus = priceInfo.status;
-        var billingUnit = priceInfo.billingUnit;
-        var inputPriceDisplay = String(m.input_price_display || '');
-        var outputPriceDisplay = String(m.output_price_display || '');
-        var pricingNote = String(m.pricing_note || '');
+var catalogData=null,catalogModels=[],filteredModels=[];
 
-        // 价格分级
-        var pt = 'mid';
-        var inpF = parseFloat(inp) || 0, outF = parseFloat(out) || 0;
-        if (priceStatus === 'free' || priceStatus === 'free_tier') pt = 'free';
-        else if (priceStatus !== 'priced') pt = 'unknown';
-        else if (cur === 'USD' && pu === 'per_token') { var p = inpF * 1e6; pt = p < 0.1 ? 'cheap' : p < 10 ? 'mid' : p < 100 ? 'high' : 'ultra'; }
-        else { pt = inpF < 0.1 ? 'cheap' : inpF < 10 ? 'mid' : inpF < 100 ? 'high' : 'ultra'; }
+function renderModelCard(m,data) {
+    var pid = m.platform_id;
+    var pname = String(m.platform_name || '');
+    var pc = m.platform_color;
+    if(!pc && data.platforms && data.platforms[pid]) pc = data.platforms[pid].color;
+    if(!/^#[0-9a-f]{3,8}$/i.test(pc || '')) pc = '#6366f1';
+    var mname = String(m.name || '');
+    var inp = m.input_price;
+    var out = m.output_price;
+    var ctx = String(m.context || 'N/A');
+    var tags = m.tags || [];
+    var scen = m.scene || '日常对话';
+    var fam = m.family || '';
+    var cur = m.currency || 'CNY';
+    var pu = m.price_unit || 'per_token';
+    var baseUrl = String(m.base_url || '');
+    var priceInfo = classifyModelPrice(m, tags);
+    var priceStatus = priceInfo.status;
+    var billingUnit = priceInfo.billingUnit;
+    var inputPriceDisplay = String(m.input_price_display || '');
+    var outputPriceDisplay = String(m.output_price_display || '');
+    var pricingNote = String(m.pricing_note || '');
 
-        // data-inp/data-out
-        var inpS, outS;
-        if (pu === 'per_1m' && cur === 'USD') { inpS = inpF / 1e6; outS = outF / 1e6; }
-        else { inpS = inpF; outS = outF; }
+    // 价格分级
+    var pt = 'mid';
+    var inpF = parseFloat(inp) || 0, outF = parseFloat(out) || 0;
+    if (priceStatus === 'free' || priceStatus === 'free_tier') pt = 'free';
+    else if (priceStatus !== 'priced') pt = 'unknown';
+    else if (cur === 'USD' && pu === 'per_token') { var p = inpF * 1e6; pt = p < 0.1 ? 'cheap' : p < 10 ? 'mid' : p < 100 ? 'high' : 'ultra'; }
+    else { pt = inpF < 0.1 ? 'cheap' : inpF < 10 ? 'mid' : inpF < 100 ? 'high' : 'ultra'; }
 
-        // 上下文数值
-        var ctxNum = ctx.replace(/[^\d]/g, '') || '0';
+    // data-inp/data-out
+    var inpS, outS;
+    if (pu === 'per_1m' && cur === 'USD') { inpS = inpF / 1e6; outS = outF / 1e6; }
+    else { inpS = inpF; outS = outF; }
 
-        // 标签 HTML
-        var tagMap = {'免费':'free','免费额度':'free','便宜':'cheap','极便宜':'cheap','性价比':'cheap',
-            '旗舰':'hot','主力':'hot','最新版':'hot','2025新':'hot','2026新':'hot',
-            '视觉':'vision','推理':'reason','长上下文':'long','超长上下文':'long',
-            '开源':'other','代码':'other','图片生成':'other','视频生成':'other',
-            '快速':'other','高性能':'hot','Pro订阅':'other','蒸馏':'other',
-            '轻量':'other','已下线':'other','即将下线':'other','价格待确认':'other',
-            '语音':'other','TTS':'other','ASR':'other','向量':'other','排序':'other',
-            'OCR':'other','多模态':'vision','Turbo':'hot','降价后':'cheap','降价90%':'cheap',
-            '超低价':'cheap','超便宜':'cheap','编程':'other','智能路由':'other',
-            '满血版':'hot','价格变动':'other','涨价':'hot','降价':'cheap','免费':'free'};
-        var tagsHtml = '';
-        for (var ti = 0; ti < tags.length; ti++) {
-            var tc = tagMap[tags[ti]] || 'other';
-            tagsHtml += '<span class="tg tg-' + tc + '">' + escapeHtml(tags[ti]) + '</span>';
-        }
+    // 上下文数值
+    var ctxNum = ctx.replace(/[^\d]/g, '') || '0';
 
-        // 价格徽章
-        var priceHtml = '';
-        if (priceStatus !== 'priced') {
-            var statusClass = priceStatus === 'free' ? 'price-free' : 'price-unknown';
-            priceHtml = '<span class="price-badge ' + statusClass + '">' + escapeHtml(priceInfo.label) + '</span>';
-        } else if (cur === 'CNY' && inputPriceDisplay && outputPriceDisplay) {
-            priceHtml = '<span class="price-badge price-mid" title="' + escapeHtml(pricingNote) + '">IN:'
-                + escapeHtml(inputPriceDisplay) + ' OUT:' + escapeHtml(outputPriceDisplay) + '</span>';
-        } else if (cur === 'CNY') {
-            if (inpF === outF) { var cc2 = inpF < 1 ? 'price-cheap' : inpF < 10 ? 'price-mid' : inpF < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc2 + '">¥' + inpF.toFixed(2) + '/M</span>'; }
-            else priceHtml = '<span class="price-badge price-mid">IN:¥' + inpF.toFixed(2) + ' OUT:¥' + outF.toFixed(2) + '/M</span>';
-        } else {
-            var pI = pu === 'per_token' ? inpF * 1e6 : inpF;
-            var pO = pu === 'per_token' ? outF * 1e6 : outF;
-            if (inpF === outF) { var cc3 = pI < 0.1 ? 'price-free' : pI < 1 ? 'price-cheap' : pI < 10 ? 'price-mid' : pI < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc3 + '">$' + pI.toFixed(2) + '/1M</span>'; }
-            else priceHtml = '<span class="price-badge price-mid">IN:$' + pI.toFixed(1) + ' OUT:$' + pO.toFixed(1) + '/1M</span>';
-        }
-
-        var sourceMap = {A:'API直接采集',H:'硬编码(可能过时)',P:'代理平台自营价(非官方)',S:'官方定价页爬取',
-            SP:'SPA页面爬取',OR:'OpenRouter回填',L:'LiteLLM社区数据',DB:'官方价格数据库',CV:'交叉验证修正'};
-        var priceSrc = String(m.price_src || '');
-        var sourceHtml = priceSrc ? '<span class="price-src' + (priceSrc === 'P' ? ' price-src-proxy' : '')
-            + '" title="价格来源: ' + escapeHtml(sourceMap[priceSrc] || priceSrc) + '">' + escapeHtml(priceSrc.slice(0,1)) + '</span>' : '';
-
-        // 上下文条
-        var ctxBarW = Math.min(100, (parseInt(ctxNum) || 0) / 1000);
-
-        // 家族属性
-        var famAttr = fam ? ' data-family="' + escapeHtml(fam) + '"' : '';
-
-        // 构建卡片 HTML
-        var cardHtml = '<div class="mc" style="--c:' + pc + '" data-s="' + escapeHtml(scen) + '" data-p="' + escapeHtml(pid) + '" data-pt="' + pt + '" '
-            + 'data-inp="' + inpS + '" data-out="' + outS + '" data-cur="' + cur + '" data-pu="' + pu + '" '
-            + 'data-ctx="' + ctxNum + '" data-ctx-display="' + escapeHtml(ctx) + '" data-price-status="' + priceStatus + '" '
-            + 'data-inp-display="' + escapeHtml(inputPriceDisplay) + '" data-out-display="' + escapeHtml(outputPriceDisplay) + '" '
-            + 'data-pricing-note="' + escapeHtml(pricingNote) + '" '
-            + 'data-billing-unit="' + billingUnit + '" data-base-url="' + escapeHtml(baseUrl) + '" '
-            + 'data-model-name="' + escapeHtml(mname) + '" ' + famAttr + ' '
-            + 'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p)">'
-            + '<div class="dot"></div><div class="prov">' + escapeHtml(pname) + '</div>'
-            + '<div class="mname">' + escapeHtml(mname) + '</div><div class="tags">' + tagsHtml + '</div>'
-            + '<div class="prow">' + priceHtml + sourceHtml + '</div>'
-            + '<div class="ctx-row"><span class="ctx">上下文: ' + escapeHtml(ctx) + '</span>'
-            + '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + ctxBarW + '%"></div></div></div>'
-            + '<div class="base-url">' + escapeHtml(baseUrl) + '</div>'
-            + '<div class="hint">点击查看接入代码</div>'
-            + '<div class="card-actions">'
-            + '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
-            + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
-            + '</div></div>';
-
-        grid.insertAdjacentHTML('beforeend', cardHtml);
+    // 标签 HTML
+    var tagMap = {'免费':'free','免费额度':'free','便宜':'cheap','极便宜':'cheap','性价比':'cheap',
+        '旗舰':'hot','主力':'hot','最新版':'hot','2025新':'hot','2026新':'hot',
+        '视觉':'vision','推理':'reason','长上下文':'long','超长上下文':'long',
+        '开源':'other','代码':'other','图片生成':'other','视频生成':'other',
+        '快速':'other','高性能':'hot','Pro订阅':'other','蒸馏':'other',
+        '轻量':'other','已下线':'other','即将下线':'other','价格待确认':'other',
+        '语音':'other','TTS':'other','ASR':'other','向量':'other','排序':'other',
+        'OCR':'other','多模态':'vision','Turbo':'hot','降价后':'cheap','降价90%':'cheap',
+        '超低价':'cheap','超便宜':'cheap','编程':'other','智能路由':'other',
+        '满血版':'hot','价格变动':'other','涨价':'hot','降价':'cheap','免费':'free'};
+    var tagsHtml = '';
+    for (var ti = 0; ti < tags.length; ti++) {
+        var tc = tagMap[tags[ti]] || 'other';
+        tagsHtml += '<span class="tg tg-' + tc + '">' + escapeHtml(tags[ti]) + '</span>';
     }
 
-    // 更新模型计数
-    var bdEls = document.querySelectorAll('.bd');
-    if (bdEls.length > 0) bdEls[0].innerHTML = '&#128202; ' + models.length + ' 个模型';
-    var fcEl = document.querySelector('.filter-count');
-    if (fcEl) fcEl.innerHTML = '显示 <strong>' + models.length + '</strong> / ' + models.length + ' 个模型';
+    // 价格徽章
+    var priceHtml = '';
+    if (priceStatus !== 'priced') {
+        var statusClass = priceStatus === 'free' ? 'price-free' : 'price-unknown';
+        priceHtml = '<span class="price-badge ' + statusClass + '">' + escapeHtml(priceInfo.label) + '</span>';
+    } else if (cur === 'CNY' && inputPriceDisplay && outputPriceDisplay) {
+        priceHtml = '<span class="price-badge price-mid" title="' + escapeHtml(pricingNote) + '">IN:'
+            + escapeHtml(inputPriceDisplay) + ' OUT:' + escapeHtml(outputPriceDisplay) + '</span>';
+    } else if (cur === 'CNY') {
+        if (inpF === outF) { var cc2 = inpF < 1 ? 'price-cheap' : inpF < 10 ? 'price-mid' : inpF < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc2 + '">¥' + inpF.toFixed(2) + '/M</span>'; }
+        else priceHtml = '<span class="price-badge price-mid">IN:¥' + inpF.toFixed(2) + ' OUT:¥' + outF.toFixed(2) + '/M</span>';
+    } else {
+        var pI = pu === 'per_token' ? inpF * 1e6 : inpF;
+        var pO = pu === 'per_token' ? outF * 1e6 : outF;
+        if (inpF === outF) { var cc3 = pI < 0.1 ? 'price-free' : pI < 1 ? 'price-cheap' : pI < 10 ? 'price-mid' : pI < 100 ? 'price-high' : 'price-ultra'; priceHtml = '<span class="price-badge ' + cc3 + '">$' + pI.toFixed(2) + '/1M</span>'; }
+        else priceHtml = '<span class="price-badge price-mid">IN:$' + pI.toFixed(1) + ' OUT:$' + pO.toFixed(1) + '/1M</span>';
+    }
 
-    // 更新平台筛选栏计数
-    if (meta.platform_counts) {
-        var pc2 = meta.platform_counts;
-        document.querySelectorAll('.pt').forEach(function(b) {
-            var p = b.dataset.p;
-            var span = b.querySelector('.pc');
-            if (span && pc2[p]) span.textContent = pc2[p];
+    var sourceMap = {A:'API直接采集',H:'硬编码(可能过时)',P:'代理平台自营价(非官方)',S:'官方定价页爬取',
+        SP:'SPA页面爬取',OR:'OpenRouter回填',L:'LiteLLM社区数据',DB:'官方价格数据库',CV:'交叉验证修正'};
+    var priceSrc = String(m.price_src || '');
+    var sourceHtml = priceSrc ? '<span class="price-src' + (priceSrc === 'P' ? ' price-src-proxy' : '')
+        + '" title="价格来源: ' + escapeHtml(sourceMap[priceSrc] || priceSrc) + '">' + escapeHtml(priceSrc.slice(0,1)) + '</span>' : '';
+
+    // 上下文条
+    var ctxBarW = Math.min(100, (parseInt(ctxNum) || 0) / 1000);
+
+    // 家族属性
+    var famAttr = fam ? ' data-family="' + escapeHtml(fam) + '"' : '';
+
+    // 构建卡片 HTML
+    var cardHtml = '<div class="mc" style="--c:' + pc + '" data-s="' + escapeHtml(scen) + '" data-p="' + escapeHtml(pid) + '" data-pt="' + pt + '" '
+        + 'data-inp="' + inpS + '" data-out="' + outS + '" data-cur="' + cur + '" data-pu="' + pu + '" '
+        + 'data-ctx="' + ctxNum + '" data-ctx-display="' + escapeHtml(ctx) + '" data-price-status="' + priceStatus + '" '
+        + 'data-inp-display="' + escapeHtml(inputPriceDisplay) + '" data-out-display="' + escapeHtml(outputPriceDisplay) + '" '
+        + 'data-pricing-note="' + escapeHtml(pricingNote) + '" '
+        + 'data-billing-unit="' + billingUnit + '" data-base-url="' + escapeHtml(baseUrl) + '" '
+        + 'data-model-name="' + escapeHtml(mname) + '" data-offering-id="' + escapeHtml(m.provider_offering_id || '') + '" data-confidence="' + escapeHtml((m.confidence || {}).grade || 'unknown') + '" ' + famAttr + ' '
+        + 'onclick="showCodeModal(this.dataset.baseUrl,this.dataset.modelName,this.dataset.p)">'
+        + '<div class="dot"></div><div class="prov">' + escapeHtml(pname) + '</div>'
+        + '<div class="mname">' + escapeHtml(mname) + '</div><div class="tags">' + tagsHtml + '</div>'
+        + '<div class="prow">' + priceHtml + sourceHtml + '</div>'
+        + '<div class="ctx-row"><span class="ctx">上下文: ' + escapeHtml(ctx) + '</span>'
+        + '<div class="ctx-bar-wrap"><div class="ctx-bar" style="width:' + ctxBarW + '%"></div></div></div>'
+        + '<div class="base-url">' + escapeHtml(baseUrl) + '</div>'
+        + '<div class="hint">点击查看接入代码</div>'
+        + '<div class="card-actions">'
+        + '<span class="fav-btn" onclick="event.stopPropagation();toggleFav(this)" title="收藏">&#9734;</span>'
+        + '<div class="cb-wrap"><input type="checkbox" class="mc-cb" onclick="event.stopPropagation();toggleSel(this)"><label class="cb-lbl">对比</label></div>'
+        + '</div></div>';
+
+    return cardHtml;
+}
+
+function priceTierForModel(m) {
+    var info=classifyModelPrice(m,m.tags||[]);
+    if(info.status==='free'||info.status==='free_tier')return 'free';
+    if(info.status!=='priced')return 'unknown';
+    var value=parseFloat(m.input_price)||0;
+    if((m.currency||'CNY')==='USD'&&(m.price_unit||'per_token')==='per_token')value*=1e6;
+    return value<0.1?'cheap':value<10?'mid':value<100?'high':'ultra';
+}
+
+function catalogModelView(m) {
+    var tags=m.tags||[],info=classifyModelPrice(m,tags);
+    var inp=parseFloat(m.input_price)||0,out=parseFloat(m.output_price)||0;
+    var cur=m.currency||'CNY',pu=m.price_unit||'per_token';
+    if(cur==='USD'&&pu==='per_1m'){inp/=1e6;out/=1e6;}
+    return {
+        name:String(m.name||''),prov:String(m.platform_name||''),pid:String(m.platform_id||''),
+        inp:inp,out:out,cur:cur,pu:pu,scene:String(m.scene||''),
+        ctx:parseInt(String(m.context||'').replace(/[^\d]/g,''))||0,
+        tags:tags,priceStatus:info.status,baseUrl:String(m.base_url||'')
+    };
+}
+
+function activeCatalogViews() {
+    return (modelsDataLoaded?filteredModels:[]).map(catalogModelView);
+}
+
+function renderCurrentPage() {
+    var grid=document.getElementById('grid');
+    if(!grid||!catalogData)return;
+    var start=(currentPage-1)*PAGE_SIZE;
+    var pageModels=filteredModels.slice(start,start+PAGE_SIZE);
+    grid.innerHTML=pageModels.map(function(model){return renderModelCard(model,catalogData);}).join('');
+    grid.dataset.total=String(catalogModels.length);
+    grid.dataset.rendered=String(pageModels.length);
+    favs.forEach(function(f){var c=findCardByName(f);if(c){c.classList.add('fav-card');var fb=c.querySelector('.fav-btn');if(fb)fb.classList.add('active');}});
+    if(curCur!=='CNY')updatePrices();
+}
+
+function renderModelsFromJSON(data) {
+    var grid=document.getElementById('grid');
+    if(!grid||!data||!Array.isArray(data.models))return false;
+    catalogData=data;
+    catalogModels=data.models;
+    var meta=data.meta||{};
+    if(meta.updated_at)updateDataFreshness(meta.updated_at);
+    if(meta.usd_to_cny)USD_TO_CNY=meta.usd_to_cny;
+    var bdEls=document.querySelectorAll('.bd');
+    if(bdEls.length>0)bdEls[0].innerHTML='&#128202; '+catalogModels.length+' 个模型';
+    if(meta.platform_counts){
+        document.querySelectorAll('.pt').forEach(function(button){
+            var count=meta.platform_counts[button.dataset.p];
+            var span=button.querySelector('.pc');
+            if(span&&count!=null)span.textContent=count;
         });
     }
-
-    modelsDataLoaded = true;
-    favs.forEach(function(f){var c=findCardByName(f);if(c){c.classList.add('fav-card');var fb=c.querySelector('.fav-btn');if(fb)fb.classList.add('active');}});
+    modelsDataLoaded=true;
+    currentPage=1;
+    filter();
+    buildCrossPrice();
     return true;
 }
 
@@ -233,10 +262,10 @@ var modelsDataUrl=document.documentElement.lang==='en'?'../models_data.json':'mo
 fetch(modelsDataUrl).then(function(r){return r.json();}).then(function(data){
     if(data && data.models && data.models.length>0){
         renderModelsFromJSON(data);
-        filter();
     }
 }).catch(function(){
-    // JSON 加载失败，使用 HTML 中已有的硬编码卡片
+    var grid=document.getElementById('grid');
+    if(grid)grid.innerHTML='<p class="catalog-error" role="alert">模型数据加载失败，请稍后重试或直接查看 models_data.json。</p>';
 });
 
 if(!isDark)document.body.classList.add('light');
@@ -315,8 +344,6 @@ restoreState();
 
 // 初始筛选
 filter();
-// 生成跨平台比价
-buildCrossPrice();
 });
 
 function findCardByName(name){
@@ -364,99 +391,75 @@ result.text=textParts.join(' ');
 return result;
 }
 
-// ─── 筛选 ───
-function filter(){
-var cs=document.querySelectorAll('.mc');
-var q=(document.getElementById('si').value||'').toLowerCase().trim();
-var n=0;
-cs.forEach(function(c){
-var sh=true;
-var pn=(c.querySelector('.prov')||{}).textContent||'';
-var mn=(c.querySelector('.mname')||{}).textContent||'';
-if(curP!='all'&&curP!==(c.dataset.p||''))sh=false;
-if(curPT!='all'&&curPT!==(c.dataset.pt||''))sh=false;
-if(curS!='all'&&curS!==(c.dataset.s||''))sh=false;
-// 标签筛选
-if(curTags.length>0){
-var cardTags=Array.from(c.querySelectorAll('.tg')).map(function(t){return t.textContent;});
-var match=curTags.some(function(t){return cardTags.indexOf(t)!==-1;});
-if(!match)sh=false;
-}
-// 上下文筛选
-if(curCtx!=='all'){
-var ctxVal=parseInt(c.dataset.ctx||0);
-var ctxMin=parseInt(curCtx)*1000;
-if(ctxVal<ctxMin)sh=false;
-}
-// 家族筛选
-if(curFamily!=='all'){
-var fam=c.dataset.family||'';
-if(fam!==curFamily)sh=false;
-}
-// 价格区间筛选
-var inp=parseFloat(c.dataset.inp||0);
-var cur=c.dataset.cur||'CNY';
-var pu2=c.dataset.pu||'per_token';
-var mul=cur==='USD'?(pu2==='per_1m'?1:1e6):1;
-var cnyInp=cur==='USD'?inp*mul*USD_TO_CNY:inp;
-if(priceMin!==null||priceMax!==null){
-if(priceMin!==null&&cnyInp<priceMin)sh=false;
-if(priceMax!==null&&cnyInp>priceMax)sh=false;
-}
- // 搜索 (支持高级语法)
- if(q){
- var adv=parseAdvancedSearch(q);
- // 模糊匹配: 搜索词每个字符按序出现即可 (如 "dsk" 匹配 "deepseek")
- function fuzzyMatch(text,query){var t=text.toLowerCase(),q2=query.toLowerCase(),ti=0;for(var qi=0;qi<q2.length;qi++){ti=t.indexOf(q2[qi],ti);if(ti===-1)return false;ti++;}return true;}
- if(adv.text&&!fuzzyMatch(mn,adv.text)&&!fuzzyMatch(pn,adv.text))sh=false;
-// 高级价格筛选
-if(adv.priceMin!==null){
-if(cnyInp<adv.priceMin)sh=false;
-}
-if(adv.priceMax!==null){
-if(cnyInp>adv.priceMax)sh=false;
-}
-// 高级上下文筛选
-if(adv.ctxMin!==null){
-var ctxK=parseInt(c.dataset.ctx||0)/1000;
-if(ctxK<adv.ctxMin)sh=false;
-}
-if(adv.ctxMax!==null){
-var ctxK2=parseInt(c.dataset.ctx||0)/1000;
-if(ctxK2>adv.ctxMax)sh=false;
-}
-// 高级家族筛选
-if(adv.family){
-var fam2=(c.dataset.family||'').toLowerCase();
-if(fam2!==adv.family.toLowerCase())sh=false;
-}
-// 高级平台筛选
-if(adv.platform){
-if((c.dataset.p||'')!==adv.platform)sh=false;
-}
-}
-c.setAttribute('data-visible',sh?'1':'0');
-c.style.display=sh?'':'none';if(sh)n++;
-});
-document.getElementById('empty').style.display=n===0?'block':'none';
-// 更新筛选计数
-totalFiltered=n;
-currentPage=1;
-// Apply pagination based on data-visible
-var visIdx=0;
-cs.forEach(function(c){
-    if(c.getAttribute('data-visible')==='1'){
-        var page=Math.floor(visIdx/PAGE_SIZE)+1;
-        c.style.display=(page===currentPage)?'':'none';
-        visIdx++;
-    }
-});
-var fc=document.getElementById('filterCount');
-if(fc)fc.innerHTML='显示 <strong>'+n+'</strong> / '+cs.length+' 个模型';
-renderPagination();
+// ─── 数据层筛选与分页 ───
+function fuzzyMatch(text,query){
+    var source=String(text||'').toLowerCase(),needle=String(query||'').toLowerCase(),index=0;
+    for(var i=0;i<needle.length;i++){index=source.indexOf(needle[i],index);if(index===-1)return false;index++;}
+    return true;
 }
 
-// ─── 分页 ───
+function modelMatches(m,q){
+    var tags=m.tags||[],ctxVal=parseInt(String(m.context||'').replace(/[^\d]/g,''))||0;
+    var family=m.family||'',currency=m.currency||'CNY',unit=m.price_unit||'per_token';
+    var input=parseFloat(m.input_price)||0;
+    var cnyInput=currency==='USD'?input*(unit==='per_1m'?1:1e6)*USD_TO_CNY:input;
+    if(curP!=='all'&&curP!==(m.platform_id||''))return false;
+    if(curPT!=='all'&&curPT!==priceTierForModel(m))return false;
+    if(curS!=='all'&&curS!==(m.scene||''))return false;
+    if(curTags.length&& !curTags.some(function(tag){return tags.indexOf(tag)!==-1;}))return false;
+    if(curCtx!=='all'&&ctxVal<parseInt(curCtx)*1000)return false;
+    if(curFamily!=='all'&&curFamily!==family)return false;
+    if(priceMin!==null&&cnyInput<priceMin)return false;
+    if(priceMax!==null&&cnyInput>priceMax)return false;
+    if(q){
+        var adv=parseAdvancedSearch(q);
+        if(adv.text&&!fuzzyMatch(m.name,adv.text)&&!fuzzyMatch(m.platform_name,adv.text))return false;
+        if(adv.priceMin!==null&&cnyInput<adv.priceMin)return false;
+        if(adv.priceMax!==null&&cnyInput>adv.priceMax)return false;
+        if(adv.ctxMin!==null&&ctxVal/1000<adv.ctxMin)return false;
+        if(adv.ctxMax!==null&&ctxVal/1000>adv.ctxMax)return false;
+        if(adv.family&&family.toLowerCase()!==adv.family.toLowerCase())return false;
+        if(adv.platform&&(m.platform_id||'')!==adv.platform)return false;
+    }
+    return true;
+}
+
+function modelSort(a,b){
+    function comparable(model){return model.price_status==='priced'||model.price_status==='free';}
+    function price(field,desc){
+        var ac=comparable(a),bc=comparable(b);if(ac!==bc)return ac?-1:1;if(!ac)return 0;
+        var av=parseFloat(a[field])||0,bv=parseFloat(b[field])||0;return desc?bv-av:av-bv;
+    }
+    if(curSort==='inp-asc')return price('input_price',false);
+    if(curSort==='inp-desc')return price('input_price',true);
+    if(curSort==='out-asc')return price('output_price',false);
+    if(curSort==='out-desc')return price('output_price',true);
+    if(curSort==='name')return String(a.name||'').localeCompare(String(b.name||''));
+    if(curSort==='combined')return ((parseFloat(a.input_price)||0)+(parseFloat(a.output_price)||0)*0.5)-((parseFloat(b.input_price)||0)+(parseFloat(b.output_price)||0)*0.5);
+    if(curSort==='ctx')return (parseInt(String(b.context||'').replace(/[^\d]/g,''))||0)-(parseInt(String(a.context||'').replace(/[^\d]/g,''))||0);
+    if(curSort==='costperf'){
+        var acx=parseInt(String(a.context||'').replace(/[^\d]/g,''))||1,bcx=parseInt(String(b.context||'').replace(/[^\d]/g,''))||1;
+        var ap=(parseFloat(a.input_price)||0)+(parseFloat(a.output_price)||0)*0.5||0.001;
+        var bp=(parseFloat(b.input_price)||0)+(parseFloat(b.output_price)||0)*0.5||0.001;
+        return (bcx/bp)-(acx/ap);
+    }
+    return 0;
+}
+
+function filter(){
+    if(!catalogModels.length)return;
+    var q=(document.getElementById('si').value||'').toLowerCase().trim();
+    filteredModels=catalogModels.filter(function(model){return modelMatches(model,q);});
+    if(curSort!=='default')filteredModels.sort(modelSort);
+    totalFiltered=filteredModels.length;
+    currentPage=1;
+    renderCurrentPage();
+    document.getElementById('empty').style.display=totalFiltered===0?'block':'none';
+    var fc=document.getElementById('filterCount');
+    if(fc)fc.innerHTML='显示 <strong>'+totalFiltered+'</strong> / '+catalogModels.length+' 个模型';
+    renderPagination();
+}
+
 var PAGE_SIZE=66;
 var currentPage=1;
 var totalFiltered=0;
@@ -470,12 +473,9 @@ function renderPagination(){
     var h='';
     h+='<button class="page-btn" onclick="goPage(1)"'+(currentPage===1?' disabled':'')+'>&laquo; 首页</button>';
     h+='<button class="page-btn" onclick="goPage('+(currentPage-1)+')"'+(currentPage===1?' disabled':'')+'>&lsaquo; 上一页</button>';
-    var start=Math.max(1,currentPage-3);
-    var end=Math.min(totalPages,currentPage+3);
+    var start=Math.max(1,currentPage-3),end=Math.min(totalPages,currentPage+3);
     if(start>1)h+='<span class="page-info">...</span>';
-    for(var i=start;i<=end;i++){
-        h+='<button class="page-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
-    }
+    for(var i=start;i<=end;i++)h+='<button class="page-btn'+(i===currentPage?' active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
     if(end<totalPages)h+='<span class="page-info">...</span>';
     h+='<button class="page-btn" onclick="goPage('+(currentPage+1)+')"'+(currentPage===totalPages?' disabled':'')+'>下一页 &rsaquo;</button>';
     h+='<button class="page-btn" onclick="goPage('+totalPages+')"'+(currentPage===totalPages?' disabled':'')+'>末页 &raquo;</button>';
@@ -483,68 +483,16 @@ function renderPagination(){
     pg.innerHTML=h;
 }
 
-function goPage(p){
+function goPage(page){
     var totalPages=Math.ceil(totalFiltered/PAGE_SIZE)||1;
-    if(p<1)p=1;if(p>totalPages)p=totalPages;
-    currentPage=p;
-    applyPage();
+    currentPage=Math.max(1,Math.min(page,totalPages));
+    renderCurrentPage();
     renderPagination();
     document.querySelector('.grid').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-function applyPage(){
-    var cards=document.querySelectorAll('.mc');
-    var vis=0;
-    cards.forEach(function(c){
-        if(c.getAttribute('data-visible')==='1'){
-            var page=Math.floor(vis/PAGE_SIZE)+1;
-            var show=(page===currentPage);
-            c.style.display=show?'':'none';
-            vis++;
-        }
-    });
-}
-
-// ─── 排序 ───
-function sortCards(){
-var grid=document.getElementById('grid');
-var cs=Array.from(grid.querySelectorAll('.mc'));
-function comparable(c){return c.dataset.priceStatus==='priced'||c.dataset.priceStatus==='free'}
-function priceCompare(a,b,field,desc){
-var ac=comparable(a),bc=comparable(b);
-if(ac!==bc)return ac?-1:1;
-if(!ac)return 0;
-var av=parseFloat(a.dataset[field])||0,bv=parseFloat(b.dataset[field])||0;
-return desc?bv-av:av-bv;
-}
-var sortFn={
-'default':function(){return 0},
-'inp-asc':function(a,b){return priceCompare(a,b,'inp',false)},
-'inp-desc':function(a,b){return priceCompare(a,b,'inp',true)},
-'out-asc':function(a,b){return priceCompare(a,b,'out',false)},
-'out-desc':function(a,b){return priceCompare(a,b,'out',true)},
-'name':function(a,b){return (a.querySelector('.mname')||{}).textContent.localeCompare((b.querySelector('.mname')||{}).textContent)},
-'combined':function(a,b){
-var ai=parseFloat(a.dataset.inp)||0,ao=parseFloat(a.dataset.out)||0;
-var bi=parseFloat(b.dataset.inp)||0,bo=parseFloat(b.dataset.out)||0;
-return (ai+ao*0.5)-(bi+bo*0.5);
-},
-'ctx':function(a,b){return (parseInt(b.dataset.ctx)||0)-(parseInt(a.dataset.ctx)||0)},
-'costperf':function(a,b){
-// 性价比 = 上下文长度 / (输入价+输出价*0.5)，越大越好
-var ai=parseFloat(a.dataset.inp)||0,ao=parseFloat(a.dataset.out)||0,ac2=parseInt(a.dataset.ctx)||1;
-var bi=parseFloat(b.dataset.inp)||0,bo=parseFloat(b.dataset.out)||0,bc2=parseInt(b.dataset.ctx)||1;
-var pa=(ai+ao*0.5)||0.001,pb=(bi+bo*0.5)||0.001;
-return (bc2/pb)-(ac2/pa);
-}
-};
-cs.sort(sortFn[curSort]||sortFn['default']);
-cs.forEach(function(c){grid.appendChild(c)});
-filter();
-// Re-apply pagination after sort
-applyPage();
-renderPagination();
-}
+function applyPage(){renderCurrentPage();}
+function sortCards(){filter();}
 
 // ─── 货币切换 ───
 function updatePrices(){
@@ -730,19 +678,11 @@ renderCalcResult(results,params);
 }
 function runCalcAll(){
 var params=getCalcParams();
-var cs=document.querySelectorAll('.mc');
 var results=[];
-cs.forEach(function(c){
-if(c.style.display==='none')return;
-var priceStatus=c.dataset.priceStatus||'unknown';
-if(priceStatus!=='priced'&&priceStatus!=='free')return;
-var mName=(c.querySelector('.mname')||{}).textContent||'';
-var inp=parseFloat(c.dataset.inp)||0;
-var out=parseFloat(c.dataset.out)||0;
-var cur=c.dataset.cur||'CNY';
-var m={name:mName,inp:inp,out:out,cur:cur,priceStatus:priceStatus};
+activeCatalogViews().forEach(function(m){
+if(m.priceStatus!=='priced'&&m.priceStatus!=='free')return;
 var cost=calcModelCost(m,params);
-results.push({name:mName,cost:cost,cur:cur,inp:inp,out:out});
+results.push({name:m.name,cost:cost,cur:m.cur,inp:m.inp,out:m.out});
 });
 results.sort(function(a,b){return a.cost-b.cost});
 if(results.length===0){
@@ -756,20 +696,12 @@ var budget=parseFloat(document.getElementById('calcBudget').value)||0;
 if(budget<=0){alert('请输入月预算金额');return;}
 var params=getCalcParams();
 if(params.chats<=0||params.tokens<=0){alert('请先设置对话次数和Token数');return;}
-var cs=document.querySelectorAll('.mc');
 var results=[];
-cs.forEach(function(c){
-if(c.style.display==='none')return;
-var priceStatus=c.dataset.priceStatus||'unknown';
-if(priceStatus!=='priced'&&priceStatus!=='free')return;
-var mName=(c.querySelector('.mname')||{}).textContent||'';
-var inp=parseFloat(c.dataset.inp)||0;
-var out=parseFloat(c.dataset.out)||0;
-var cur=c.dataset.cur||'CNY';
-var m={name:mName,inp:inp,out:out,cur:cur,priceStatus:priceStatus};
+activeCatalogViews().forEach(function(m){
+if(m.priceStatus!=='priced'&&m.priceStatus!=='free')return;
 var cost=calcModelCost(m,params);
 var maxChats=budget>0&&cost>0?Math.floor(budget/cost*params.chats):0;
-results.push({name:mName,cost:cost,maxChats:maxChats,cur:cur});
+results.push({name:m.name,cost:cost,maxChats:maxChats,cur:m.cur});
 });
 results.sort(function(a,b){return b.maxChats-a.maxChats});
 var html='<div class="calc-table-wrap"><table class="calc-table"><thead><tr><th>排名</th><th>模型</th><th>月费(¥)</th><th>预算内最多对话</th></tr></thead><tbody>';
@@ -792,18 +724,10 @@ document.getElementById('calcResult').innerHTML=html;
 
 // ─── 智能推荐 ───
 function runRecommend(scene){
-var cs=document.querySelectorAll('.mc');
 var results=[];
-cs.forEach(function(c){
-var mName=(c.querySelector('.mname')||{}).textContent||'';
-var prov=(c.querySelector('.prov')||{}).textContent||'';
-var inp=parseFloat(c.dataset.inp)||0;
-var out=parseFloat(c.dataset.out)||0;
-var cur=c.dataset.cur||'CNY';
-var scen=c.dataset.s||'';
-var ctx=parseInt(c.dataset.ctx)||0;
-var tags=Array.from(c.querySelectorAll('.tg')).map(function(t){return t.textContent;});
-var priceStatus=c.dataset.priceStatus||'unknown';
+catalogModels.map(catalogModelView).forEach(function(m){
+var mName=m.name,prov=m.prov,inp=m.inp,out=m.out,cur=m.cur;
+var scen=m.scene,ctx=m.ctx,tags=m.tags,priceStatus=m.priceStatus;
 var score=0;
 var reason='';
 // 场景匹配评分
@@ -1012,16 +936,10 @@ return core+(sz2?'-'+sz2:'');
 }
 
 function buildCrossPrice(){
-var cs=document.querySelectorAll('.mc');
 var modelMap={};
 var platformSet={};
-cs.forEach(function(c){
-var mName=(c.querySelector('.mname')||{}).textContent||'';
-var prov=(c.querySelector('.prov')||{}).textContent||'';
-var inp=parseFloat(c.dataset.inp)||0;
-var out=parseFloat(c.dataset.out)||0;
-var cur=c.dataset.cur||'CNY';
-var pid=c.dataset.p||'';
+catalogModels.map(catalogModelView).forEach(function(m){
+var mName=m.name,prov=m.prov,inp=m.inp,out=m.out,cur=m.cur,pid=m.pid;
 // 精确标准化模型名
 var coreName=normalizeModelName(mName);
 if(!coreName)return;
@@ -1245,24 +1163,11 @@ function calcTokens(){
         +'<div class="tk-stat"><div class="tk-stat-label">预估输出 Token</div><div class="tk-stat-value">~'+estOutTokens.toLocaleString()+'</div></div>';
     document.getElementById('tkStats').innerHTML=statsHtml;
 
-    var cs=document.querySelectorAll('.mc');
     var results=[];
-    cs.forEach(function(c){
-        var inp=parseFloat(c.dataset.inp)||0;
-        var out=parseFloat(c.dataset.out)||0;
-        var cur=c.dataset.cur||'CNY';
-        var pid=c.dataset.p||'';
-        var mname=(c.querySelector('.mname')||{}).textContent||'';
-        var pname=(c.querySelector('.prov')||{}).textContent||'';
+    catalogModels.map(catalogModelView).forEach(function(m){
+        var inp=m.inp,out=m.out,cur=m.cur,pid=m.pid,mname=m.name,pname=m.prov;
         if(inp===0&&out===0)return;
-        var pu=c.dataset.pu||'per_token';
-        var cost;
-        if(cur==='CNY'){
-            cost=(inp*tokens+out*estOutTokens)/1e6;
-        }else{
-            var mul=pu==='per_1m'?1e-6:1;
-            cost=(inp*tokens+out*estOutTokens)*mul;
-        }
+        var cost=cur==='CNY'?(inp*tokens+out*estOutTokens)/1e6:(inp*tokens+out*estOutTokens);
         results.push({pid:pid,mname:mname,pname:pname,cost:cost,cur:cur});
     });
 
@@ -1310,22 +1215,17 @@ function updatePingSuggestions(){
     var div=document.getElementById('pingSuggestions');
     if(!q||q.length<2){div.innerHTML='';return;}
     // 收集所有匹配的模型名（去重）
-    var cs=document.querySelectorAll('.mc');
     var modelNames=[];
-    var seenName={};
-    cs.forEach(function(c){
-        var mname=(c.querySelector('.mname')||{}).textContent||'';
+    var seenName={},counts={};
+    catalogModels.forEach(function(m){var name=String(m.name||'');counts[name]=(counts[name]||0)+1;});
+    catalogModels.forEach(function(m){
+        var mname=String(m.name||'');
         var key=mname.toLowerCase();
         if(seenName[key])return;
         if(key.indexOf(q)===-1)return;
         seenName[key]=1;
         // 统计该模型在多少个平台可用
-        var platformCount=0;
-        cs.forEach(function(c2){
-            var n2=(c2.querySelector('.mname')||{}).textContent||'';
-            if(n2===mname)platformCount++;
-        });
-        modelNames.push({name:mname,count:platformCount});
+        modelNames.push({name:mname,count:counts[mname]||0});
     });
     modelNames.sort(function(a,b){return b.count-a.count;});
     var html='';
@@ -1347,14 +1247,12 @@ function selectPingModel(name){
 function startPing(){
     if(!pingSelectedModel){showTip('请先输入模型名',false);return;}
     // 收集所有平台中该模型的接口
-    var cs=document.querySelectorAll('.mc');
     var endpoints=[];
     var seen={};
-    cs.forEach(function(c){
-        var mname=(c.querySelector('.mname')||{}).textContent||'';
+    catalogModels.map(catalogModelView).forEach(function(m){
+        var mname=m.name;
         if(mname!==pingSelectedModel)return;
-        var pname=(c.querySelector('.prov')||{}).textContent||'';
-        var baseUrl=(c.querySelector('.base-url')||{}).textContent||'';
+        var pname=m.prov,baseUrl=m.baseUrl;
         var key=pname+baseUrl;
         if(seen[key])return;
         seen[key]=1;

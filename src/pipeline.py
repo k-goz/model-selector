@@ -1420,7 +1420,10 @@ def run(entrypoint_file: str, argv: Sequence[str] | None = None) -> None:
         '</body>\n</html>'
     )
     
-    HTML = compose_page(HDR, cards, FTR)
+    shell_content = [
+        '<noscript><p class="no-js-message">请启用 JavaScript 以加载模型目录；原始数据可直接访问 models_data.json。</p></noscript>'
+    ]
+    HTML = compose_page(HDR, shell_content, FTR)
     
     with open(OUT,"w",encoding="utf-8") as f:
         f.write(HTML)

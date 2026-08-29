@@ -6,7 +6,8 @@ const modelData = JSON.parse(fs.readFileSync(path.join(__dirname, '../../models_
 
 async function waitForCatalog(page) {
   await page.goto('/');
-  await expect(page.locator('#grid .mc')).toHaveCount(modelData.models.length);
+  await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
+  await expect(page.locator('#grid .mc')).toHaveCount(Math.min(66, modelData.models.length));
   await expect(page.locator('#filterCount strong')).toHaveText(String(modelData.models.length));
 }
 
@@ -39,13 +40,23 @@ function collectBrowserErrors(page) {
   return errors;
 }
 
-test('loads the complete catalog without browser errors', async ({ page }) => {
+test('loads full catalog metadata with a bounded page DOM', async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await waitForCatalog(page);
   await expect(page).toHaveTitle(/AI 模型选择器/);
   await expect(page.locator('#dataFreshness')).toHaveClass(/freshness-(fresh|warning|stale)/);
   await expect(page.locator('#dataFreshness .freshness-age')).toContainText(modelData.meta.updated_at);
   expect(errors).toEqual([]);
+});
+
+test('pagination replaces the bounded card window', async ({ page }) => {
+  await waitForCatalog(page);
+  const firstOffering = await page.locator('#grid .mc').first().getAttribute('data-offering-id');
+  await page.getByRole('button', { name: /下一页/ }).click();
+  await expect(page.locator('#pagination .page-info').last()).toContainText('第 2 /');
+  await expect(page.locator('#grid .mc')).toHaveCount(66);
+  await expect.poll(() => page.locator('#grid .mc').first().getAttribute('data-offering-id')).not.toBe(firstOffering);
+  await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
 });
 
 test('search and platform filters update visible model count', async ({ page }) => {
@@ -65,6 +76,8 @@ test('search and platform filters update visible model count', async ({ page }) 
 
 test('time-tiered prices remain visible after JSON hydration', async ({ page }) => {
   await waitForCatalog(page);
+  await openSidebar(page);
+  await page.locator('#si').fill('deepseek-v4-pro');
   const card = page.locator('.mc[data-p="deepseek"][data-model-name="deepseek-v4-pro"]');
   await expect(card.locator('.price-badge')).toContainText('IN:¥4.50–9.00/M OUT:¥13.50–27.00/M');
   await expect(card.locator('.price-badge')).toHaveAttribute('title', /空闲时段至高峰时段/);
@@ -95,7 +108,8 @@ test('currency, layout, theme and compare interactions remain functional', async
 test('English page loads the same catalog', async ({ page }) => {
   const errors = collectBrowserErrors(page);
   await page.goto('/en/');
-  await expect(page.locator('#grid .mc')).toHaveCount(modelData.models.length);
+  await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
+  await expect(page.locator('#grid .mc')).toHaveCount(Math.min(66, modelData.models.length));
   await expect(page).toHaveTitle(/AI Model Selector/);
   await expect(page.locator('#dataFreshness .freshness-age')).toContainText('Last collected:');
   expect(errors).toEqual([]);
@@ -109,7 +123,7 @@ test('filter state survives a page reload', async ({ page }) => {
   const filteredCount = await page.locator('#filterCount strong').textContent();
 
   await page.reload();
-  await expect(page.locator('#grid .mc')).toHaveCount(modelData.models.length);
+  await expect(page.locator('#grid')).toHaveAttribute('data-total', String(modelData.models.length));
   await expect(page.locator('#si')).toHaveValue('deepseek-v4-pro');
   await expect(page.locator('#filterCount strong')).toHaveText(filteredCount);
 });
