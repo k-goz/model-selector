@@ -20,3 +20,11 @@
 - 卡片展示数据可信度、采集日期和可用的证据链接；未知价格继续保持未知，不显示成免费。
 - `#v2=` 分享状态覆盖搜索、筛选、排序、具体 offering、最多三项对比、计算参数与语言；旧版无前缀 hash 仍可兼容读取。
 - 产品指标仅保存在当前浏览器会话并广播匿名动作事件，不采集搜索文本、代码内容或 API Key。
+
+## 19-3：性能与可访问性门禁
+
+- `PerformanceObserver` 采集 LCP、CLS、INP 到同一匿名会话指标通道。
+- `scripts/check_frontend_budget.py` 固定 HTML 300 KB、JavaScript 100 KB、零静态卡片预算，并以 2,000+ 模型作为基准规模。
+- Lighthouse 门禁覆盖 Performance 75、Accessibility 95、Best Practices 90、SEO 90，并检查文档、脚本、总传输和脚本请求数预算。
+- Playwright 对 2,301 条目录执行 50 轮搜索基准，同时在桌面和移动视口运行 axe 自动无障碍审计。
+- 卡片支持键盘 Enter/Space，弹窗恢复焦点，页面提供跳转链接、可见焦点、ARIA 状态以及 `prefers-reduced-motion` 降级。

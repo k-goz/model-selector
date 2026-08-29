@@ -16,7 +16,7 @@ module.exports = defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: `python3 -m http.server ${port} --bind 127.0.0.1`,
+    command: `PORT=${port} node scripts/serve_static.mjs`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
   },

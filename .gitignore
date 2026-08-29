@@ -13,6 +13,7 @@ __pycache__/
 node_modules/
 .playwright-cli/
 output/playwright/
+output/lighthouse*.json
 playwright-report/
 test-results/
 *.py[cod]

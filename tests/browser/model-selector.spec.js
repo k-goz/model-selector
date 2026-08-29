@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const AxeBuilder = require('@axe-core/playwright').default;
 const fs = require('fs');
 const path = require('path');
 
@@ -47,6 +48,26 @@ test('loads full catalog metadata with a bounded page DOM', async ({ page }) => 
   await expect(page.locator('#dataFreshness')).toHaveClass(/freshness-(fresh|warning|stale)/);
   await expect(page.locator('#dataFreshness .freshness-age')).toContainText(modelData.meta.updated_at);
   expect(errors).toEqual([]);
+});
+
+test('catalog has no automatically detectable accessibility violations', async ({ page }) => {
+  await waitForCatalog(page);
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.map(item => `${item.id}: ${item.help}`)).toEqual([]);
+});
+
+test('large-catalog search benchmark stays within budget', async ({ page }) => {
+  await waitForCatalog(page);
+  const result = await page.evaluate(() => {
+    const started = performance.now();
+    for (let i = 0; i < 50; i += 1) {
+      const query = i % 2 ? 'deepseek' : 'qwen';
+      catalogModels.filter(model => modelMatches(model, query));
+    }
+    return { duration: performance.now() - started, models: catalogModels.length };
+  });
+  expect(result.models).toBe(modelData.models.length);
+  expect(result.duration).toBeLessThan(1500);
 });
 
 test('pagination replaces the bounded card window', async ({ page }) => {
@@ -160,7 +181,7 @@ test('token calculator produces ranked estimates', async ({ page }) => {
   await waitForCatalog(page);
   await openSidebar(page);
   await expandSidebarGroup(page, '工具');
-  await page.getByRole('button', { name: /计价/ }).click();
+  await page.getByRole('button', { name: '🔎 计价', exact: true }).click();
   await expect(page.locator('#tkModal')).toHaveClass(/show/);
   await page.locator('#tkText').fill('请估算这段中文和 English code: console.log("hello")');
   await page.getByRole('button', { name: '计算 Token' }).click();
