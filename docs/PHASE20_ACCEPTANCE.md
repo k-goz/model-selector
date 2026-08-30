@@ -11,7 +11,7 @@
 
 ## 当前数据快照
 
-- 更新时间：`2026-08-30 07:43`；
+- 更新时间：`2026-08-30 10:20`；
 - 模型总数：2,301；平台数：23；
 - 来源血缘：API 2,107、官方页面抓取 89、fallback 105；
 - 价格状态：priced 1,399、free_tier 653、non_token 151、unavailable 47、free 26、retiring 21、unknown 4；
@@ -26,11 +26,13 @@
 - `npm audit`：0 vulnerabilities；
 - GitHub PR #23 回归：https://github.com/k-goz/model-selector/actions/runs/33271310033；
 - 生产首页、英文页、JSON 健康检查 0 errors，6 个前端脚本均 HTTP 200，浏览器控制台 0 errors；
-- 本地与生产数据一致：2,301 条、Schema `2.0.0`、更新时间 `2026-08-30 07:43`；
+- 本地与生产数据一致：2,301 条、Schema `2.0.0`、更新时间 `2026-08-30 10:20`；
 - 生产 API 验收：未认证 401、认证 200、ETag 重验证 304，缓存和限流响应头存在；
 - 生产有界面 Chromium 直接调用 Service Worker 通知，结果为 `permission=granted`、`status=sent`、`channel=browser`。
 
 这些证据证明工程闭环与受控生产通道可用，不代表已有真实企业客户付费、留存或规模化通知送达。
+
+2026-08-30 将官方 Actions 升级到 Node.js 24+ 的当前主版本（提交 `bb1bb57`），完整 CI [33287604485](https://github.com/k-goz/model-selector/actions/runs/33287604485) 通过且不再出现 Node.js 20 弃用警告。手工验证的部署健康 [33287719823](https://github.com/k-goz/model-selector/actions/runs/33287719823) 与数据刷新 [33287721632](https://github.com/k-goz/model-selector/actions/runs/33287721632) 均成功；两者用于验证新版 checkout、setup、cache 和 artifact 链路，`workflow_dispatch` 不计入三次 schedule 验收。
 
 ## 尚待时间观察的唯一门禁
 
