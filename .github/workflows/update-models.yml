@@ -16,12 +16,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Restore refresh alert state
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .monitoring
           key: refresh-alert-${{ github.run_id }}
@@ -29,12 +29,12 @@ jobs:
             refresh-alert-
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -45,7 +45,7 @@ jobs:
           npm ci
 
       - name: Restore model API cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache
           key: model-api-cache-${{ runner.os }}-${{ github.run_id }}
@@ -134,7 +134,7 @@ jobs:
 
       - name: Upload failure diagnostics
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: update-model-diagnostics-${{ github.run_id }}
           if-no-files-found: ignore
@@ -148,7 +148,7 @@ jobs:
 
       - name: Save refresh alert state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .monitoring
           key: refresh-alert-${{ github.run_id }}

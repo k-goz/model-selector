@@ -18,14 +18,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
       - name: Restore deployment alert state
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: .monitoring
           key: deployment-alert-${{ github.run_id }}
@@ -64,7 +64,7 @@ jobs:
 
       - name: Save deployment alert state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: .monitoring
           key: deployment-alert-${{ github.run_id }}
