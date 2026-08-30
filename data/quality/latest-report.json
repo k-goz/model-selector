@@ -18,11 +18,18 @@
   "high_risk": [],
   "large_price_changes": [
     {
-      "after": 1.8e-07,
-      "before": 9e-08,
+      "after": 1.32e-07,
+      "before": 8.25e-08,
+      "field": "input_price",
+      "provider_offering_id": "offering_77958f5ef65fd1474ae1",
+      "ratio": 0.6
+    },
+    {
+      "after": 5.28e-07,
+      "before": 3.3e-07,
       "field": "output_price",
-      "provider_offering_id": "offering_83483e023731d50dd730",
-      "ratio": 1.0
+      "provider_offering_id": "offering_77958f5ef65fd1474ae1",
+      "ratio": 0.6
     }
   ],
   "policy": {

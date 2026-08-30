@@ -1,16 +1,34 @@
 {
   "added": [],
-  "baseline_updated_at": "2026-08-30 00:06",
-  "candidate_updated_at": "2026-08-30 07:43",
+  "baseline_updated_at": "2026-08-30 07:43",
+  "candidate_updated_at": "2026-08-30 10:20",
   "changes": [
     {
       "after": {
-        "input_price": 8.25e-08,
-        "output_price": 3.3e-07
+        "input_price": 9.66e-07,
+        "output_price": 3.036e-06
       },
       "before": {
+        "input_price": 1.26e-06,
+        "output_price": 3.96e-06
+      },
+      "canonical_model_id": "model_ca43d7d6df9f9250be7f",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Z.ai: GLM 5.1",
+      "provider_offering_id": "offering_67f87e742b7a40043eb1"
+    },
+    {
+      "after": {
         "input_price": 1.32e-07,
         "output_price": 5.28e-07
+      },
+      "before": {
+        "input_price": 8.25e-08,
+        "output_price": 3.3e-07
       },
       "canonical_model_id": "model_04216d8a4f1c9a2a1e44",
       "fields": [
@@ -23,45 +41,45 @@
     },
     {
       "after": {
-        "input_price": 6.5e-08,
-        "output_price": 1.8e-07
+        "input_price": 9e-08
       },
       "before": {
-        "input_price": 4.5e-08,
-        "output_price": 9e-08
+        "input_price": 1e-07
       },
-      "canonical_model_id": "model_25d0a1b6584a50d7d131",
+      "canonical_model_id": "model_b5cf73ef18e18eef7d74",
+      "fields": [
+        "input_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Qwen: Qwen3 Next 80B A3B Instruct",
+      "provider_offering_id": "offering_7ff0aa8929b89fc7b6f7"
+    },
+    {
+      "after": {
+        "input_price": 2.6e-07,
+        "output_price": 3.8e-07
+      },
+      "before": {
+        "input_price": 2.69e-07,
+        "output_price": 4e-07
+      },
+      "canonical_model_id": "model_df4439a182b451b3ad67",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Flash 0731",
-      "provider_offering_id": "offering_83483e023731d50dd730"
+      "provider_model_name": "DeepSeek: DeepSeek V3.2",
+      "provider_offering_id": "offering_8736bd0eaeb6168f2845"
     },
     {
       "after": {
-        "output_price": 1.4e-07
+        "input_price": 5.08428e-07,
+        "output_price": 1.016856e-06
       },
       "before": {
-        "output_price": 1e-07
-      },
-      "canonical_model_id": "model_74a6aa4cb8d3786d945f",
-      "fields": [
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek V4 Flash Latest",
-      "provider_offering_id": "offering_be6b2e1c540a36cd17e2"
-    },
-    {
-      "after": {
         "input_price": 5.28786e-07,
         "output_price": 1.057572e-06
-      },
-      "before": {
-        "input_price": 5.7942e-07,
-        "output_price": 1.15884e-06
       },
       "canonical_model_id": "model_c2460020b802fb42033c",
       "fields": [
@@ -74,27 +92,12 @@
     },
     {
       "after": {
-        "input_price": 1e-06
+        "input_price": 8.092e-08,
+        "output_price": 1.6184e-07
       },
       "before": {
-        "input_price": 9.5e-07
-      },
-      "canonical_model_id": "model_d879aa89d957872e9e0e",
-      "fields": [
-        "input_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Thinking Machines: Inkling",
-      "provider_offering_id": "offering_d32b8ae8a3c7253d16bf"
-    },
-    {
-      "after": {
         "input_price": 8.148e-08,
         "output_price": 1.6296e-07
-      },
-      "before": {
-        "input_price": 8.316e-08,
-        "output_price": 1.6632e-07
       },
       "canonical_model_id": "model_8521a028063c25e921e9",
       "fields": [
@@ -106,7 +109,7 @@
       "provider_offering_id": "offering_fa8d2e57eba110eae36a"
     }
   ],
-  "discovered_at": "2026-08-29T23:43:52+00:00",
+  "discovered_at": "2026-08-30T02:21:22+00:00",
   "format_version": "2.0",
   "removed": [],
   "schema_version": "2.0.0",
@@ -116,7 +119,7 @@
     "before_models": 2301,
     "changed": 6,
     "field_changes": {
-      "input_price": 5,
+      "input_price": 6,
       "output_price": 5
     },
     "removed": 0
