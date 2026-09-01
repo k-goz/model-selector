@@ -1,5 +1,226 @@
 {
   "format_version": "1.0",
-  "offerings": [],
-  "updated_at": "2026-08-31T00:02:58+00:00"
+  "offerings": [
+    {
+      "canonical_model_id": "model_97c727c02567d47e77f6",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 10.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 30.0,
+        "price_source_url": "https://platform.kimi.com/docs/pricing/chat-v1.md",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-128k",
+      "provider_offering_id": "offering_07219c2315f766e4a72e",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_47ab0eb3862b80afd346",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 4.5000000000000003e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 2.25e-06,
+        "price_source_url": "https://api.deepinfra.com/models/list",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:55+00:00",
+      "provider_id": "deepinfra",
+      "provider_model_name": "moonshotai/Kimi-K2.5",
+      "provider_offering_id": "offering_6b2d35966a33b0548569",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_16a8f208c319189d09a7",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 2.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 10.0,
+        "price_source_url": "https://platform.kimi.com/docs/pricing/chat-v1.md",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-8k",
+      "provider_offering_id": "offering_7caeed3deca849d9ab36",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_b45faad45bb6faf83725",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 10.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 30.0,
+        "price_source_url": "https://platform.kimi.com/docs/pricing/chat-v1.md",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-128k-vision-preview",
+      "provider_offering_id": "offering_8a8d228023f759a5c973",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_47ab0eb3862b80afd346",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 4.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 16.0,
+        "price_source_url": "https://platform.moonshot.cn/docs/pricing/chat-v1",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "kimi-k2.5",
+      "provider_offering_id": "offering_9781a8356ad7a843a3f6",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_bff09d7e42ee5034a81d",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 2.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 10.0,
+        "price_source_url": "https://platform.kimi.com/docs/pricing/chat-v1.md",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-8k-vision-preview",
+      "provider_offering_id": "offering_9eb6492097be651c4fa6",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_cea9c263b5411c7c3982",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 2.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 5.0,
+        "price_source_url": "https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-auto",
+      "provider_offering_id": "offering_ad1684e1c1b6f23fcf84",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_d163fbb3c419d1f3dbbe",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 5.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 20.0,
+        "price_source_url": "https://platform.kimi.com/docs/pricing/chat-v1.md",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-32k-vision-preview",
+      "provider_offering_id": "offering_b3bc3dbea75250d1e5fc",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_b0f5c42fb87dce1370f2",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 5.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:30+00:00",
+          "status": "active"
+        },
+        "output_price": 20.0,
+        "price_source_url": "https://platform.kimi.com/docs/pricing/chat-v1.md",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:33+00:00",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-32k",
+      "provider_offering_id": "offering_b490acd996f75e3b8f61",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_db250bbfb5688f799fc2",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 1.5e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 6e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-08-31T00:02:38+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Kwaipilot: KAT-Coder-Air V2.5",
+      "provider_offering_id": "offering_c2ceebdf1f5ef67153a7",
+      "restored_at": null,
+      "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    }
+  ],
+  "updated_at": "2026-09-01T02:17:05+00:00"
 }

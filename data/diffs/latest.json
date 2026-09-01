@@ -1,23 +1,290 @@
 {
   "added": [
     {
-      "canonical_model_id": "model_da666201edb53dbb6e35",
-      "provider_id": "together",
-      "provider_model_name": "Qwen/Qwen3.8-Flash",
-      "provider_offering_id": "offering_3e3c425d525a8aaca9a7"
+      "canonical_model_id": "model_5f2c12b9b8436f46f523",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: o3 Mini (batch)",
+      "provider_offering_id": "offering_025e7b8023303a84b5a2"
+    },
+    {
+      "canonical_model_id": "model_e6589f68303cff275757",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-4.1 Nano (batch)",
+      "provider_offering_id": "offering_042360c2d5359571990b"
+    },
+    {
+      "canonical_model_id": "model_2871e47a8183f543357f",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-4.1 (batch)",
+      "provider_offering_id": "offering_0f66adc70ed0f8fe0ec8"
+    },
+    {
+      "canonical_model_id": "model_4a347819858371ffb02d",
+      "provider_id": "openrouter",
+      "provider_model_name": "IBM: Granite 4.2 8B",
+      "provider_offering_id": "offering_10d50a7e27003144a57a"
+    },
+    {
+      "canonical_model_id": "model_d561d9926cfcafaeac91",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5 (batch)",
+      "provider_offering_id": "offering_255f2be73b9ae33bcec7"
+    },
+    {
+      "canonical_model_id": "model_35646356306675e5b130",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.6 Terra (batch)",
+      "provider_offering_id": "offering_2c674f2308d368b08627"
+    },
+    {
+      "canonical_model_id": "model_a8e84080c99747a7d25c",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.6 Terra Pro (batch)",
+      "provider_offering_id": "offering_3a4f2f40fe08f434ec8d"
+    },
+    {
+      "canonical_model_id": "model_e51e5dfd8316a032c598",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.4 (batch)",
+      "provider_offering_id": "offering_6a605b09e53f6db6d340"
+    },
+    {
+      "canonical_model_id": "model_a9e867657b6daa80d6f9",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5 Mini (batch)",
+      "provider_offering_id": "offering_6b71f2f58cdefe190959"
+    },
+    {
+      "canonical_model_id": "model_16f732ae3541dbb6cedc",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.6 Luna Pro (batch)",
+      "provider_offering_id": "offering_71b2cd9e53dfb36be25b"
+    },
+    {
+      "canonical_model_id": "model_2208f0769e9558a4d89a",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5 Pro (batch)",
+      "provider_offering_id": "offering_722eb7feaec2c72d7fcd"
+    },
+    {
+      "canonical_model_id": "model_7d71def8e1f52b95bd74",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: o4 Mini (batch)",
+      "provider_offering_id": "offering_819064d5fca18e2b3c9e"
+    },
+    {
+      "canonical_model_id": "model_5133d44ffd3ae35ea179",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5 Nano (batch)",
+      "provider_offering_id": "offering_81c22a02b89241cc1e9a"
+    },
+    {
+      "canonical_model_id": "model_87f15d29df445cdd1f64",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-4o-mini (batch)",
+      "provider_offering_id": "offering_88fe512bc6d5e799dd04"
+    },
+    {
+      "canonical_model_id": "model_4f34afd2faecfc9c130b",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.5 Pro (batch)",
+      "provider_offering_id": "offering_8ea657592ee873cf492d"
+    },
+    {
+      "canonical_model_id": "model_60cc5aee0a8c656ae690",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-4 Turbo (batch)",
+      "provider_offering_id": "offering_9a7882417a832da1ae6d"
+    },
+    {
+      "canonical_model_id": "model_8a65789a87667e0c91c3",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.6 Sol (batch)",
+      "provider_offering_id": "offering_9c8668595590b8577472"
+    },
+    {
+      "canonical_model_id": "model_e036f1df396f3acf0afa",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-3.5 Turbo (batch)",
+      "provider_offering_id": "offering_9ff6d1271b5b65464f54"
+    },
+    {
+      "canonical_model_id": "model_b0291ea86f0c6989df6b",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.6 Sol Pro (batch)",
+      "provider_offering_id": "offering_ada5603039fc04e53c54"
+    },
+    {
+      "canonical_model_id": "model_82f4a75f0aebc5c6ecbf",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-4o (batch)",
+      "provider_offering_id": "offering_af1c756c90e7bbbf0752"
+    },
+    {
+      "canonical_model_id": "model_a806b719f967f1e64a95",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.1 (batch)",
+      "provider_offering_id": "offering_b8fbcfa716948cff9f97"
+    },
+    {
+      "canonical_model_id": "model_941b8ed4d54a31254915",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.4 Pro (batch)",
+      "provider_offering_id": "offering_bf4bdcf15a352e8e9d5e"
+    },
+    {
+      "canonical_model_id": "model_13bdbd61af19ee034f16",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.6 Luna (batch)",
+      "provider_offering_id": "offering_c6e08a6382f9c0d4f83c"
+    },
+    {
+      "canonical_model_id": "model_96d9a2d8801936236f91",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.2 (batch)",
+      "provider_offering_id": "offering_d40a021510900157a5ae"
+    },
+    {
+      "canonical_model_id": "model_b701d0accc17f993bcbc",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: o3 (batch)",
+      "provider_offering_id": "offering_db230ef73335b3f7e827"
+    },
+    {
+      "canonical_model_id": "model_c10d78188d7021cd4463",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.2 Pro (batch)",
+      "provider_offering_id": "offering_e8a9aef607fab0bfee99"
+    },
+    {
+      "canonical_model_id": "model_cbe958580750a41dd7aa",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.4 Mini (batch)",
+      "provider_offering_id": "offering_e970bb438eb903171df0"
+    },
+    {
+      "canonical_model_id": "model_abea0398f16b259b6e8f",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.4 Nano (batch)",
+      "provider_offering_id": "offering_ea0386dd72e550fff8cd"
+    },
+    {
+      "canonical_model_id": "model_0a275afc6870f6aebe15",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-4.1 Mini (batch)",
+      "provider_offering_id": "offering_eca34e9ab413d7aabefa"
+    },
+    {
+      "canonical_model_id": "model_eecfa4013a0bca6a8527",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-5.5 (batch)",
+      "provider_offering_id": "offering_f8ef332f93ff2a5be15c"
+    },
+    {
+      "canonical_model_id": "model_0d8724178b098d01df9c",
+      "provider_id": "aliyun",
+      "provider_model_name": "ZHIPU/GLM-5.3-Flash",
+      "provider_offering_id": "offering_ffc828ce5c18939330c5"
     }
   ],
-  "baseline_updated_at": "2026-08-30 10:20",
-  "candidate_updated_at": "2026-08-31 08:02",
+  "baseline_updated_at": "2026-08-31 08:02",
+  "candidate_updated_at": "2026-09-01 10:16",
   "changes": [
     {
       "after": {
-        "input_price": 8.25e-08,
-        "output_price": 3.3e-07
+        "output_price": 6.96e-07
       },
       "before": {
+        "output_price": 8e-07
+      },
+      "canonical_model_id": "model_303f38eefece7d431d1f",
+      "fields": [
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Meta: Llama 4 Maverick",
+      "provider_offering_id": "offering_0f4a021112908fb5fe96"
+    },
+    {
+      "after": {
+        "input_price": 1.17e-06,
+        "output_price": 3.96e-06
+      },
+      "before": {
+        "input_price": 1.1875e-06,
+        "output_price": 4.18e-06
+      },
+      "canonical_model_id": "model_e1bf1845a12ba8accf21",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Z.ai: GLM Latest",
+      "provider_offering_id": "offering_12ea74280de4b76bebd2"
+    },
+    {
+      "after": {
+        "input_price": 4.4e-07,
+        "output_price": 1.32e-06
+      },
+      "before": {
+        "input_price": 2.2e-07,
+        "output_price": 6.6e-07
+      },
+      "canonical_model_id": "model_fac145d752464fd6e802",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek: DeepSeek V4 Flash Vision Exp",
+      "provider_offering_id": "offering_3ae0dc36fc2a29c2d5ac"
+    },
+    {
+      "after": {
+        "input_price": 1.1154e-06,
+        "output_price": 3.3462e-06
+      },
+      "before": {
+        "input_price": 6.6e-07,
+        "output_price": 1.98e-06
+      },
+      "canonical_model_id": "model_2a8e3a9c985bc4bfff15",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0813",
+      "provider_offering_id": "offering_4229019f8fe23814a1fd"
+    },
+    {
+      "after": {
+        "input_price": 4e-07,
+        "output_price": 6e-07
+      },
+      "before": {
+        "input_price": 6e-08,
+        "output_price": 6e-08
+      },
+      "canonical_model_id": "model_575e63f1d65230ffa78c",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "MythoMax 13B",
+      "provider_offering_id": "offering_6dc54297e8d815ec1bb9"
+    },
+    {
+      "after": {
         "input_price": 1.32e-07,
         "output_price": 5.28e-07
+      },
+      "before": {
+        "input_price": 8.25e-08,
+        "output_price": 3.3e-07
       },
       "canonical_model_id": "model_04216d8a4f1c9a2a1e44",
       "fields": [
@@ -30,50 +297,47 @@
     },
     {
       "after": {
-        "input_price": 2.69e-07,
-        "output_price": 4e-07
+        "input_price": 1e-07
       },
       "before": {
-        "input_price": 2.6e-07,
-        "output_price": 3.8e-07
+        "input_price": 9e-08
       },
-      "canonical_model_id": "model_df4439a182b451b3ad67",
+      "canonical_model_id": "model_b5cf73ef18e18eef7d74",
+      "fields": [
+        "input_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Qwen: Qwen3 Next 80B A3B Instruct",
+      "provider_offering_id": "offering_7ff0aa8929b89fc7b6f7"
+    },
+    {
+      "after": {
+        "input_price": 9e-08,
+        "output_price": 5.5e-07
+      },
+      "before": {
+        "input_price": 8.75e-08,
+        "output_price": 3.5e-07
+      },
+      "canonical_model_id": "model_13a748af58d92bd754ca",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V3.2",
-      "provider_offering_id": "offering_8736bd0eaeb6168f2845"
+      "provider_model_name": "Qwen: Qwen3 235B A22B Instruct 2507",
+      "provider_offering_id": "offering_a873abc963c564e66049"
     },
     {
       "after": {
-        "input_price": 4e-07,
-        "output_price": 2e-06
+        "input_price": 5e-08
       },
       "before": {
-        "input_price": 4.4e-07,
-        "output_price": 2.2e-06
-      },
-      "canonical_model_id": "model_042a5a1d5bb478c34fb9",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Mistral: Devstral 2 2512",
-      "provider_offering_id": "offering_a0577d5e1cebaf58eb93"
-    },
-    {
-      "after": {
-        "output_price": 1.6e-07
-      },
-      "before": {
-        "output_price": 1.4e-07
+        "input_price": 3e-08
       },
       "canonical_model_id": "model_74a6aa4cb8d3786d945f",
       "fields": [
-        "output_price"
+        "input_price"
       ],
       "provider_id": "openrouter",
       "provider_model_name": "DeepSeek V4 Flash Latest",
@@ -81,12 +345,12 @@
     },
     {
       "after": {
-        "input_price": 1.0353e-06,
-        "output_price": 2.0706e-06
+        "input_price": 1.6e-06,
+        "output_price": 3.2e-06
       },
       "before": {
-        "input_price": 5.08428e-07,
-        "output_price": 1.016856e-06
+        "input_price": 1.0353e-06,
+        "output_price": 2.0706e-06
       },
       "canonical_model_id": "model_c2460020b802fb42033c",
       "fields": [
@@ -99,30 +363,30 @@
     },
     {
       "after": {
-        "input_price": 2.5e-07,
-        "output_price": 8e-07
+        "input_price": 4.5e-07,
+        "output_price": 2.25e-06
       },
       "before": {
-        "input_price": 2.2e-07,
-        "output_price": 8.5e-07
+        "input_price": 6e-07,
+        "output_price": 3e-06
       },
-      "canonical_model_id": "model_f9ce14b37b1c87ac2a55",
+      "canonical_model_id": "model_008791ef2a65389ace07",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "Arcee AI: Trinity Large Thinking",
-      "provider_offering_id": "offering_e72f956dd22c926bf925"
+      "provider_model_name": "MoonshotAI: Kimi K2.5",
+      "provider_offering_id": "offering_cba74371f0415eec1e3e"
     },
     {
       "after": {
-        "input_price": 8.9866e-08,
-        "output_price": 1.79732e-07
-      },
-      "before": {
         "input_price": 8.092e-08,
         "output_price": 1.6184e-07
+      },
+      "before": {
+        "input_price": 8.9866e-08,
+        "output_price": 1.79732e-07
       },
       "canonical_model_id": "model_8521a028063c25e921e9",
       "fields": [
@@ -134,19 +398,80 @@
       "provider_offering_id": "offering_fa8d2e57eba110eae36a"
     }
   ],
-  "discovered_at": "2026-08-31T00:02:58+00:00",
+  "discovered_at": "2026-09-01T02:17:05+00:00",
   "format_version": "2.0",
-  "removed": [],
+  "removed": [
+    {
+      "canonical_model_id": "model_97c727c02567d47e77f6",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-128k",
+      "provider_offering_id": "offering_07219c2315f766e4a72e"
+    },
+    {
+      "canonical_model_id": "model_47ab0eb3862b80afd346",
+      "provider_id": "deepinfra",
+      "provider_model_name": "moonshotai/Kimi-K2.5",
+      "provider_offering_id": "offering_6b2d35966a33b0548569"
+    },
+    {
+      "canonical_model_id": "model_16a8f208c319189d09a7",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-8k",
+      "provider_offering_id": "offering_7caeed3deca849d9ab36"
+    },
+    {
+      "canonical_model_id": "model_b45faad45bb6faf83725",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-128k-vision-preview",
+      "provider_offering_id": "offering_8a8d228023f759a5c973"
+    },
+    {
+      "canonical_model_id": "model_47ab0eb3862b80afd346",
+      "provider_id": "moonshot",
+      "provider_model_name": "kimi-k2.5",
+      "provider_offering_id": "offering_9781a8356ad7a843a3f6"
+    },
+    {
+      "canonical_model_id": "model_bff09d7e42ee5034a81d",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-8k-vision-preview",
+      "provider_offering_id": "offering_9eb6492097be651c4fa6"
+    },
+    {
+      "canonical_model_id": "model_cea9c263b5411c7c3982",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-auto",
+      "provider_offering_id": "offering_ad1684e1c1b6f23fcf84"
+    },
+    {
+      "canonical_model_id": "model_d163fbb3c419d1f3dbbe",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-32k-vision-preview",
+      "provider_offering_id": "offering_b3bc3dbea75250d1e5fc"
+    },
+    {
+      "canonical_model_id": "model_b0f5c42fb87dce1370f2",
+      "provider_id": "moonshot",
+      "provider_model_name": "moonshot-v1-32k",
+      "provider_offering_id": "offering_b490acd996f75e3b8f61"
+    },
+    {
+      "canonical_model_id": "model_db250bbfb5688f799fc2",
+      "provider_id": "openrouter",
+      "provider_model_name": "Kwaipilot: KAT-Coder-Air V2.5",
+      "provider_offering_id": "offering_c2ceebdf1f5ef67153a7"
+    }
+  ],
   "schema_version": "2.0.0",
   "summary": {
-    "added": 1,
-    "after_models": 2302,
-    "before_models": 2301,
-    "changed": 7,
+    "added": 31,
+    "after_models": 2323,
+    "before_models": 2302,
+    "changed": 12,
     "field_changes": {
-      "input_price": 6,
-      "output_price": 7
+      "input_price": 11,
+      "output_price": 10
     },
-    "removed": 0
+    "removed": 10
   }
 }
