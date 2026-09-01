@@ -141,6 +141,17 @@ def find_model_price(models, platform, model_name):
     return None, None
 
 
+def model_exists(models, platform, model_name):
+    """精确检查 offering 是否仍在发布目录中，避免子串造成退休断言误判。"""
+    platform_id = PLATFORM_MAP.get(platform, platform)
+    expected = normalize_for_match(model_name)
+    return any(
+        m.get("platform_id", "") == platform_id
+        and normalize_for_match(m.get("name", "")) == expected
+        for m in models
+    )
+
+
 def get_spa_price(platform, model):
     if not os.path.exists(SPA_PATH):
         return None, None
@@ -266,7 +277,23 @@ def main():
                 plat, model, act_i, exp_i, i_diff, act_o, exp_o, o_diff), file=sys.stderr)
 
     print("=" * 70, file=sys.stderr)
-    print("Result: %d passed / %d failed / %d skipped / %d total" % (passed, failed, skipped, len(gt["models"])), file=sys.stderr)
+    retired_items = gt.get("retired_models", []) if source == "models_data" else []
+    for item in retired_items:
+        plat = item["platform"]
+        model = item["model"]
+        src = item["source"]
+        if model_exists(db, plat, model):
+            failed += 1
+            errors.append(("RETIRED_PRESENT", plat, model, None, None, None, None, src))
+            results.append({"model": model, "platform": plat, "status": "RETIRED_PRESENT"})
+            print("  [FAIL] %s/%s — retired model is still published" % (plat, model), file=sys.stderr)
+        else:
+            passed += 1
+            results.append({"model": model, "platform": plat, "status": "RETIRED_ABSENT"})
+            print("  [PASS] %s/%s — retired model is absent" % (plat, model), file=sys.stderr)
+
+    total = len(gt["models"]) + len(retired_items)
+    print("Result: %d passed / %d failed / %d skipped / %d total" % (passed, failed, skipped, total), file=sys.stderr)
     print("=" * 70, file=sys.stderr)
 
     report = {
@@ -274,7 +301,7 @@ def main():
         "version": VERSION,
         "source": source_label,
         "tolerance_pct": tolerance,
-        "summary": {"total": len(gt["models"]), "passed": passed, "failed": failed, "skipped": skipped},
+        "summary": {"total": total, "passed": passed, "failed": failed, "skipped": skipped},
         "results": results,
     }
     report_path = os.path.join(SCRIPT_DIR, "ground_truth_report.json")
@@ -287,6 +314,8 @@ def main():
             status, plat, model, exp_i, exp_o, act_i, act_o, src = e
             if status == "MISSING":
                 print("  - %s/%s: not found in %s (source: %s)" % (plat, model, source_label, src), file=sys.stderr)
+            elif status == "RETIRED_PRESENT":
+                print("  - %s/%s: retired model is still published (source: %s)" % (plat, model, src), file=sys.stderr)
             else:
                 print("  - %s/%s: actual(%.2f/%.2f) vs expected(%.2f/%.2f) (source: %s)" % (
                     plat, model, act_i, act_o, exp_i, exp_o, src), file=sys.stderr)

@@ -100,6 +100,17 @@ def test_moonshot_preserves_api_context_and_records_lineage():
     }]
 
 
+def test_moonshot_fallback_excludes_officially_retired_models():
+    result = MoonshotPlatform().fetch_result()
+    assert result.metadata.source_type == "fallback"
+    assert [model["id"] for model in result.models] == [
+        "kimi-k2.6",
+        "kimi-k2.7-code",
+        "kimi-k2.7-code-highspeed",
+        "kimi-k3",
+    ]
+
+
 def test_zhipu_and_groq_use_openai_compatible_catalogs():
     payload = {"data": [{"id": "model-a"}, {"id": ""}]}
     zhipu = ZhipuPlatform(

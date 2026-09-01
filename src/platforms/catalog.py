@@ -175,12 +175,13 @@ class MoonshotPlatform(BasePlatform):
     base_url = "https://api.moonshot.cn/v1"
     model_source_url = "https://api.moonshot.cn/v1/models"
 
+    # 与官方模型目录保持一致。moonshot-v1、kimi-k2 与 kimi-k2.5 系列已于
+    # 2026-08-31 或更早下线，API 不可用时也不能通过 fallback 重新发布。
     FALLBACK_MODELS = [
-        ("moonshot-v1-8k", 8000), ("moonshot-v1-32k", 32000), ("moonshot-v1-128k", 128000),
-        ("kimi-k2", 262000), ("kimi-k2.5", 262000), ("kimi-k2-turbo", 262000),
-        ("kimi-k2-thinking", 262000), ("kimi-k2-thinking-turbo", 262000),
-        ("moonshot-v1-8k-vision", 8000), ("moonshot-v1-32k-vision", 32000),
-        ("moonshot-v1-128k-vision", 128000),
+        ("kimi-k2.6", 262144),
+        ("kimi-k2.7-code", 262144),
+        ("kimi-k2.7-code-highspeed", 262144),
+        ("kimi-k3", 1_000_000),
     ]
 
     def fetch_models(self) -> List[Dict[str, Any]]:
