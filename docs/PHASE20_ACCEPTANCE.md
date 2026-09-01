@@ -26,7 +26,7 @@
 - `npm audit`：0 vulnerabilities；
 - GitHub PR #23 回归：https://github.com/k-goz/model-selector/actions/runs/33271310033；
 - 生产首页、英文页、JSON 健康检查 0 errors，6 个前端脚本均 HTTP 200，浏览器控制台 0 errors；
-- 本地与生产数据一致：2,302 条、Schema `2.0.0`、更新时间 `2026-08-31 08:02`；
+- 本地与生产数据一致：2,323 条、Schema `2.0.0`、更新时间 `2026-09-01 10:16`；
 - 生产 API 验收：未认证 401、认证 200、ETag 重验证 304，缓存和限流响应头存在；
 - 生产有界面 Chromium 直接调用 Service Worker 通知，结果为 `permission=granted`、`status=sent`、`channel=browser`。
 
@@ -50,6 +50,6 @@
 
 第三次定时刷新中，Moonshot 官方 API 仅返回 `kimi-k2.6`、`kimi-k2.7-code`、`kimi-k2.7-code-highspeed` 和 `kimi-k3`。核验官方文档后确认 `moonshot-v1`、`kimi-k2` 与 `kimi-k2.5` 系列已经正式下线，并非上游异常。修复提交 `86b7a2a` 更新 Moonshot fallback，防止 API 故障时重新发布已退休模型；Ground Truth 改为同时校验 14 个现役价格和 3 个退休模型不得重新出现。
 
-手工修复验证 [33461839355](https://github.com/k-goz/model-selector/actions/runs/33461839355) 全链路成功：143 个 Python 测试、Schema/质量门禁、Ground Truth 17/17、站点校验以及 Playwright 29 passed/1 skipped 均通过；自动数据提交为 `1f19314`。新目录归档 8 个 Moonshot 已下线 offering，Moonshot 现役目录为 4 个模型；本次手工 `workflow_dispatch` 仅证明修复有效，不计入 schedule 连续成功。
+手工修复验证 [33461839355](https://github.com/k-goz/model-selector/actions/runs/33461839355) 全链路成功：143 个 Python 测试、Schema/质量门禁、Ground Truth 17/17、站点校验以及 Playwright 29 passed/1 skipped 均通过；自动数据提交为 `1f19314`。新目录归档 8 个 Moonshot 已下线 offering，Moonshot 现役目录为 4 个模型。Vercel Git Production 部署 `dpl_37ihsKJNVw8CUZPwNVHoaJEMWcZZ` 为 Ready，自定义域名与仓库 `models_data.json` SHA-256 完全一致；本次手工 `workflow_dispatch` 仅证明修复有效，不计入 schedule 连续成功。
 
 判定标准：默认分支 `Refresh Model Data` 工作流出现连续 3 次 `event=schedule`、`conclusion=success`，每次生成数据通过门禁并自动提交，随后 Vercel Git 部署成功，生产数据时间与该提交一致。任何一次失败都会中断连续计数并进入事件处理。
