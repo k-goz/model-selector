@@ -24,6 +24,116 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_461925871c187f4cd119",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 3e-05,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 0.00015,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Anthropic: Claude Opus 4.7 (Fast)",
+      "provider_offering_id": "offering_0ee5df69f1556fe6e5ee",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_e80178a1593a408dfcfd",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 2.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 8.0,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:17:02+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-realtime-2025-08-28",
+      "provider_offering_id": "offering_147d19627a04e2b94e94",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_dee5b62018a780edc862",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 1e-05,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 5e-05,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Claude Opus 5 (Fast)",
+      "provider_offering_id": "offering_2cea13f52736fce0e427",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_91a2bfc2a62f371ecdba",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 4.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:20+00:00",
+          "status": "active"
+        },
+        "output_price": 21.0,
+        "price_source_url": "https://dashscope.aliyuncs.com/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:21+00:00",
+      "provider_id": "aliyun",
+      "provider_model_name": "Kimi/Kimi K2.5",
+      "provider_offering_id": "offering_4ce4ee3dde3d671503d4",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_b1d965ca838bb46b49f3",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 1e-05,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 5e-05,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Anthropic: Claude Opus 4.8 (Fast)",
+      "provider_offering_id": "offering_6694549edb39f2969c26",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_47ab0eb3862b80afd346",
       "last_known": {
         "currency": "USD",
@@ -43,6 +153,28 @@
       "provider_offering_id": "offering_6b2d35966a33b0548569",
       "restored_at": null,
       "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_566d982be76cf49def05",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 5e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 1.5e-06,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Mistral: Mistral Large 3 2512 (batch)",
+      "provider_offering_id": "offering_6c1bdbbc5d77c65f6140",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
       "status": "retired"
     },
     {
@@ -90,6 +222,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_69df6300aecb0c266ace",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 1.5e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 6e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Mistral: Mistral Small 4 (batch)",
+      "provider_offering_id": "offering_8e7b3b35cb0878d9cb7c",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_47ab0eb3862b80afd346",
       "last_known": {
         "currency": "CNY",
@@ -134,6 +288,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_064e63f223d3d8524d48",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 1.5e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 1.5e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Mistral: Ministral 3 8B 2512 (batch)",
+      "provider_offering_id": "offering_a8d549e60c321925e4cd",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_cea9c263b5411c7c3982",
       "last_known": {
         "currency": "CNY",
@@ -153,6 +329,28 @@
       "provider_offering_id": "offering_ad1684e1c1b6f23fcf84",
       "restored_at": null,
       "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_16fbe0cde985ad798b85",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-01T02:17:02+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "muse-glimmer-30b",
+      "provider_offering_id": "offering_af52e354b20eb95399ee",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
       "status": "retired"
     },
     {
@@ -200,6 +398,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_a6baa891c5ca5167222c",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 2.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 8.0,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:17:02+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-realtime-1.5-2026-02-23",
+      "provider_offering_id": "offering_c032f0fda6c6d2a60268",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_db250bbfb5688f799fc2",
       "last_known": {
         "currency": "USD",
@@ -220,7 +440,73 @@
       "restored_at": null,
       "retired_at": "2026-09-01T02:17:05+00:00",
       "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_8ede93ed510ad9b08a94",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-01T02:17:02+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "nemotron-lightning-3.5-30b-a3b",
+      "provider_offering_id": "offering_cd00d838cc2cfbe87d7a",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_58deea5f60c2f01a6fa7",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 3e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 9e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Mistral: Codestral 2508 (batch)",
+      "provider_offering_id": "offering_d17eff8bd6ff94267c4e",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_7073b0ae8487c66096ba",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 4e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 2e-06,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-01T02:16:42+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Mistral: Mistral Medium 3.1 (batch)",
+      "provider_offering_id": "offering_eae833b93d13b834a1d0",
+      "restored_at": null,
+      "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
     }
   ],
-  "updated_at": "2026-09-01T02:17:05+00:00"
+  "updated_at": "2026-09-01T23:42:00+00:00"
 }
