@@ -2084,6 +2084,390 @@
       "provider_id": "openrouter",
       "provider_model_name": "DeepSeek: DeepSeek V4 Flash 0423",
       "provider_offering_id": "offering_fa8d2e57eba110eae36a"
+    },
+    {
+      "after": {
+        "input_price": 1.15e-06,
+        "output_price": 3.5e-06
+      },
+      "before": {
+        "input_price": 1.17e-06,
+        "output_price": 3.96e-06
+      },
+      "canonical_model_id": "model_e1bf1845a12ba8accf21",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Z.ai: GLM Latest",
+      "provider_offering_id": "offering_12ea74280de4b76bebd2"
+    },
+    {
+      "after": {
+        "input_price": 6e-07,
+        "output_price": 2.4e-06
+      },
+      "before": {
+        "input_price": 5e-07,
+        "output_price": 2.2e-06
+      },
+      "canonical_model_id": "model_5f9c17de83dd277f925f",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "NVIDIA: Nemotron 3 Ultra",
+      "provider_offering_id": "offering_1316d5aa95226d44abc0"
+    },
+    {
+      "after": {
+        "input_price": 3.75e-07,
+        "output_price": 1.875e-06
+      },
+      "before": {
+        "input_price": 1.875e-07,
+        "output_price": 9.375e-07
+      },
+      "canonical_model_id": "model_25f6f45b55192a611d1d",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Google: Gemini 3.7 Flash (batch)",
+      "provider_offering_id": "offering_4785812a4ce43f6c7dbc"
+    },
+    {
+      "after": {
+        "input_price": 2.5e-07,
+        "output_price": 9.5e-07
+      },
+      "before": {
+        "input_price": 5.5e-07,
+        "output_price": 1.65e-06
+      },
+      "canonical_model_id": "model_db94d7c1f1afebb6251e",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek: DeepSeek V3.1",
+      "provider_offering_id": "offering_522dd275ad5dcb5603ec"
+    },
+    {
+      "after": {
+        "input_price": 5e-08,
+        "output_price": 1.6e-07
+      },
+      "before": {
+        "input_price": 4.998e-08,
+        "output_price": 9.996e-08
+      },
+      "canonical_model_id": "model_74a6aa4cb8d3786d945f",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek V4 Flash Latest",
+      "provider_offering_id": "offering_be6b2e1c540a36cd17e2"
+    },
+    {
+      "after": {
+        "input_price": 8.7e-07,
+        "output_price": 1.74e-06
+      },
+      "before": {
+        "input_price": 1.024164e-06,
+        "output_price": 2.048328e-06
+      },
+      "canonical_model_id": "model_c2460020b802fb42033c",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0423",
+      "provider_offering_id": "offering_c6b65354a9c2a5c7d2c7"
+    },
+    {
+      "after": {
+        "input_price": 9.66e-07,
+        "output_price": 3.036e-06
+      },
+      "before": {
+        "input_price": 1.19e-06,
+        "output_price": 3.74e-06
+      },
+      "canonical_model_id": "model_efd0d1352801aa651495",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Z.ai: GLM 5.2",
+      "provider_offering_id": "offering_d16cc7cd837e73c6d711"
+    },
+    {
+      "after": {
+        "input_price": 7.784e-08,
+        "output_price": 1.5568e-07
+      },
+      "before": {
+        "input_price": 7.014e-08,
+        "output_price": 1.4028e-07
+      },
+      "canonical_model_id": "model_8521a028063c25e921e9",
+      "discovered_at": "2026-09-02T23:42:24+00:00",
+      "effective_at": "2026-09-02T23:42:24+00:00",
+      "event_type": "price_change",
+      "evidence": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            },
+            {
+              "factor": "price_source:A",
+              "impact": 0.15
+            },
+            {
+              "factor": "price_evidence_url",
+              "impact": 0.05
+            },
+            {
+              "factor": "context_known",
+              "impact": 0.03
+            }
+          ],
+          "grade": "high",
+          "method": "catalog-confidence-v1",
+          "score": 0.95
+        },
+        "evidence_at": "2026-09-02T23:42:03+00:00",
+        "url": "https://openrouter.ai/api/v1/models"
+      },
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek: DeepSeek V4 Flash 0423",
+      "provider_offering_id": "offering_fa8d2e57eba110eae36a"
     }
   ],
   "format_version": "1.0",
@@ -2091,5 +2475,5 @@
     "max_events": 5000,
     "strategy": "latest-events"
   },
-  "updated_at": "2026-09-01T23:42:00+00:00"
+  "updated_at": "2026-09-02T23:42:24+00:00"
 }

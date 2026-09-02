@@ -288,6 +288,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_d68143d14d1f0db5605b",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-01T23:41:56+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "DeepSeek-V3-Fast",
+      "provider_offering_id": "offering_a3ac730df52727283d7c",
+      "restored_at": null,
+      "retired_at": "2026-09-02T23:42:24+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_064e63f223d3d8524d48",
       "last_known": {
         "currency": "USD",
@@ -508,5 +530,5 @@
       "status": "retired"
     }
   ],
-  "updated_at": "2026-09-01T23:42:00+00:00"
+  "updated_at": "2026-09-02T23:42:24+00:00"
 }
