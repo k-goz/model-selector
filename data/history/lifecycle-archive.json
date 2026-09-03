@@ -178,6 +178,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_343fb7bd0d85299db470",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 6e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 2.08e-06,
+        "price_source_url": "https://api.deepinfra.com/models/list",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-02T23:42:21+00:00",
+      "provider_id": "deepinfra",
+      "provider_model_name": "zai-org/GLM-5",
+      "provider_offering_id": "offering_7939f5f17b2fac1b0306",
+      "restored_at": null,
+      "retired_at": "2026-09-03T23:43:46+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_16a8f208c319189d09a7",
       "last_known": {
         "currency": "CNY",
@@ -288,6 +310,50 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_1e8d2e4733b404b67eea",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 2.5e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 1e-06,
+        "price_source_url": "https://api.deepinfra.com/models/list",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-02T23:42:21+00:00",
+      "provider_id": "deepinfra",
+      "provider_model_name": "MiniMaxAI/MiniMax-M2.7",
+      "provider_offering_id": "offering_a1dd6a394194d8621db9",
+      "restored_at": null,
+      "retired_at": "2026-09-03T23:43:46+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_7f7c8c0d5b9e9d83b95e",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 6e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 3.6e-06,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-02T23:42:03+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "NVIDIA: Nemotron 3 Ultra (batch)",
+      "provider_offering_id": "offering_a267aac3fa5e9c9765fd",
+      "restored_at": null,
+      "retired_at": "2026-09-03T23:43:46+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_d68143d14d1f0db5605b",
       "last_known": {
         "currency": "USD",
@@ -351,6 +417,28 @@
       "provider_offering_id": "offering_ad1684e1c1b6f23fcf84",
       "restored_at": null,
       "retired_at": "2026-09-01T02:17:05+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_906b3da4dbf71489afa0",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 6e-08,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 4.0000000000000003e-07,
+        "price_source_url": "https://api.deepinfra.com/models/list",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-02T23:42:21+00:00",
+      "provider_id": "deepinfra",
+      "provider_model_name": "zai-org/GLM-4.7-Flash",
+      "provider_offering_id": "offering_aea467c5f36e4cf8195d",
+      "restored_at": null,
+      "retired_at": "2026-09-03T23:43:46+00:00",
       "status": "retired"
     },
     {
@@ -530,5 +618,5 @@
       "status": "retired"
     }
   ],
-  "updated_at": "2026-09-02T23:42:24+00:00"
+  "updated_at": "2026-09-03T23:43:46+00:00"
 }
