@@ -68,6 +68,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_04daaeeae24e32fff20e",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-03T23:43:42+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "xiaomi-mimo-v2.5-pro",
+      "provider_offering_id": "offering_2b3c42a3335ae3f6f799",
+      "restored_at": null,
+      "retired_at": "2026-09-04T23:35:25+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_dee5b62018a780edc862",
       "last_known": {
         "currency": "USD",
@@ -90,6 +112,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_5de281ed35b00df93097",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 5e-08,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 1e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-03T23:43:22+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "IBM: Granite 4.1 8B",
+      "provider_offering_id": "offering_4ba62f0453820e4c818b",
+      "restored_at": null,
+      "retired_at": "2026-09-04T23:35:25+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_91a2bfc2a62f371ecdba",
       "last_known": {
         "currency": "CNY",
@@ -109,6 +153,28 @@
       "provider_offering_id": "offering_4ce4ee3dde3d671503d4",
       "restored_at": null,
       "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_86e404cdf7ef87990dcf",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-03T23:43:42+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "xiaomi-mimo-v2.5",
+      "provider_offering_id": "offering_50000d1779c7ac545d14",
+      "restored_at": null,
+      "retired_at": "2026-09-04T23:35:25+00:00",
       "status": "retired"
     },
     {
@@ -222,6 +288,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_7da4ff0a044672ab2a25",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "free"
+      },
+      "last_seen_at": "2026-09-03T23:43:22+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Ling 3.0 Flash Fin (free)",
+      "provider_offering_id": "offering_7d236d6cbec4136a422e",
+      "restored_at": null,
+      "retired_at": "2026-09-04T23:35:25+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_b45faad45bb6faf83725",
       "last_known": {
         "currency": "CNY",
@@ -310,6 +398,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_07a12ad644b672871c1c",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 2.1e-08,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 6.3e-08,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-03T23:43:22+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Ling-3.0-flash",
+      "provider_offering_id": "offering_9eba204abe354b4d0cce",
+      "restored_at": null,
+      "retired_at": "2026-09-04T23:35:25+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_1e8d2e4733b404b67eea",
       "last_known": {
         "currency": "USD",
@@ -395,6 +505,28 @@
       "provider_offering_id": "offering_a8d549e60c321925e4cd",
       "restored_at": null,
       "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_438a56bb6a5468ba83fe",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 6e-08,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-09-03T23:43:22+00:00",
+          "status": "active"
+        },
+        "output_price": 1.8e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-03T23:43:22+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Ling 3.0 Flash Fin",
+      "provider_offering_id": "offering_ac6229e26a84db9cc7fc",
+      "restored_at": null,
+      "retired_at": "2026-09-04T23:35:25+00:00",
       "status": "retired"
     },
     {
@@ -618,5 +750,5 @@
       "status": "retired"
     }
   ],
-  "updated_at": "2026-09-03T23:43:46+00:00"
+  "updated_at": "2026-09-04T23:35:25+00:00"
 }

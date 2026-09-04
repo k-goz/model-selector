@@ -1,248 +1,209 @@
 {
   "added": [
     {
-      "canonical_model_id": "model_89670e25728c4687bfc4",
-      "provider_id": "deepinfra",
-      "provider_model_name": "inclusionAI/Ling-3.0-flash-Fin",
-      "provider_offering_id": "offering_025b48de96d79f842b2a"
-    },
-    {
-      "canonical_model_id": "model_bc33b81a67813da0dfd8",
-      "provider_id": "n1n",
-      "provider_model_name": "qwen3.8-max-0902",
-      "provider_offering_id": "offering_07399e6c4d82807a683f"
-    },
-    {
-      "canonical_model_id": "model_b3eba54f7f5df1a66df9",
+      "canonical_model_id": "model_1e97f17a0abcecfb532f",
       "provider_id": "aihubmix",
-      "provider_model_name": "muse-spark-1.3",
-      "provider_offering_id": "offering_0abc4449cb183c8ad969"
+      "provider_model_name": "mimo-v2.5-pro",
+      "provider_offering_id": "offering_03be7fce569ed3607765"
     },
     {
-      "canonical_model_id": "model_319034f3e25d0d9bd6b3",
-      "provider_id": "ca",
-      "provider_model_name": "gemini-3.8-flash",
-      "provider_offering_id": "offering_0eb0a9ac355f5dfae471"
-    },
-    {
-      "canonical_model_id": "model_2858afd746a6799bab8d",
-      "provider_id": "ca",
-      "provider_model_name": "claude-fable-5",
-      "provider_offering_id": "offering_0fc366975845632098df"
-    },
-    {
-      "canonical_model_id": "model_f8064a2325012d60e0f7",
-      "provider_id": "ca",
-      "provider_model_name": "claude-fable-5-1",
-      "provider_offering_id": "offering_25113a1680023e90c6c6"
-    },
-    {
-      "canonical_model_id": "model_bc33b81a67813da0dfd8",
-      "provider_id": "ca",
-      "provider_model_name": "qwen3.8-max",
-      "provider_offering_id": "offering_3ade1c0d833ff6d59403"
-    },
-    {
-      "canonical_model_id": "model_6c716a426ca3f6183264",
-      "provider_id": "ca",
-      "provider_model_name": "glm-5.3",
-      "provider_offering_id": "offering_57d2deb5964afd369764"
-    },
-    {
-      "canonical_model_id": "model_2827d1187405c456bd07",
-      "provider_id": "deepinfra",
-      "provider_model_name": "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp",
-      "provider_offering_id": "offering_616c30093e9c208d1ab6"
-    },
-    {
-      "canonical_model_id": "model_438a56bb6a5468ba83fe",
+      "canonical_model_id": "model_b1cba25df9e920beec0b",
       "provider_id": "openrouter",
-      "provider_model_name": "Ling 3.0 Flash Fin",
-      "provider_offering_id": "offering_ac6229e26a84db9cc7fc"
+      "provider_model_name": "OpenAI: GPT-6 Astra Pro",
+      "provider_offering_id": "offering_07c64069c8be1cbca80f"
+    },
+    {
+      "canonical_model_id": "model_3026a7832ee005d44aa3",
+      "provider_id": "aihubmix",
+      "provider_model_name": "llama-3.3-70b-instruct",
+      "provider_offering_id": "offering_2eb33b6db998e6db4f16"
+    },
+    {
+      "canonical_model_id": "model_10fa6bb72351b85f8cab",
+      "provider_id": "openrouter",
+      "provider_model_name": "inclusionAI: Ling 3.0 Flash Fin (free)",
+      "provider_offering_id": "offering_637321d9c12549fb9406"
+    },
+    {
+      "canonical_model_id": "model_4d0b4e3e022963be53c8",
+      "provider_id": "openrouter",
+      "provider_model_name": "inclusionAI: Ling 3.0 Flash",
+      "provider_offering_id": "offering_7fdb401e81ad0c535405"
+    },
+    {
+      "canonical_model_id": "model_a91aa55e40e82b44cbcf",
+      "provider_id": "aihubmix",
+      "provider_model_name": "mimo-v2.5",
+      "provider_offering_id": "offering_82d81386bdfff2c572c7"
+    },
+    {
+      "canonical_model_id": "model_655de0598c685d4b4020",
+      "provider_id": "openrouter",
+      "provider_model_name": "inclusionAI: Ling 3.0 Flash Sante (free)",
+      "provider_offering_id": "offering_8489770c265cb8521bdd"
+    },
+    {
+      "canonical_model_id": "model_ac4caaecc5efe93bdddd",
+      "provider_id": "aihubmix",
+      "provider_model_name": "solar-pro4",
+      "provider_offering_id": "offering_9f53611874ff13c9c2f7"
+    },
+    {
+      "canonical_model_id": "model_cda1dde6a934e646a5c1",
+      "provider_id": "openrouter",
+      "provider_model_name": "NVIDIA: Nemotron 3.5 Content Safety",
+      "provider_offering_id": "offering_9ff312aaff679a6cfa0c"
+    },
+    {
+      "canonical_model_id": "model_f17b8bd45aae2c6fe9fe",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-6 Astra Pro (batch)",
+      "provider_offering_id": "offering_b3b6ce8afebba00b5e59"
+    },
+    {
+      "canonical_model_id": "model_d9c30158fa74a074dce6",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-6 Astra",
+      "provider_offering_id": "offering_b3da878a81072517a554"
+    },
+    {
+      "canonical_model_id": "model_74531ce66becece9ec83",
+      "provider_id": "openrouter",
+      "provider_model_name": "inclusionAI: Ling 3.0 Flash Fin",
+      "provider_offering_id": "offering_d79ed42266d3ae287c46"
+    },
+    {
+      "canonical_model_id": "model_cae0b65d6bae058de655",
+      "provider_id": "openrouter",
+      "provider_model_name": "SpaceXAI: Grok 4.3 (batch)",
+      "provider_offering_id": "offering_ea93396fd2de4621f277"
+    },
+    {
+      "canonical_model_id": "model_186901b709585179484e",
+      "provider_id": "openrouter",
+      "provider_model_name": "OpenAI: GPT-6 Astra (batch)",
+      "provider_offering_id": "offering_fb6ffbd054a8f781d9ec"
     }
   ],
-  "baseline_updated_at": "2026-09-03 07:41",
-  "candidate_updated_at": "2026-09-04 07:43",
+  "baseline_updated_at": "2026-09-04 07:43",
+  "candidate_updated_at": "2026-09-05 07:34",
   "changes": [
     {
       "after": {
-        "input_price": 8e-07,
-        "output_price": 1e-06
+        "input_price": 3e-07,
+        "output_price": 2e-06
       },
       "before": {
-        "input_price": 2.5e-07,
+        "input_price": 6e-07,
+        "output_price": 3.6e-06
+      },
+      "canonical_model_id": "model_f89d85f9d7a126b7f140",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Qwen: Qwen3.6 27B",
+      "provider_offering_id": "offering_0a5f8c9e700cfd24cc71"
+    },
+    {
+      "after": {
+        "input_price": 6.25e-07,
+        "output_price": 3.125e-06
+      },
+      "before": {
+        "input_price": 6e-07,
+        "output_price": 2.4e-06
+      },
+      "canonical_model_id": "model_5f9c17de83dd277f925f",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "NVIDIA: Nemotron 3 Ultra",
+      "provider_offering_id": "offering_1316d5aa95226d44abc0"
+    },
+    {
+      "after": {
+        "input_price": 8e-08,
         "output_price": 7.5e-07
       },
-      "canonical_model_id": "model_cd65ef66e54ad03a5a95",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Qwen: Qwen2.5 VL 72B Instruct",
-      "provider_offering_id": "offering_1d2218005ebb8b0bc62a"
-    },
-    {
-      "after": {
-        "input_price": 5.5e-07,
-        "output_price": 2.2e-06
-      },
-      "before": {
-        "input_price": 4.3e-07,
-        "output_price": 1.75e-06
-      },
-      "canonical_model_id": "model_27a588e6aec876589803",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Z.ai: GLM 4.6",
-      "provider_offering_id": "offering_1f478a64a83e10529038"
-    },
-    {
-      "after": {
-        "input_price": 3.2e-07,
-        "output_price": 8.9e-07
-      },
-      "before": {
-        "input_price": 2.574e-07,
-        "output_price": 1.0287e-06
-      },
-      "canonical_model_id": "model_4839fc74e802f157d26c",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V3",
-      "provider_offering_id": "offering_4e9421a32fef42ca34a0"
-    },
-    {
-      "after": {
-        "input_price": 5.5e-07,
-        "output_price": 1.65e-06
-      },
       "before": {
         "input_price": 2.5e-07,
-        "output_price": 9.5e-07
+        "output_price": 1.25e-06
       },
-      "canonical_model_id": "model_db94d7c1f1afebb6251e",
+      "canonical_model_id": "model_2f30eefe91035fa06dca",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V3.1",
-      "provider_offering_id": "offering_522dd275ad5dcb5603ec"
+      "provider_model_name": "Qwen: Qwen3.5-35B-A3B",
+      "provider_offering_id": "offering_2197814d00c8437e062a"
     },
     {
       "after": {
-        "input_price": 2.5e-06,
-        "output_price": 1.4e-05
+        "input_price": 5.7948e-07,
+        "output_price": 1.73844e-06
       },
       "before": {
-        "input_price": 2.55e-06,
-        "output_price": 1.275e-05
+        "input_price": 6.6e-07,
+        "output_price": 1.98e-06
       },
-      "canonical_model_id": "model_30a00e5ef573d3a95983",
+      "canonical_model_id": "model_2a8e3a9c985bc4bfff15",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "MoonshotAI Kimi Latest",
-      "provider_offering_id": "offering_5999684ae0a18de7ca26"
+      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0813",
+      "provider_offering_id": "offering_4229019f8fe23814a1fd"
     },
     {
       "after": {
-        "input_price": 1e-07,
-        "output_price": 3.2e-07
+        "input_price": 2.275e-07,
+        "output_price": 9.1e-07
       },
       "before": {
-        "input_price": 7.1e-07,
-        "output_price": 7.1e-07
+        "input_price": 1.2e-07,
+        "output_price": 2.4e-07
       },
-      "canonical_model_id": "model_8caa8c9329bda2e32119",
+      "canonical_model_id": "model_3cec87d60f10bcb1a6a8",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "Meta: Llama 3.3 70B Instruct",
-      "provider_offering_id": "offering_6fd860c749ac45578f72"
+      "provider_model_name": "Qwen: Qwen3 14B",
+      "provider_offering_id": "offering_60c134a41f24a511077e"
     },
     {
       "after": {
-        "context": "32k"
+        "input_price": 4.998e-08,
+        "output_price": 9.996e-08
       },
       "before": {
-        "context": "262k"
+        "input_price": 5e-08,
+        "output_price": 1.6e-07
       },
-      "canonical_model_id": "model_abf1a789ae952a1e987a",
-      "fields": [
-        "context"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Mistral: Mistral Medium 3.5 (batch)",
-      "provider_offering_id": "offering_74ca5636c2dc459354d8"
-    },
-    {
-      "after": {
-        "output_price": 1.1e-06
-      },
-      "before": {
-        "output_price": 1.2e-06
-      },
-      "canonical_model_id": "model_ccbbf565c1c9ecc99ee7",
-      "fields": [
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Meta: Muse Glimmer 30B",
-      "provider_offering_id": "offering_a325e2daccaf031e0427"
-    },
-    {
-      "after": {
-        "input_price": 5.5e-07,
-        "output_price": 3.5e-06
-      },
-      "before": {
-        "input_price": 3.9e-07,
-        "output_price": 2.34e-06
-      },
-      "canonical_model_id": "model_be0a0a843f5d7923095b",
+      "canonical_model_id": "model_74a6aa4cb8d3786d945f",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "Qwen: Qwen3.5 397B A17B",
-      "provider_offering_id": "offering_c417f8600b0907438e5c"
+      "provider_model_name": "DeepSeek V4 Flash Latest",
+      "provider_offering_id": "offering_be6b2e1c540a36cd17e2"
     },
     {
       "after": {
-        "output_price": 2.475e-06
+        "input_price": 9.81708e-07,
+        "output_price": 1.963416e-06
       },
       "before": {
-        "output_price": 2.4475e-06
-      },
-      "canonical_model_id": "model_744f8c85fd59578f6af5",
-      "fields": [
-        "output_price"
-      ],
-      "provider_id": "novita",
-      "provider_model_name": "mindai/macaron-v1-venti",
-      "provider_offering_id": "offering_c5f96f1144f9ede26838"
-    },
-    {
-      "after": {
         "input_price": 1.022424e-06,
         "output_price": 2.044848e-06
-      },
-      "before": {
-        "input_price": 8.7e-07,
-        "output_price": 1.74e-06
       },
       "canonical_model_id": "model_c2460020b802fb42033c",
       "fields": [
@@ -255,62 +216,88 @@
     },
     {
       "after": {
-        "input_price": 4.2e-07,
-        "output_price": 3e-06
+        "input_price": 3.5e-07
       },
       "before": {
-        "input_price": 4.25e-07,
-        "output_price": 2.55e-06
+        "input_price": 4.5e-07
       },
-      "canonical_model_id": "model_0d1741bf2d5881652789",
+      "canonical_model_id": "model_072a4e64723e495f2cb7",
+      "fields": [
+        "input_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "ReMM SLERP 13B",
+      "provider_offering_id": "offering_f033e61997907792ec93"
+    },
+    {
+      "after": {
+        "input_price": 8.722e-08,
+        "output_price": 1.7444e-07
+      },
+      "before": {
+        "input_price": 7.784e-08,
+        "output_price": 1.5568e-07
+      },
+      "canonical_model_id": "model_8521a028063c25e921e9",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "Qwen: Qwen3.8 27B",
-      "provider_offering_id": "offering_d7fa68fde5246c61deb1"
+      "provider_model_name": "DeepSeek: DeepSeek V4 Flash 0423",
+      "provider_offering_id": "offering_fa8d2e57eba110eae36a"
     }
   ],
-  "discovered_at": "2026-09-03T23:43:46+00:00",
+  "discovered_at": "2026-09-04T23:35:25+00:00",
   "format_version": "2.0",
   "removed": [
     {
-      "canonical_model_id": "model_343fb7bd0d85299db470",
-      "provider_id": "deepinfra",
-      "provider_model_name": "zai-org/GLM-5",
-      "provider_offering_id": "offering_7939f5f17b2fac1b0306"
+      "canonical_model_id": "model_04daaeeae24e32fff20e",
+      "provider_id": "aihubmix",
+      "provider_model_name": "xiaomi-mimo-v2.5-pro",
+      "provider_offering_id": "offering_2b3c42a3335ae3f6f799"
     },
     {
-      "canonical_model_id": "model_1e8d2e4733b404b67eea",
-      "provider_id": "deepinfra",
-      "provider_model_name": "MiniMaxAI/MiniMax-M2.7",
-      "provider_offering_id": "offering_a1dd6a394194d8621db9"
-    },
-    {
-      "canonical_model_id": "model_7f7c8c0d5b9e9d83b95e",
+      "canonical_model_id": "model_5de281ed35b00df93097",
       "provider_id": "openrouter",
-      "provider_model_name": "NVIDIA: Nemotron 3 Ultra (batch)",
-      "provider_offering_id": "offering_a267aac3fa5e9c9765fd"
+      "provider_model_name": "IBM: Granite 4.1 8B",
+      "provider_offering_id": "offering_4ba62f0453820e4c818b"
     },
     {
-      "canonical_model_id": "model_906b3da4dbf71489afa0",
-      "provider_id": "deepinfra",
-      "provider_model_name": "zai-org/GLM-4.7-Flash",
-      "provider_offering_id": "offering_aea467c5f36e4cf8195d"
+      "canonical_model_id": "model_86e404cdf7ef87990dcf",
+      "provider_id": "aihubmix",
+      "provider_model_name": "xiaomi-mimo-v2.5",
+      "provider_offering_id": "offering_50000d1779c7ac545d14"
+    },
+    {
+      "canonical_model_id": "model_7da4ff0a044672ab2a25",
+      "provider_id": "openrouter",
+      "provider_model_name": "Ling 3.0 Flash Fin (free)",
+      "provider_offering_id": "offering_7d236d6cbec4136a422e"
+    },
+    {
+      "canonical_model_id": "model_07a12ad644b672871c1c",
+      "provider_id": "openrouter",
+      "provider_model_name": "Ling-3.0-flash",
+      "provider_offering_id": "offering_9eba204abe354b4d0cce"
+    },
+    {
+      "canonical_model_id": "model_438a56bb6a5468ba83fe",
+      "provider_id": "openrouter",
+      "provider_model_name": "Ling 3.0 Flash Fin",
+      "provider_offering_id": "offering_ac6229e26a84db9cc7fc"
     }
   ],
   "schema_version": "2.0.0",
   "summary": {
-    "added": 10,
-    "after_models": 2334,
-    "before_models": 2328,
-    "changed": 12,
+    "added": 14,
+    "after_models": 2342,
+    "before_models": 2334,
+    "changed": 9,
     "field_changes": {
-      "context": 1,
       "input_price": 9,
-      "output_price": 11
+      "output_price": 8
     },
-    "removed": 4
+    "removed": 6
   }
 }

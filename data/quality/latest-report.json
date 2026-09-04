@@ -1,16 +1,16 @@
 {
   "baseline": {
-    "fallback_ratio": 0.045103092783505154,
-    "models": 2328,
-    "platforms": 23,
-    "unknown_context": 570,
-    "unknown_price": 4
-  },
-  "candidate": {
     "fallback_ratio": 0.04498714652956298,
     "models": 2334,
     "platforms": 23,
     "unknown_context": 571,
+    "unknown_price": 4
+  },
+  "candidate": {
+    "fallback_ratio": 0.0448334756618275,
+    "models": 2342,
+    "platforms": 23,
+    "unknown_context": 573,
     "unknown_price": 4
   },
   "format_version": "1.0",
@@ -18,39 +18,25 @@
   "high_risk": [],
   "large_price_changes": [
     {
-      "after": 8e-07,
+      "after": 8e-08,
       "before": 2.5e-07,
       "field": "input_price",
-      "provider_offering_id": "offering_1d2218005ebb8b0bc62a",
-      "ratio": 2.2
+      "provider_offering_id": "offering_2197814d00c8437e062a",
+      "ratio": 0.68
     },
     {
-      "after": 5.5e-07,
-      "before": 2.5e-07,
+      "after": 2.275e-07,
+      "before": 1.2e-07,
       "field": "input_price",
-      "provider_offering_id": "offering_522dd275ad5dcb5603ec",
-      "ratio": 1.2
+      "provider_offering_id": "offering_60c134a41f24a511077e",
+      "ratio": 0.8958
     },
     {
-      "after": 1.65e-06,
-      "before": 9.5e-07,
+      "after": 9.1e-07,
+      "before": 2.4e-07,
       "field": "output_price",
-      "provider_offering_id": "offering_522dd275ad5dcb5603ec",
-      "ratio": 0.7368
-    },
-    {
-      "after": 1e-07,
-      "before": 7.1e-07,
-      "field": "input_price",
-      "provider_offering_id": "offering_6fd860c749ac45578f72",
-      "ratio": 0.8592
-    },
-    {
-      "after": 3.2e-07,
-      "before": 7.1e-07,
-      "field": "output_price",
-      "provider_offering_id": "offering_6fd860c749ac45578f72",
-      "ratio": 0.5493
+      "provider_offering_id": "offering_60c134a41f24a511077e",
+      "ratio": 2.7917
     }
   ],
   "policy": {
