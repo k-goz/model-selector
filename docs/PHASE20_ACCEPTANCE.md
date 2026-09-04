@@ -1,6 +1,6 @@
 # Phase 20 与整体计划验收记录
 
-验收更新时间：2026-09-01（Asia/Shanghai）
+正式验收时间：2026-09-04（Asia/Shanghai）
 
 ## 交付范围
 
@@ -11,11 +11,11 @@
 
 ## 当前数据快照
 
-- 更新时间：`2026-09-03 07:41`；
-- 模型总数：2,328；平台数：23；
-- 来源血缘：API 2,134、官方页面抓取 89、fallback 105；
-- 价格状态：priced 1,422、free_tier 657、non_token 151、unavailable 47、free 26、retiring 21、unknown 4；
-- 已知质量提示：567 条缺少上下文长度，4 条价格待确认，均保留不确定性语义，没有被填造成已知值。
+- 更新时间：`2026-09-04 07:43`；
+- 模型总数：2,334；平台数：23；
+- 来源血缘：API 2,135、官方页面抓取 94、fallback 105；
+- 价格状态：priced 1,427、free_tier 658、non_token 151、unavailable 47、free 26、retiring 21、unknown 4；
+- 已知质量提示：571 条缺少上下文长度，4 条价格待确认，均保留不确定性语义，没有被填造成已知值。
 
 ## 工程与生产证据
 
@@ -26,7 +26,7 @@
 - `npm audit`：0 vulnerabilities；
 - GitHub PR #23 回归：https://github.com/k-goz/model-selector/actions/runs/33271310033；
 - 生产首页、英文页、JSON 健康检查 0 errors，6 个前端脚本均 HTTP 200，浏览器控制台 0 errors；
-- 本地与生产数据一致：2,328 条、Schema `2.0.0`、更新时间 `2026-09-03 07:41`；
+- 本地与生产数据一致：2,334 条、Schema `2.0.0`、更新时间 `2026-09-04 07:43`；
 - 生产 API 验收：未认证 401、认证 200、ETag 重验证 304，缓存和限流响应头存在；
 - 生产有界面 Chromium 直接调用 Service Worker 通知，结果为 `permission=granted`、`status=sent`、`channel=browser`。
 
@@ -34,9 +34,9 @@
 
 2026-08-30 将官方 Actions 升级到 Node.js 24+ 的当前主版本（提交 `bb1bb57`），完整 CI [33287604485](https://github.com/k-goz/model-selector/actions/runs/33287604485) 通过且不再出现 Node.js 20 弃用警告。手工验证的部署健康 [33287719823](https://github.com/k-goz/model-selector/actions/runs/33287719823) 与数据刷新 [33287721632](https://github.com/k-goz/model-selector/actions/runs/33287721632) 均成功；两者用于验证新版 checkout、setup、cache 和 artifact 链路，`workflow_dispatch` 不计入三次 schedule 验收。
 
-## 尚待时间观察的唯一门禁
+## 时间型门禁：已通过
 
-附件要求“连续三次每日 schedule 成功”必须来自真实定时运行。2026-09-01 的第三次定时运行失败，中断了此前连续两次成功；修复后已有两个相邻自然日的真实定时运行成功，当前连续成功为 **2/3**。整体计划的工程开发完成，但时间型运营验收仍标记为待观察，不能虚报完成。
+附件要求“连续三次每日 schedule 成功”必须来自真实定时运行。2026-09-01 的失败中断了此前序列；修复后 2026-09-02、09-03、09-04 三个相邻自然日的真实定时运行均成功，当前连续成功为 **3/3**。每次数据门禁、自动提交、Vercel Git Production 与自定义域名一致性均已核验，Phase 16–20 工程交付及最后时间型验收正式完成。手工运行未计入。
 
 | 序号 | schedule run | 结果 | 数据提交 | 数据时间 | 数据门禁 | Vercel Git Production | 生产一致性 |
 |---|---|---|---|---|---|---|---|
@@ -58,4 +58,8 @@
 
 第二个真实定时运行 [33696194319](https://github.com/k-goz/model-selector/actions/runs/33696194319) 成功：目录由 2,315 调整为 2,328，新增 14、移除 1、变更 8，质量门禁判定 high-risk 0；Schema、Ground Truth、站点及 Playwright 全部通过。自动提交 `aa181a0` 已由 Vercel Git Production 部署，自定义域名数据与仓库 SHA-256 一致，因此计为新连续序列的第 2 次成功。
 
+第三次连续成功：[33818631460](https://github.com/k-goz/model-selector/actions/runs/33818631460)，`event=schedule`、`conclusion=success`，自动数据提交 `3cde10a`，更新时间 `2026-09-04 07:43`。新增 10、移除 4、变更 12；质量门禁 high-risk 0，Python 143 passed、Ground Truth 17/17、Playwright 29 passed/1 skipped，Schema、数据与站点门禁均通过。Vercel Git Production `dpl_5Bg2JaWBb7eNcCf17yMJ1yp4hufT` Ready；自定义域名与仓库数据 SHA-256 均为 `3264164b5796ca03a5387e8a0f4ee71071dc5e14c5dac4b40a10cb6613044f0d`。
+
 判定标准：默认分支 `Refresh Model Data` 工作流出现连续 3 次 `event=schedule`、`conclusion=success`，每次生成数据通过门禁并自动提交，随后 Vercel Git 部署成功，生产数据时间与该提交一致。任何一次失败都会中断连续计数并进入事件处理。
+
+专项验收完成后停止 Codex 时间型验收自动任务；GitHub 每日数据刷新与 Deployment Health 生产监控继续保留。商业效果、真实用户留存以及跨实例计费级 API 配额不属于本次 MVP 工程验收结论。
