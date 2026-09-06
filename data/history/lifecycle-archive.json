@@ -486,6 +486,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_47c183f252760bc23e27",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "free"
+      },
+      "last_seen_at": "2026-09-05T23:28:25+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Z.ai: GLM 5.2 (free)",
+      "provider_offering_id": "offering_a2e7a23fa8588ddd9ee8",
+      "restored_at": null,
+      "retired_at": "2026-09-06T23:22:25+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_d68143d14d1f0db5605b",
       "last_known": {
         "currency": "USD",
@@ -772,5 +794,5 @@
       "status": "retired"
     }
   ],
-  "updated_at": "2026-09-05T23:28:47+00:00"
+  "updated_at": "2026-09-06T23:22:25+00:00"
 }
