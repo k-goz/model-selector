@@ -134,6 +134,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_7fd1ed60bc88147802d2",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.0715,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.143,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-Speed-8K",
+      "provider_offering_id": "offering_32b29d20f5539e4e4b16",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_5de281ed35b00df93097",
       "last_known": {
         "currency": "USD",
@@ -153,6 +175,28 @@
       "provider_offering_id": "offering_4ba62f0453820e4c818b",
       "restored_at": null,
       "retired_at": "2026-09-04T23:35:25+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_58670f60593bd8344515",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.2735,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.2735,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-3.5-8K",
+      "provider_offering_id": "offering_4cdfd71fedc3bd133b32",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
       "status": "retired"
     },
     {
@@ -197,6 +241,72 @@
       "provider_offering_id": "offering_50000d1779c7ac545d14",
       "restored_at": null,
       "retired_at": "2026-09-04T23:35:25+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_aa67a518e0a6ffe9b1a3",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.0715,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.143,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-Character-8K",
+      "provider_offering_id": "offering_52f577d2bf9520927478",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_035db0de8c76b4268d81",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "free"
+      },
+      "last_seen_at": "2026-09-06T23:22:02+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "MiniMax: MiniMax M3 (free)",
+      "provider_offering_id": "offering_5e5310e979b9127a34b6",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_f3d1c187e7aecd8c1853",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.061,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.122,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-Lite-8K",
+      "provider_offering_id": "offering_5ee9f30f845210e449f5",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
       "status": "retired"
     },
     {
@@ -266,6 +376,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_cc8449d2add1316a2ddb",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 2.4375,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 2.4375,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-4.0-8K",
+      "provider_offering_id": "offering_6fa31152e0146c1a1ae8",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_343fb7bd0d85299db470",
       "last_known": {
         "currency": "USD",
@@ -285,6 +417,28 @@
       "provider_offering_id": "offering_7939f5f17b2fac1b0306",
       "restored_at": null,
       "retired_at": "2026-09-03T23:43:46+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_65dd65fe6d6beb6eaf08",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.0715,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.143,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-Functions-8K",
+      "provider_offering_id": "offering_7af7309eb1f67f1a15cb",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
       "status": "retired"
     },
     {
@@ -332,6 +486,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_d15c509ec0e52c8dc18d",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.0715,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.143,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-Speed-128K",
+      "provider_offering_id": "offering_8215b0543d1ae5f21f18",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_b45faad45bb6faf83725",
       "last_known": {
         "currency": "CNY",
@@ -373,6 +549,28 @@
       "provider_offering_id": "offering_8e7b3b35cb0878d9cb7c",
       "restored_at": null,
       "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_fad7b957eb7e0faed078",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.021,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.021,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "ERNIE-Tiny-8K",
+      "provider_offering_id": "offering_8fe214180e92105c1ea0",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
       "status": "retired"
     },
     {
@@ -750,6 +948,50 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_0d5f910c9d73ff4d7f76",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "free"
+      },
+      "last_seen_at": "2026-09-06T23:22:02+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "MiniMax: MiniMax M2.7 (free)",
+      "provider_offering_id": "offering_ce79f98e8c0995e631d9",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_9ba2827204791ed85334",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "gpt-image-2",
+      "provider_offering_id": "offering_d05d77060af43a314ee2",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_58deea5f60c2f01a6fa7",
       "last_known": {
         "currency": "USD",
@@ -769,6 +1011,28 @@
       "provider_offering_id": "offering_d17eff8bd6ff94267c4e",
       "restored_at": null,
       "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_8bf7791c9ca4912f3b47",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "doubao-deepseek-v4-flash-0731",
+      "provider_offering_id": "offering_e99c51925cf7e97e54d8",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
       "status": "retired"
     },
     {
@@ -792,7 +1056,29 @@
       "restored_at": null,
       "retired_at": "2026-09-01T23:42:00+00:00",
       "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_2959ae088d757ffdafaf",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 0.0,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:44+00:00",
+          "status": "active"
+        },
+        "output_price": 0.0,
+        "price_source_url": "",
+        "price_status": "free_tier"
+      },
+      "last_seen_at": "2026-09-06T23:22:22+00:00",
+      "provider_id": "aihubmix",
+      "provider_model_name": "baidu-deepseek-v4-pro-0813",
+      "provider_offering_id": "offering_f0b4583ff1f1a2efdaf3",
+      "restored_at": null,
+      "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
     }
   ],
-  "updated_at": "2026-09-06T23:22:25+00:00"
+  "updated_at": "2026-09-07T23:53:31+00:00"
 }
