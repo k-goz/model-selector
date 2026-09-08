@@ -1,16 +1,16 @@
 {
   "baseline": {
-    "fallback_ratio": 0.04475703324808184,
-    "models": 2346,
-    "platforms": 23,
-    "unknown_context": 575,
-    "unknown_price": 4
-  },
-  "candidate": {
     "fallback_ratio": 0.04498714652956298,
     "models": 2334,
     "platforms": 23,
     "unknown_context": 574,
+    "unknown_price": 4
+  },
+  "candidate": {
+    "fallback_ratio": 0.044929396662387676,
+    "models": 2337,
+    "platforms": 23,
+    "unknown_context": 576,
     "unknown_price": 4
   },
   "format_version": "1.0",
@@ -18,39 +18,32 @@
   "high_risk": [],
   "large_price_changes": [
     {
-      "after": 1.4e-07,
-      "before": 4.998e-08,
+      "after": 2.5e-07,
+      "before": 5.5e-07,
+      "field": "input_price",
+      "provider_offering_id": "offering_522dd275ad5dcb5603ec",
+      "ratio": 0.5455
+    },
+    {
+      "after": 2.275e-07,
+      "before": 1.2e-07,
+      "field": "input_price",
+      "provider_offering_id": "offering_60c134a41f24a511077e",
+      "ratio": 0.8958
+    },
+    {
+      "after": 9.1e-07,
+      "before": 2.4e-07,
+      "field": "output_price",
+      "provider_offering_id": "offering_60c134a41f24a511077e",
+      "ratio": 2.7917
+    },
+    {
+      "after": 6.5e-08,
+      "before": 1.4e-07,
       "field": "input_price",
       "provider_offering_id": "offering_83483e023731d50dd730",
-      "ratio": 1.8011
-    },
-    {
-      "after": 2.8e-07,
-      "before": 9.996e-08,
-      "field": "output_price",
-      "provider_offering_id": "offering_83483e023731d50dd730",
-      "ratio": 1.8011
-    },
-    {
-      "after": 1.6e-07,
-      "before": 9e-08,
-      "field": "output_price",
-      "provider_offering_id": "offering_be6b2e1c540a36cd17e2",
-      "ratio": 0.7778
-    },
-    {
-      "after": 9.5526e-07,
-      "before": 6.16656e-07,
-      "field": "input_price",
-      "provider_offering_id": "offering_c6b65354a9c2a5c7d2c7",
-      "ratio": 0.5491
-    },
-    {
-      "after": 1.91052e-06,
-      "before": 1.233312e-06,
-      "field": "output_price",
-      "provider_offering_id": "offering_c6b65354a9c2a5c7d2c7",
-      "ratio": 0.5491
+      "ratio": 0.5357
     }
   ],
   "policy": {

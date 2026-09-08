@@ -134,6 +134,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_9e45d37eadf9f0c77d4b",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 0.05,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 0.2,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-07T23:53:28+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "gemini-2.5-flash-lite-preview-09-2025",
+      "provider_offering_id": "offering_302cbbf2754d7bb079c1",
+      "restored_at": null,
+      "retired_at": "2026-09-08T23:46:30+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_7fd1ed60bc88147802d2",
       "last_known": {
         "currency": "CNY",
@@ -266,6 +288,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_d114782d2a4b0bc05d2f",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 2.5e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 1e-06,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-07T23:53:08+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Nex AGI: Nex-N2-Pro",
+      "provider_offering_id": "offering_5bf6527397ba89e4f1ee",
+      "restored_at": null,
+      "retired_at": "2026-09-08T23:46:30+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_035db0de8c76b4268d81",
       "last_known": {
         "currency": "USD",
@@ -307,6 +351,28 @@
       "provider_offering_id": "offering_5ee9f30f845210e449f5",
       "restored_at": null,
       "retired_at": "2026-09-07T23:53:31+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_219e1fe1619fbe92c79e",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 2.5e-08,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 1e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-07T23:53:08+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Nex AGI: Nex-N2-Mini",
+      "provider_offering_id": "offering_649ff5646190647285c7",
+      "restored_at": null,
+      "retired_at": "2026-09-08T23:46:30+00:00",
       "status": "retired"
     },
     {
@@ -373,6 +439,28 @@
       "provider_offering_id": "offering_6c1bdbbc5d77c65f6140",
       "restored_at": null,
       "retired_at": "2026-09-01T23:42:00+00:00",
+      "status": "retired"
+    },
+    {
+      "canonical_model_id": "model_54f9f26c1860c39c6dd5",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 4e-08,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-09-01T23:41:39+00:00",
+          "status": "active"
+        },
+        "output_price": 1.5e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-07T23:53:08+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Inception: Mercury 2.5 Preview",
+      "provider_offering_id": "offering_6df73a3cc8a4999d1dbc",
+      "restored_at": null,
+      "retired_at": "2026-09-08T23:46:30+00:00",
       "status": "retired"
     },
     {
@@ -1014,6 +1102,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_e4c82cf6951f1c1f53eb",
+      "last_known": {
+        "currency": "CNY",
+        "input_price": 7.5,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:45+00:00",
+          "status": "active"
+        },
+        "output_price": 37.5,
+        "price_source_url": "https://api.n1n.ai/api/pricing",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-07T23:53:28+00:00",
+      "provider_id": "n1n",
+      "provider_model_name": "claude-opus-4-20250514",
+      "provider_offering_id": "offering_d4914e751424d04768cf",
+      "restored_at": null,
+      "retired_at": "2026-09-08T23:46:30+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_8bf7791c9ca4912f3b47",
       "last_known": {
         "currency": "USD",
@@ -1080,5 +1190,5 @@
       "status": "retired"
     }
   ],
-  "updated_at": "2026-09-07T23:53:31+00:00"
+  "updated_at": "2026-09-08T23:46:30+00:00"
 }
