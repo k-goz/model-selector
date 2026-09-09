@@ -1,14 +1,14 @@
 {
   "baseline": {
-    "fallback_ratio": 0.04498714652956298,
-    "models": 2334,
+    "fallback_ratio": 0.044929396662387676,
+    "models": 2337,
     "platforms": 23,
-    "unknown_context": 574,
+    "unknown_context": 576,
     "unknown_price": 4
   },
   "candidate": {
-    "fallback_ratio": 0.044929396662387676,
-    "models": 2337,
+    "fallback_ratio": 0.044642857142857144,
+    "models": 2352,
     "platforms": 23,
     "unknown_context": 576,
     "unknown_price": 4
@@ -18,32 +18,53 @@
   "high_risk": [],
   "large_price_changes": [
     {
-      "after": 2.5e-07,
-      "before": 5.5e-07,
+      "after": 1.5e-07,
+      "before": 7.5e-08,
       "field": "input_price",
-      "provider_offering_id": "offering_522dd275ad5dcb5603ec",
-      "ratio": 0.5455
+      "provider_offering_id": "offering_022c797adbaa2081e904",
+      "ratio": 1.0
     },
     {
-      "after": 2.275e-07,
-      "before": 1.2e-07,
-      "field": "input_price",
-      "provider_offering_id": "offering_60c134a41f24a511077e",
-      "ratio": 0.8958
-    },
-    {
-      "after": 9.1e-07,
-      "before": 2.4e-07,
+      "after": 5e-07,
+      "before": 2.5e-07,
       "field": "output_price",
-      "provider_offering_id": "offering_60c134a41f24a511077e",
-      "ratio": 2.7917
+      "provider_offering_id": "offering_022c797adbaa2081e904",
+      "ratio": 1.0
     },
     {
-      "after": 6.5e-08,
-      "before": 1.4e-07,
+      "after": 2.5e-07,
+      "before": 1.5e-07,
+      "field": "output_price",
+      "provider_offering_id": "offering_10d50a7e27003144a57a",
+      "ratio": 0.6667
+    },
+    {
+      "after": 2.2e-07,
+      "before": 9e-08,
       "field": "input_price",
-      "provider_offering_id": "offering_83483e023731d50dd730",
-      "ratio": 0.5357
+      "provider_offering_id": "offering_a873abc963c564e66049",
+      "ratio": 1.4444
+    },
+    {
+      "after": 8.8e-07,
+      "before": 5.5e-07,
+      "field": "output_price",
+      "provider_offering_id": "offering_a873abc963c564e66049",
+      "ratio": 0.6
+    },
+    {
+      "after": 2.8e-07,
+      "before": 9.66e-07,
+      "field": "input_price",
+      "provider_offering_id": "offering_d16cc7cd837e73c6d711",
+      "ratio": 0.7101
+    },
+    {
+      "after": 8.8e-07,
+      "before": 3.036e-06,
+      "field": "output_price",
+      "provider_offering_id": "offering_d16cc7cd837e73c6d711",
+      "ratio": 0.7101
     }
   ],
   "policy": {

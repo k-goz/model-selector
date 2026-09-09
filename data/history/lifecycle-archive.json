@@ -178,6 +178,28 @@
       "status": "retired"
     },
     {
+      "canonical_model_id": "model_31145c25d71edd208465",
+      "last_known": {
+        "currency": "USD",
+        "input_price": 1.3e-07,
+        "lifecycle": {
+          "retirement_at": null,
+          "since": "2026-08-29T16:06:36+00:00",
+          "status": "active"
+        },
+        "output_price": 4e-07,
+        "price_source_url": "https://openrouter.ai/api/v1/models",
+        "price_status": "priced"
+      },
+      "last_seen_at": "2026-09-08T23:46:08+00:00",
+      "provider_id": "openrouter",
+      "provider_model_name": "Nous: Hermes 4 70B",
+      "provider_offering_id": "offering_45e75108727e8ad5ab76",
+      "restored_at": null,
+      "retired_at": "2026-09-09T23:41:24+00:00",
+      "status": "retired"
+    },
+    {
       "canonical_model_id": "model_5de281ed35b00df93097",
       "last_known": {
         "currency": "USD",
@@ -1190,5 +1212,5 @@
       "status": "retired"
     }
   ],
-  "updated_at": "2026-09-08T23:46:30+00:00"
+  "updated_at": "2026-09-09T23:41:24+00:00"
 }

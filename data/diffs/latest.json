@@ -1,170 +1,149 @@
 {
   "added": [
     {
-      "canonical_model_id": "model_b1cab7faf49cfc9f3bb9",
-      "provider_id": "openrouter",
-      "provider_model_name": "Inception: Mercury 2.5",
-      "provider_offering_id": "offering_2402c7dc9247e32f48a8"
+      "canonical_model_id": "model_525c8a572fc5e6a15874",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-image-2.5-sunburst",
+      "provider_offering_id": "offering_250a89a2f440a3443455"
     },
     {
-      "canonical_model_id": "model_80640b19f1584bc63342",
-      "provider_id": "openrouter",
-      "provider_model_name": "Z.ai: GLM 5.2 (batch)",
-      "provider_offering_id": "offering_26127e318c8286e69c9a"
+      "canonical_model_id": "model_181ba628b2f3c9315646",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-4-32k-0613",
+      "provider_offering_id": "offering_2c58f9e2d5d432df9965"
     },
     {
-      "canonical_model_id": "model_f7df8e105ece2ea25b17",
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Flash Vision Exp (batch)",
-      "provider_offering_id": "offering_43a916608500c63d26bf"
+      "canonical_model_id": "model_181ba628b2f3c9315646",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-4-32k",
+      "provider_offering_id": "offering_3734f31f421fb1e7834e"
     },
     {
-      "canonical_model_id": "model_7884944775b874578540",
-      "provider_id": "openrouter",
-      "provider_model_name": "Z.ai: GLM 5.3 (batch)",
-      "provider_offering_id": "offering_43c179a162a39bf978ba"
+      "canonical_model_id": "model_98b89f0d04de88948993",
+      "provider_id": "n1n",
+      "provider_model_name": "o3-deep-research-2025-06-26",
+      "provider_offering_id": "offering_578f1515344d72e94b67"
     },
     {
-      "canonical_model_id": "model_a876d35467548274043d",
-      "provider_id": "openrouter",
-      "provider_model_name": "Nex AGI: Nex-N2.5-Mini (free)",
-      "provider_offering_id": "offering_58e90e568b9cc26f4253"
+      "canonical_model_id": "model_2ddb3e201c1616b11639",
+      "provider_id": "n1n",
+      "provider_model_name": "o3-deep-research",
+      "provider_offering_id": "offering_66c3b8a8dcfef940c379"
     },
     {
-      "canonical_model_id": "model_1ccfb521d7f47403adf0",
-      "provider_id": "deepinfra",
-      "provider_model_name": "inclusionAI/Ling-3.0-flash-VL",
-      "provider_offering_id": "offering_b440cbd6c79aa3305d57"
+      "canonical_model_id": "model_963b90854b45f20ce069",
+      "provider_id": "n1n",
+      "provider_model_name": "text-babbage-001",
+      "provider_offering_id": "offering_682722d8d1c26b91b837"
     },
     {
-      "canonical_model_id": "model_eb1394ac7fc44dc30655",
-      "provider_id": "aihubmix",
-      "provider_model_name": "deepseek-v4.1-flash",
-      "provider_offering_id": "offering_d245ca3ff51e99255b5e"
+      "canonical_model_id": "model_d53f5ea43a0fc5d88e0b",
+      "provider_id": "n1n",
+      "provider_model_name": "o4-mini-deep-research",
+      "provider_offering_id": "offering_699e23b64166ce6a2378"
     },
     {
-      "canonical_model_id": "model_81cfb7b2734adac247f1",
-      "provider_id": "openrouter",
-      "provider_model_name": "Nex AGI: Nex-N2.5-Pro (free)",
-      "provider_offering_id": "offering_e42bea6077ab668b4c52"
+      "canonical_model_id": "model_d4b6562045fa07dfced4",
+      "provider_id": "aliyun",
+      "provider_model_name": "Fun-ASR多语言语音识别-2025-08-25",
+      "provider_offering_id": "offering_82a6a5aace018a63f4bc"
+    },
+    {
+      "canonical_model_id": "model_0a7d09e9ddd70e6404ed",
+      "provider_id": "n1n",
+      "provider_model_name": "text-davinci-edit-001",
+      "provider_offering_id": "offering_953d21dcccbcfd1c9cc7"
+    },
+    {
+      "canonical_model_id": "model_6b3551313226265ae2ca",
+      "provider_id": "n1n",
+      "provider_model_name": "o1-pro-2025-03-19",
+      "provider_offering_id": "offering_95ad52a19512aa2b7184"
+    },
+    {
+      "canonical_model_id": "model_033fed5b2016e697e68b",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-image-2.5-flare",
+      "provider_offering_id": "offering_ad49dec09db184e29c20"
+    },
+    {
+      "canonical_model_id": "model_038d010a7ad1d8c64de5",
+      "provider_id": "n1n",
+      "provider_model_name": "text-ada-001",
+      "provider_offering_id": "offering_b4f08300f08b2801d00e"
+    },
+    {
+      "canonical_model_id": "model_2e2bb3b435c150032d44",
+      "provider_id": "n1n",
+      "provider_model_name": "o1-pro",
+      "provider_offering_id": "offering_b9f5388c7f670560097b"
+    },
+    {
+      "canonical_model_id": "model_fa73d403c9385b7273e3",
+      "provider_id": "n1n",
+      "provider_model_name": "text-curie-001",
+      "provider_offering_id": "offering_cbd40ee1a3050859e1f6"
+    },
+    {
+      "canonical_model_id": "model_d839ea98cf67c6fc3bd3",
+      "provider_id": "n1n",
+      "provider_model_name": "o4-mini-deep-research-2025-06-26",
+      "provider_offering_id": "offering_cd91177d752eafc5f3ab"
+    },
+    {
+      "canonical_model_id": "model_744814b5b3011642470e",
+      "provider_id": "n1n",
+      "provider_model_name": "gpt-3.5-turbo-0613",
+      "provider_offering_id": "offering_e5b834f60b9fef10c486"
     }
   ],
-  "baseline_updated_at": "2026-09-08 07:52",
-  "candidate_updated_at": "2026-09-09 07:45",
+  "baseline_updated_at": "2026-09-09 07:45",
+  "candidate_updated_at": "2026-09-10 07:40",
   "changes": [
     {
       "after": {
-        "input_price": 7.1e-07,
-        "output_price": 3.5e-06
+        "input_price": 1.5e-07,
+        "output_price": 5e-07
       },
       "before": {
-        "input_price": 6.6e-07,
-        "output_price": 3.4e-06
+        "input_price": 7.5e-08,
+        "output_price": 2.5e-07
       },
-      "canonical_model_id": "model_0613a6156eeb26f1ed89",
+      "canonical_model_id": "model_2755bef6ab693fc99fd1",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "novita",
+      "provider_model_name": "zai-org/glm-5.3-flash",
+      "provider_offering_id": "offering_022c797adbaa2081e904"
+    },
+    {
+      "after": {
+        "input_price": 6e-08,
+        "output_price": 2.5e-07
+      },
+      "before": {
+        "input_price": 1e-07,
+        "output_price": 1.5e-07
+      },
+      "canonical_model_id": "model_4a347819858371ffb02d",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "MoonshotAI: Kimi K2.7 Code",
-      "provider_offering_id": "offering_0013998663f2a8a47b3b"
+      "provider_model_name": "IBM: Granite 4.2 8B",
+      "provider_offering_id": "offering_10d50a7e27003144a57a"
     },
     {
       "after": {
-        "input_price": 6.6e-07,
-        "output_price": 1.98e-06
-      },
-      "before": {
-        "input_price": 1.32e-06,
-        "output_price": 3.96e-06
-      },
-      "canonical_model_id": "model_1959f633cdc5e53e9378",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0813 (batch)",
-      "provider_offering_id": "offering_003bfa7e99a6cc7c9a6c"
-    },
-    {
-      "after": {
-        "input_price": 6.05e-08
-      },
-      "before": {
-        "input_price": 6e-08
-      },
-      "canonical_model_id": "model_12bb2c891faa9a96a53a",
-      "fields": [
-        "input_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Z.ai: GLM 4.7 Flash",
-      "provider_offering_id": "offering_00814ab3c8d9f1f5bc7a"
-    },
-    {
-      "after": {
-        "input_price": 1.113e-06,
-        "output_price": 3.498e-06
-      },
-      "before": {
-        "input_price": 1.12e-06,
-        "output_price": 3.52e-06
-      },
-      "canonical_model_id": "model_e1bf1845a12ba8accf21",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Z.ai: GLM Latest",
-      "provider_offering_id": "offering_12ea74280de4b76bebd2"
-    },
-    {
-      "after": {
-        "input_price": 2.9e-07,
-        "output_price": 1.14e-06
-      },
-      "before": {
-        "input_price": 2.5e-07,
-        "output_price": 1e-06
-      },
-      "canonical_model_id": "model_1ee8db10f9cb7a8f5033",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V3 0324",
-      "provider_offering_id": "offering_13721c0161b98f736a9b"
-    },
-    {
-      "after": {
-        "input_price": 1.75e-07,
-        "output_price": 7.5e-07
-      },
-      "before": {
-        "input_price": 3.5e-07,
-        "output_price": 1.5e-06
-      },
-      "canonical_model_id": "model_ac83483aa04ea5467d70",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Meta: Muse Glimmer 30B (batch)",
-      "provider_offering_id": "offering_1aa97654e942d00ee4d8"
-    },
-    {
-      "after": {
-        "input_price": 5.5e-07,
-        "output_price": 2.2e-06
-      },
-      "before": {
         "input_price": 4.3e-07,
         "output_price": 1.75e-06
+      },
+      "before": {
+        "input_price": 5.5e-07,
+        "output_price": 2.2e-06
       },
       "canonical_model_id": "model_27a588e6aec876589803",
       "fields": [
@@ -177,48 +156,12 @@
     },
     {
       "after": {
-        "input_price": 5.7948e-07,
-        "output_price": 1.73844e-06
+        "input_price": 2.4e-06,
+        "output_price": 1.2e-05
       },
       "before": {
-        "input_price": 6.6e-07,
-        "output_price": 1.98e-06
-      },
-      "canonical_model_id": "model_2a8e3a9c985bc4bfff15",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0813",
-      "provider_offering_id": "offering_4229019f8fe23814a1fd"
-    },
-    {
-      "after": {
-        "input_price": 2.5e-07,
-        "output_price": 9.5e-07
-      },
-      "before": {
-        "input_price": 5.5e-07,
-        "output_price": 1.65e-06
-      },
-      "canonical_model_id": "model_db94d7c1f1afebb6251e",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V3.1",
-      "provider_offering_id": "offering_522dd275ad5dcb5603ec"
-    },
-    {
-      "after": {
         "input_price": 2.55e-06,
         "output_price": 1.275e-05
-      },
-      "before": {
-        "input_price": 2.5e-06,
-        "output_price": 1.4e-05
       },
       "canonical_model_id": "model_30a00e5ef573d3a95983",
       "fields": [
@@ -231,30 +174,12 @@
     },
     {
       "after": {
-        "input_price": 2.275e-07,
-        "output_price": 9.1e-07
+        "input_price": 7e-08,
+        "output_price": 2.333e-07
       },
       "before": {
-        "input_price": 1.2e-07,
-        "output_price": 2.4e-07
-      },
-      "canonical_model_id": "model_3cec87d60f10bcb1a6a8",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Qwen: Qwen3 14B",
-      "provider_offering_id": "offering_60c134a41f24a511077e"
-    },
-    {
-      "after": {
         "input_price": 7.5e-08,
         "output_price": 2.5e-07
-      },
-      "before": {
-        "input_price": 7.125e-08,
-        "output_price": 2.375e-07
       },
       "canonical_model_id": "model_f7b4e6d15ea75f128f5b",
       "fields": [
@@ -267,57 +192,93 @@
     },
     {
       "after": {
-        "input_price": 1.1e-07,
-        "output_price": 3.3e-07
+        "input_price": 9e-08
       },
       "before": {
-        "input_price": 1.4e-07,
-        "output_price": 2.8e-07
+        "input_price": 1e-07
       },
-      "canonical_model_id": "model_b08b9ea80000c9ed5ec9",
+      "canonical_model_id": "model_b5cf73ef18e18eef7d74",
+      "fields": [
+        "input_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Qwen: Qwen3 Next 80B A3B Instruct",
+      "provider_offering_id": "offering_7ff0aa8929b89fc7b6f7"
+    },
+    {
+      "after": {
+        "input_price": 7e-08,
+        "output_price": 2.333e-07
+      },
+      "before": {
+        "input_price": 7.5e-08,
+        "output_price": 2.5e-07
+      },
+      "canonical_model_id": "model_9013386338e4fe459311",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Flash 0731 (batch)",
-      "provider_offering_id": "offering_73f0f5406527335beeb1"
+      "provider_model_name": "Z.ai: GLM 5.3 Flash",
+      "provider_offering_id": "offering_95a1e776cf414e95d5b1"
     },
     {
       "after": {
-        "input_price": 6.5e-08,
-        "output_price": 1.8e-07
+        "input_price": 2.2e-07,
+        "output_price": 8.8e-07
       },
       "before": {
-        "input_price": 1.4e-07,
-        "output_price": 2.8e-07
+        "input_price": 9e-08,
+        "output_price": 5.5e-07
       },
-      "canonical_model_id": "model_25d0a1b6584a50d7d131",
+      "canonical_model_id": "model_13a748af58d92bd754ca",
       "fields": [
         "input_price",
         "output_price"
       ],
       "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Flash 0731",
-      "provider_offering_id": "offering_83483e023731d50dd730"
+      "provider_model_name": "Qwen: Qwen3 235B A22B Instruct 2507",
+      "provider_offering_id": "offering_a873abc963c564e66049"
     },
     {
       "after": {
-        "confidence": {
-          "factors": [
-            {
-              "factor": "catalog_source:api",
-              "impact": 0.72
-            }
-          ],
-          "grade": "medium",
-          "method": "catalog-confidence-v1",
-          "score": 0.72
-        },
-        "context": "N/A",
-        "context_status": "unknown"
+        "input_price": 8.7e-07,
+        "output_price": 1.74e-06
       },
       "before": {
+        "input_price": 9.396e-07,
+        "output_price": 1.8792e-06
+      },
+      "canonical_model_id": "model_c2460020b802fb42033c",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0423",
+      "provider_offering_id": "offering_c6b65354a9c2a5c7d2c7"
+    },
+    {
+      "after": {
+        "input_price": 2.8e-07,
+        "output_price": 8.8e-07
+      },
+      "before": {
+        "input_price": 9.66e-07,
+        "output_price": 3.036e-06
+      },
+      "canonical_model_id": "model_efd0d1352801aa651495",
+      "fields": [
+        "input_price",
+        "output_price"
+      ],
+      "provider_id": "openrouter",
+      "provider_model_name": "Z.ai: GLM 5.2",
+      "provider_offering_id": "offering_d16cc7cd837e73c6d711"
+    },
+    {
+      "after": {
         "confidence": {
           "factors": [
             {
@@ -336,93 +297,39 @@
         "context": "128k",
         "context_status": "inferred"
       },
-      "canonical_model_id": "model_9e45d37eadf9f0c77d4b",
+      "before": {
+        "confidence": {
+          "factors": [
+            {
+              "factor": "catalog_source:api",
+              "impact": 0.72
+            }
+          ],
+          "grade": "medium",
+          "method": "catalog-confidence-v1",
+          "score": 0.72
+        },
+        "context": "N/A",
+        "context_status": "unknown"
+      },
+      "canonical_model_id": "model_2e2bb3b435c150032d44",
       "fields": [
         "context",
         "context_status",
         "confidence"
       ],
       "provider_id": "aihubmix",
-      "provider_model_name": "gemini-2.5-flash-lite-preview-09-2025",
-      "provider_offering_id": "offering_884ad572f1ff97ede12e"
+      "provider_model_name": "o1-pro",
+      "provider_offering_id": "offering_e7653c1cfc808cc4b4b6"
     },
     {
       "after": {
-        "input_price": 7.5e-08,
-        "output_price": 2.5e-07
+        "input_price": 7e-08,
+        "output_price": 1.4e-07
       },
       "before": {
-        "input_price": 1.5e-07,
-        "output_price": 5e-07
-      },
-      "canonical_model_id": "model_9042a73e48ebe9cdb8aa",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Z.ai: GLM 5.3 Flash (batch)",
-      "provider_offering_id": "offering_a144fdc2200c0c7237b8"
-    },
-    {
-      "after": {
-        "context": "262k"
-      },
-      "before": {
-        "context": "1M"
-      },
-      "canonical_model_id": "model_05ba9325bff6fcba9f65",
-      "fields": [
-        "context"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "NVIDIA: Nemotron 3 Super",
-      "provider_offering_id": "offering_a5565c8d80f16ecb158f"
-    },
-    {
-      "after": {
-        "input_price": 5.5e-07,
-        "output_price": 3.5e-06
-      },
-      "before": {
-        "input_price": 3.9e-07,
-        "output_price": 2.34e-06
-      },
-      "canonical_model_id": "model_be0a0a843f5d7923095b",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "Qwen: Qwen3.5 397B A17B",
-      "provider_offering_id": "offering_c417f8600b0907438e5c"
-    },
-    {
-      "after": {
-        "input_price": 9.396e-07,
-        "output_price": 1.8792e-06
-      },
-      "before": {
-        "input_price": 9.5526e-07,
-        "output_price": 1.91052e-06
-      },
-      "canonical_model_id": "model_c2460020b802fb42033c",
-      "fields": [
-        "input_price",
-        "output_price"
-      ],
-      "provider_id": "openrouter",
-      "provider_model_name": "DeepSeek: DeepSeek V4 Pro 0423",
-      "provider_offering_id": "offering_c6b65354a9c2a5c7d2c7"
-    },
-    {
-      "after": {
         "input_price": 8.092e-08,
         "output_price": 1.6184e-07
-      },
-      "before": {
-        "input_price": 8.8606e-08,
-        "output_price": 1.77212e-07
       },
       "canonical_model_id": "model_8521a028063c25e921e9",
       "fields": [
@@ -434,53 +341,29 @@
       "provider_offering_id": "offering_fa8d2e57eba110eae36a"
     }
   ],
-  "discovered_at": "2026-09-08T23:46:30+00:00",
+  "discovered_at": "2026-09-09T23:41:24+00:00",
   "format_version": "2.0",
   "removed": [
     {
-      "canonical_model_id": "model_9e45d37eadf9f0c77d4b",
-      "provider_id": "n1n",
-      "provider_model_name": "gemini-2.5-flash-lite-preview-09-2025",
-      "provider_offering_id": "offering_302cbbf2754d7bb079c1"
-    },
-    {
-      "canonical_model_id": "model_d114782d2a4b0bc05d2f",
+      "canonical_model_id": "model_31145c25d71edd208465",
       "provider_id": "openrouter",
-      "provider_model_name": "Nex AGI: Nex-N2-Pro",
-      "provider_offering_id": "offering_5bf6527397ba89e4f1ee"
-    },
-    {
-      "canonical_model_id": "model_219e1fe1619fbe92c79e",
-      "provider_id": "openrouter",
-      "provider_model_name": "Nex AGI: Nex-N2-Mini",
-      "provider_offering_id": "offering_649ff5646190647285c7"
-    },
-    {
-      "canonical_model_id": "model_54f9f26c1860c39c6dd5",
-      "provider_id": "openrouter",
-      "provider_model_name": "Inception: Mercury 2.5 Preview",
-      "provider_offering_id": "offering_6df73a3cc8a4999d1dbc"
-    },
-    {
-      "canonical_model_id": "model_e4c82cf6951f1c1f53eb",
-      "provider_id": "n1n",
-      "provider_model_name": "claude-opus-4-20250514",
-      "provider_offering_id": "offering_d4914e751424d04768cf"
+      "provider_model_name": "Nous: Hermes 4 70B",
+      "provider_offering_id": "offering_45e75108727e8ad5ab76"
     }
   ],
   "schema_version": "2.0.0",
   "summary": {
-    "added": 8,
-    "after_models": 2337,
-    "before_models": 2334,
-    "changed": 20,
+    "added": 16,
+    "after_models": 2352,
+    "before_models": 2337,
+    "changed": 12,
     "field_changes": {
       "confidence": 1,
-      "context": 2,
+      "context": 1,
       "context_status": 1,
-      "input_price": 18,
-      "output_price": 17
+      "input_price": 11,
+      "output_price": 10
     },
-    "removed": 5
+    "removed": 1
   }
 }
